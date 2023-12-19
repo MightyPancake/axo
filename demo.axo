@@ -1,0 +1,104 @@
+/*
+    Tiny Yet Capable Interface 
+*/
+
+//There are only 3 basic data types
+byt = 'a'      //Represents one byte 0-255. C char
+int = 123      //Represents a integer number
+flo = 456.789  //Represents a floating point number
+
+//However, there are a few "collection" data types
+ptr = alc(10)       //Raw pointers. Can be allocated freely. NOTE: Mainly for C compatibility
+dyn_arr = [int]         //Dynamic array that can hold many objects of the same type.
+static_arr [256 of int]    //Static array
+
+/*
+Each dynamic array is a structure that has 3 components:
+    1. ptr - Pointer that points to the array in memory
+    2. cap - The actual size of allocated memory space. 
+    3. len - Length of the array. Amount of elements. Defaults to 0
+*/
+
+//If statements uses ? and :. No need for () and {}
+
+if 1 < 0
+    print("if")
+else if 1 > 1 
+    print("else-if")
+else
+    print("else")
+
+a = 2
+print(a<0 ? "a is negative" : "a is not negative")
+
+//Loops
+//While loop
+whl i++ < 12:
+    print(i)
+
+//for
+//Default iterator is i, start value is 0, jump is +1
+//
+for 10:
+    print(i)
+
+//Every next loop will use next letter from the alphabet, like so:
+for 10:
+    for 10:
+        for 10:
+            print(i, j, k)
+//This only works up to n: i,j,k,l,m,n (5 loops)
+
+//You can also specify the condition manually
+for i<a && i<b:
+    print(i, a, b)
+
+//You can specify your own iterator name
+for it, 10:
+    print(it)
+
+//You can specify the jump as well
+for a, 10, 2:
+    print(a)
+
+//This can also be an expression
+for a, 10, a=a+(a%3)*2:
+    print(a)
+
+//Custom iterators, use each
+each key, val from [1, 2, 3]:
+    print(key, val)
+//There's a default iterator for arrays
+
+//Functions
+fn myFunc(a:0, b:0){
+    ret a + b
+}
+
+//function type
+fn calc((int fn int, int)op, a:0, b:0){
+    res = op(a, b)
+    printf("Result: %d\n", res)
+}
+
+(int fn int,int)
+
+/*      Operators
+    1 + 2 - 3 * 4 / 5 % 6 //Math
+    !true, false || true, false && true //Logical
+    "Hello, ~~name~~!" //String concat
+    < > == <= >= //Comparations
+    == != //Equality
+/*
+
+/*
+        Structures
+*/
+
+
+
+/*      Important notes
+
+
+
+*/

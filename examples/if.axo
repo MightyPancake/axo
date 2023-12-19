@@ -1,0 +1,17 @@
+#include <stdio.h>
+#register int printf(char*, ...)
+
+fn main(){
+    a = 2
+        
+    if a>1 printf("if\n")
+    
+    if a>2 printf("if\n")
+    else printf("else\n")
+    
+    if a<2 printf("if\n")
+    else if a==2 printf("else if\n")
+    else printf("else\n")
+    
+    ret 0
+}

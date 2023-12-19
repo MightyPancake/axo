@@ -1,0 +1,9 @@
+#include <stdio.h>
+#register int printf(char*, ...)
+
+fn main(){
+    a = 1
+    printf("%d\n", (a<3 ? 42 : 10))
+    ret 0
+}
+
