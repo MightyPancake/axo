@@ -1,14 +1,19 @@
 <div align="center" style="display:grid;place-items:center;">
 
-![Static Badge](https://img.shields.io/badge/speed_and_philosophy-grey?style=for-the-badge&logo=C&logoColor=white&label=%20&labelColor=%23669ad3)![Static Badge](https://img.shields.io/badge/with_modern_twists!-%2300599d?style=for-the-badge&labelColor=%23669ad3)
+![axo logo](./logos/vertical/svg/axologo_v_jerry_rgb.svg)
 
-# Build status
+![Static Badge](https://img.shields.io/badge/%F0%9F%AB%A7-Write_fast%2C_run_faster!-grey?style=for-the-badge&color=%23fc2f62)
 
-  ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/MightyPancake/axo/main?style=flat&logo=GitHub&label=Last%20update&color=%237CF1FF)
+-----
+
+  ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/MightyPancake/axo/main?style=for-the-badge&logo=GitHub&color=%23fd8889)
+
 
   ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/ubuntu.yml?style=flat&logo=Ubuntu&logoColor=%23E95420&label=build%20)
   ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/windows.yml?style=flat&logo=Windows%2010&logoColor=%2301ccff&label=build%20)
   ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/macos.yml?style=flat&logo=MacOS&label=build%20)
+
+-----
 
 ## Features
 </div>
