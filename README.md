@@ -1,6 +1,7 @@
 <div align="center" style="display:grid;place-items:center;">
-
-![axo logo](./logos/vertical/svg/axologo_v_jerry_rgb.svg)
+<p>
+  <img width="256" src="https://raw.githubusercontent.com/MightyPancake/axo/main/logos/vertical/svg/axologo_v_jerry_rgb.svg?sanitize=true" alt="V logo">
+</p>
 
 ![Static Badge](https://img.shields.io/badge/%F0%9F%AB%A7-Write_fast%2C_run_faster!-grey?style=for-the-badge&color=%23fc2f62)
 
@@ -16,7 +17,6 @@
 -----
 
 ## Features
-</div>
 
 - Compiles to readable C and easily integrates with existing code 🇨
 - No speed compromises! VROOM!!! 🏎️💨
