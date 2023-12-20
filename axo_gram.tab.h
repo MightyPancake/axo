@@ -75,19 +75,21 @@ extern int yydebug;
     EQ_GRTR_OP = 276,              /* "<="  */
     LOGICAL_OR_OP = 277,           /* "||"  */
     LOGICAL_AND_OP = 278,          /* "&&"  */
-    TILL_KWRD = 279,               /* "till"  */
-    INCR_OP = 280,                 /* "++"  */
-    DECR_OP = 281,                 /* "--"  */
-    ENUM_KWRD = 282,               /* "enum"  */
-    STRUCT_KWRD = 283,             /* "struct"  */
-    STRUCT_LITERAL_START = 284,    /* "struct{"  */
-    DOT_FIELD = 285,               /* ".field"  */
-    ARROW_OP = 286,                /* "->"  */
-    IS_KWRD = 287,                 /* "is"  */
-    IDENTIFIER_PREC = 288,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 289,       /* EXPR_AS_STATEMENT  */
-    UMINUS = 290,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 291   /* STRUCT_LIT_NAMED_FIELD  */
+    LEFT_SHIFT_OP = 279,           /* "<<"  */
+    RIGHT_SHIFT_OP = 280,          /* ">>"  */
+    TILL_KWRD = 281,               /* "till"  */
+    INCR_OP = 282,                 /* "++"  */
+    DECR_OP = 283,                 /* "--"  */
+    ENUM_KWRD = 284,               /* "enum"  */
+    STRUCT_KWRD = 285,             /* "struct"  */
+    STRUCT_LITERAL_START = 286,    /* "struct{"  */
+    DOT_FIELD = 287,               /* ".field"  */
+    ARROW_OP = 288,                /* "->"  */
+    IS_KWRD = 289,                 /* "is"  */
+    IDENTIFIER_PREC = 290,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 291,       /* EXPR_AS_STATEMENT  */
+    UMINUS = 292,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 293   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -96,7 +98,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 115 "axo_gram.y"
+#line 117 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -117,7 +119,7 @@ union YYSTYPE
   axo_stat_arr_val stat_arr_val_type;
   axo_stat_arr_init stat_arr_init_type;
 
-#line 121 "axo_gram.tab.h"
+#line 123 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

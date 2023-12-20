@@ -65,6 +65,8 @@
 %token<str> EQ_GRTR_OP "<="
 %token<str> LOGICAL_OR_OP "||"
 %token<str> LOGICAL_AND_OP "&&"
+%token<str> LEFT_SHIFT_OP "<<"
+%token<str> RIGHT_SHIFT_OP ">>"
 %token<str> TILL_KWRD "till"
 %token<str> INCR_OP "++"
 %token<str> DECR_OP "--"
@@ -94,22 +96,22 @@
 
 //Prec
 %left IDENTIFIER_PREC
+%left '$'
 %left EXPR_AS_STATEMENT
-%left EQ_OP '<' '>' EQ_GRTR_OP EQ_SMLR_OP INEQ_OP
+%left '('
+%right '='
+%left '?'
+%left "||"
+%left "&&"
+%left '<' '>' "<=" ">="
+%left "==" "!="
+%left "<<" ">>"
 %left '+' '-'
 %left '*' '/' '%'
-%left '@' '^'
-%left "||" "&&"
-%left DOT_FIELD
+%left UMINUS '@' '^'
+%left INCR_OP DECR_OP '[' DOT_FIELD
 %left IF_KWRD
-%left '['
-%right INCR_OP DECR_OP
-%left UMINUS
-%left '('
-%left '$'
-%right '='
 %left STRUCT_LIT_NAMED_FIELD
-%left '?'
 %precedence RET_KWRD
 
 %union {
@@ -410,7 +412,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
       $$ = (axo_expr){
         .kind = axo_expr_normal_kind,
-        .typ = axo_mk_simple_typ("bool"),
+        .typ = $1.typ,
         .val = fmtstr("%s||%s", $1.val, $3.val)
       };
     }
@@ -419,8 +421,26 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
       $$ = (axo_expr){
         .kind = axo_expr_normal_kind,
-        .typ = axo_mk_simple_typ("bool"),
+        .typ = $1.typ,
         .val = fmtstr("%s&&%s", $1.val, $3.val)
+      };
+    }
+  }
+  | expr "<<" expr {
+    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
+      $$ = (axo_expr){
+        .kind = axo_expr_normal_kind,
+        .typ = $1.typ,
+        .val = fmtstr("%s<<%s", $1.val, $3.val)
+      };
+    }
+  }
+  | expr ">>" expr {
+    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
+      $$ = (axo_expr){
+        .kind = axo_expr_normal_kind,
+        .typ = $1.typ,
+        .val = fmtstr("%s>>%s", $1.val, $3.val)
       };
     }
   }
