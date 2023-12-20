@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -73,19 +73,21 @@ extern int yydebug;
     INEQ_OP = 274,                 /* "!="  */
     EQ_SMLR_OP = 275,              /* ">="  */
     EQ_GRTR_OP = 276,              /* "<="  */
-    TILL_KWRD = 277,               /* "till"  */
-    INCR_OP = 278,                 /* "++"  */
-    DECR_OP = 279,                 /* "--"  */
-    ENUM_KWRD = 280,               /* "enum"  */
-    STRUCT_KWRD = 281,             /* "struct"  */
-    STRUCT_LITERAL_START = 282,    /* "struct{"  */
-    DOT_FIELD = 283,               /* ".field"  */
-    ARROW_OP = 284,                /* "->"  */
-    IS_KWRD = 285,                 /* "is"  */
-    IDENTIFIER_PREC = 286,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 287,       /* EXPR_AS_STATEMENT  */
-    UMINUS = 288,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 289   /* STRUCT_LIT_NAMED_FIELD  */
+    LOGICAL_OR_OP = 277,           /* "||"  */
+    LOGICAL_AND_OP = 278,          /* "&&"  */
+    TILL_KWRD = 279,               /* "till"  */
+    INCR_OP = 280,                 /* "++"  */
+    DECR_OP = 281,                 /* "--"  */
+    ENUM_KWRD = 282,               /* "enum"  */
+    STRUCT_KWRD = 283,             /* "struct"  */
+    STRUCT_LITERAL_START = 284,    /* "struct{"  */
+    DOT_FIELD = 285,               /* ".field"  */
+    ARROW_OP = 286,                /* "->"  */
+    IS_KWRD = 287,                 /* "is"  */
+    IDENTIFIER_PREC = 288,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 289,       /* EXPR_AS_STATEMENT  */
+    UMINUS = 290,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 291   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -94,7 +96,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 111 "axo_gram.y"
+#line 115 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -115,7 +117,7 @@ union YYSTYPE
   axo_stat_arr_val stat_arr_val_type;
   axo_stat_arr_init stat_arr_init_type;
 
-#line 119 "axo_gram.tab.h"
+#line 121 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -139,6 +141,8 @@ struct YYLTYPE
 
 
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_AXO_GRAM_TAB_H_INCLUDED  */

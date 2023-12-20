@@ -76,6 +76,8 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "!=" {ret_null; return INEQ_OP; }
 "<=" {ret_null; return EQ_GRTR_OP; }
 ">=" {ret_null; return EQ_SMLR_OP; }
+"||" {ret_null; return LOGICAL_OR_OP; }
+"&&" {ret_null; return LOGICAL_AND_OP; }
 "->" {ret_null; return ARROW_OP; }
 
 \"[^\"\n]*\" {ret_def; return(STRING_LITERAL); }

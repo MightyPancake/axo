@@ -3,7 +3,7 @@
 
 fn main(){
     a = 1
-    printf("%d\n", (a<3 ? 42 : 10))
+    b = 3
     ret 0
 }
 
