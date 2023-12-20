@@ -16,6 +16,8 @@
 
 -----
 
+</div>
+
 ## Features
 
 - Compiles to readable C and easily integrates with existing code 🇨
