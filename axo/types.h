@@ -67,7 +67,7 @@ typedef struct axo_arr{
 
 typedef struct axo_types_list{
     axo_typ*           values;
-    int                 len;
+    int                len;
 }axo_types_list;
 
 typedef enum axo_expr_kind{
