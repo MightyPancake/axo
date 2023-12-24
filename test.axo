@@ -1,12 +1,26 @@
 #include <stdio.h>
+#include "./axo/axo_include.h"
 #register int printf(char*, ...)
 
 fn main(){
-    a = (1+3)*2
-    a = a<<2
-    printf("%d\n", a)
-    a = a>>3
-    printf("%d\n", a)
+    n = 5
+    m = 5
+    arr is [][]int
+    for (i=0, i<n, i++){
+        arr << [.]int
+        arr[i] << 1
+        for (j=1, j<m, j++){
+            num = i
+            for (k=1, k<j, k++) num = num*i
+            arr[i] << num
+        }
+    }
+    arr << [1, m*m, m*m*m]
+    for (i=0, i<arr.len, i++){
+        for (j=0, j<arr[i].len, j++){
+            printf("%d^%d=%d\n", i, j, arr[i][j])
+        }
+    }
     ret 0
 }
 

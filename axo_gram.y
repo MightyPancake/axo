@@ -81,7 +81,7 @@
 %type<function_call> func_call_start func_call
 %type<expression> expr incr_decr_op if_condition assignment
 %type<str> statements declarations while_loop_base
-%type<typ_type> val_typ c_typ stat_arr_typ dyn_arr_typ func_typ func_typ_start func_typ_args
+%type<typ_type> val_typ c_typ arr_typ func_typ func_typ_start func_typ_args
 %type<types_list> c_typ_list
 %type<function_argument> func_arg
 %type<for_loop_type> for_loop_start for_loop_init for_loop_base
@@ -247,7 +247,7 @@ multi_statement : stat_arr_init {
       arr_ptr->sz = $1.dims[i];
       arr_ptr->typ=typ;
       typ.arr = arr_ptr;
-      typ.kind = axo_stat_arr_kind;
+      typ.kind = axo_arr_kind;
     }
     char* arr_decl = axo_name_typ_decl($1.lval.val, typ);
     char* arr_init = empty_str;
@@ -303,6 +303,22 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
   | '(' expr ')' {asprintf(&($$.val), "(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
+  | '[' '.' ']' val_typ {
+    axo_arr* arr_ptr = alloc_one(axo_arr);
+    *arr_ptr = (axo_arr){
+      .sz=0,
+      .typ=$val_typ
+    };
+    $$ = (axo_expr){
+      .val=alloc_str("axo_new_arr(16)"),
+      .typ=(axo_typ){
+        .kind=axo_arr_kind,
+        .arr=arr_ptr
+      },
+      .kind=axo_expr_normal_kind,
+      .lval_kind=axo_not_lval_kind
+    };
+  }
   | '@' expr {
     $$.typ.kind = axo_ptr_kind;
     $$.typ.ptr = malloc(sizeof(axo_ptr));
@@ -428,11 +444,21 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   }
   | expr "<<" expr {
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
-      $$ = (axo_expr){
-        .kind = axo_expr_normal_kind,
-        .typ = $1.typ,
-        .val = fmtstr("%s<<%s", $1.val, $3.val)
-      };
+      if ($1.typ.kind == axo_arr_kind){
+        axo_arr* arr = (axo_arr*)($1.typ.arr);
+        //FIX! Check types!
+        $$ = (axo_expr){
+          .kind = axo_expr_normal_kind,
+          .typ = $3.typ,
+          .val = fmtstr("axo_arr_push(%s, %s, %s)", axo_typ_to_c_str(arr->typ, "axo_new_elem"), $1.val, $3.val)
+        };
+      }else{
+        $$ = (axo_expr){
+          .kind = axo_expr_normal_kind,
+          .typ = $1.typ,
+          .val = fmtstr("%s<<%s", $1.val, $3.val)
+        };
+      }
     }
   }
   | expr ">>" expr {
@@ -470,16 +496,10 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   | expr '[' expr ']'{
     axo_arr* arr;
     switch($1.typ.kind){
-      case axo_stat_arr_kind:
+      case axo_arr_kind:
         arr = (axo_arr*)($1.typ.arr);
         $$.typ = arr->typ;
-        $$.val = fmtstr("%s[%s]", $1.val, $3.val);
-        $$.lval_kind = ($1.lval_kind == axo_not_lval_kind ? axo_not_lval_kind : axo_other_lval_kind);
-        break;
-      case axo_dyn_arr_kind:
-        arr = (axo_arr*)($1.typ.arr);
-        $$.typ = arr->typ;
-        $$.val = fmtstr("%s[%s]", $1.val, $3.val);
+        $$.val = fmtstr("axo_arr_at(%s, %s, %s)", axo_typ_to_c_str(arr->typ, "elem"), $1.val, $3.val);
         $$.lval_kind = ($1.lval_kind == axo_not_lval_kind ? axo_not_lval_kind : axo_other_lval_kind);
         break;
       default:
@@ -510,36 +530,48 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
         }
         break;
       default:
-        if ($1.typ.kind==axo_struct_kind){
-          axo_struct* structure = (axo_struct*)($1.typ.structure);
-          int index = -1;
-          for (int i=0;i<structure->fields_len; i++){
-            if (strcmp(structure->fields[i].name, $2)==0){
-              index = i;
-              break;
+        switch($1.typ.kind){
+          case axo_struct_kind:
+            axo_struct* structure = (axo_struct*)($1.typ.structure);
+            int index = -1;
+            for (int i=0;i<structure->fields_len; i++){
+              if (strcmp(structure->fields[i].name, $2)==0){
+                index = i;
+                break;
+              }
             }
-          }
-          if (index<0) yyerror(&@$, "Struct '%s' doesn't have a field named '%s'.", structure->name, $2);
-          else{
-            $$ = (axo_expr){
-              .kind=axo_expr_normal_kind,
-              .val=fmtstr("%s.%s", $1.val, $2),
-              .typ=structure->fields[index].def.typ
-            };
-          }
-        }else{
-          yyerror(&@$, "Cannot get field of type '%s'", axo_typ_to_str($1.typ));
+            if (index<0) yyerror(&@$, "Struct '%s' doesn't have a field named '%s'.", structure->name, $2);
+            else{
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .val=fmtstr("%s.%s", $1.val, $2),
+                .typ=structure->fields[index].def.typ
+              };
+            }
+            break;
+          case axo_arr_kind:
+            if (strcmp("len", $2)==0){
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .typ=state->int_def->typ,
+                .val=fmtstr("%s.len", $1.val)
+              };
+            }
+            break;
+          default:
+            yyerror(&@1, "Cannot get field of type '%s'", axo_typ_to_str($1.typ));
+          break;
         }
         break;
     }
   }
   | stat_arr_literal {
-    char* val = alloc_str("{");
+    char* arr_lit = alloc_str("{");
     for (int i=0; i<$1.len; i++){
-      if (i>0) strapnd(&val, ",");
-      strapnd(&val, $1.data[i]);
+      if (i>0) strapnd(&arr_lit, ",");
+      strapnd(&arr_lit, $1.data[i]);
     }
-    strapnd(&val, "}");
+    strapnd(&arr_lit, "}");
     axo_arr* arr_ptr = alloc_one(axo_arr);
     *arr_ptr = (axo_arr){
       .typ=$1.typ,
@@ -548,10 +580,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,
       .typ=(axo_typ){
-        .kind=axo_stat_arr_kind,
+        .kind=axo_arr_kind,
         .arr=arr_ptr
       },
-      .val=val
+      .val=fmtstr("({%s = %s; (axo__arr){.len=%d, .cap=0, .data=axo_tmp_arr};})",
+      axo_get_arr_name_typ_decl($1.typ, "axo_tmp_arr", $1.len), arr_lit, $1.len)
     };
   }
   | incr_decr_op
@@ -585,7 +618,7 @@ matching_statement : expr {
   | code_scope {
     $$ = axo_scope_to_statement($1);
   }
-  | expr IS_KWRD val_typ {
+  | expr "is" val_typ {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
@@ -793,7 +826,7 @@ stat_arr_init : stat_arr_init_dims code_scope {
       arr->typ = r_typ;
       arr->sz = $1.dims[0];
       r_typ = (axo_typ){
-        .kind=axo_stat_arr_kind,
+        .kind=axo_arr_kind,
         .arr=arr
       };
     }
@@ -838,23 +871,12 @@ stat_arr_literal_start : '[' expr {
 stat_arr_literal : stat_arr_literal_start ']'
   ;
 
-stat_arr_typ : '[' INTEGER_LITERAL ']' val_typ{
-    $$.kind = axo_stat_arr_kind;
-    $$.arr = alloc_one(axo_arr);
-    *(axo_arr*)($$.arr) = (axo_arr){
-      .typ = $4,
-      .sz = atoi($2)
-    };
-  }
-  ;
-
-dyn_arr_typ : '[' ']' val_typ {
-    $$.kind = axo_dyn_arr_kind;
-    $$.arr = alloc_one(axo_arr);
-    *(axo_arr*)($$.arr) = (axo_arr){
-      .typ = $3,
-      .sz = 0
-    };
+arr_typ : '[' ']' val_typ {
+    axo_arr* arr = alloc_one(axo_arr);
+    arr->sz=0;
+    arr->typ=$val_typ;
+    $$.kind = axo_arr_kind;
+    $$.arr = arr;
   }
   ;
 
@@ -919,12 +941,8 @@ val_typ : IDEN {
     axo_ptr* ptr = $$.ptr;
     ptr->typ = $2;
   }
-  | stat_arr_typ
   | func_typ
-  | dyn_arr_typ {
-    $$.kind = axo_simple_kind;
-    $$.simple = alloc_str("DYN_ARR");
-  }
+  | arr_typ
   ;
   
 c_typ : IDEN {

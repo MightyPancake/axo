@@ -240,7 +240,6 @@ char* axo_func_to_typ_str(axo_func* fn){
 }
 
 char* axo_typ_to_str(axo_typ typ){
-    char* ret;
     switch (typ.kind){
         case axo_simple_kind:
             return typ.simple;
@@ -254,13 +253,10 @@ char* axo_typ_to_str(axo_typ typ){
         case axo_no_kind:
             return "no_type";
             break;
-        case axo_dyn_arr_kind:
-            asprintf(&ret, "[?]%s", axo_typ_to_str(((axo_arr*)(typ.arr))->typ));
-            return ret;
-            break;
-        case axo_stat_arr_kind:
+        case axo_arr_kind:
             axo_arr* arr = (axo_arr*)(typ.arr);
-            return fmtstr("%s[%d]", axo_typ_to_str(arr->typ), arr->sz);
+            if (arr->sz) return fmtstr("[%d]%s", arr->sz, axo_typ_to_str(arr->typ));
+            return fmtstr("%s[]", axo_typ_to_str(arr->typ));
             break;
         case axo_struct_kind:
             return ((axo_struct*)typ.structure)->name;
@@ -409,44 +405,8 @@ char* axo_typ_to_c_str(axo_typ t, char* name){
             free(ret_typ_str);
             return ret;
             break;
-        case axo_dyn_arr_kind: 
-            break;
-        case axo_stat_arr_kind:
-            char* sizes;
-            int sizes_len = 1; //for null terminator
-            int sizes_values[16];
-            int n = 0;
-            while(cur_typ.kind==axo_stat_arr_kind){
-                axo_arr cur_arr = *((axo_arr*)(cur_typ.arr));
-                char* sz_str = fmtstr("%d", cur_arr.sz);
-                sizes_len=sizes_len+2+strlen(sz_str);
-                cur_typ=cur_arr.typ;
-                sizes_values[n++] = cur_arr.sz;
-                free(sz_str);
-            }
-            sizes = malloc(sizes_len);
-            strcpy(sizes, "");
-            for (int i = 0; i<n; i++){
-                char* hlpr_str = fmtstr("[%d]", sizes_values[i]); //FIX! Bad code
-                strcat(sizes, hlpr_str);
-                free(hlpr_str);
-            }
-            switch(cur_typ.kind){
-                case axo_simple_kind:
-                    asprintf(&ret, "%s %s%s", cur_typ.simple, name, sizes);
-                    free(sizes);
-                    break;
-                case axo_func_kind:
-                    return axo_typ_to_c_str(cur_typ, fmtstr("%s%s", name, sizes));
-                    break;
-                default: //FIX!
-                    yyerror(NULL, "Invalid static array base type");
-                    return "static_arr_typ";
-                    break;
-                    
-            }
-            return ret;
-            break;
+        case axo_arr_kind:
+            return alloc_str("axo__arr"); break;
         case axo_ptr_kind:
             int ptr_lvl = 0;
             while(cur_typ.kind==axo_ptr_kind){
@@ -476,12 +436,34 @@ char* axo_typ_to_c_str(axo_typ t, char* name){
     return NULL;
 }
 
+char* axo_get_arr_name_typ_decl(axo_typ typ, char* name, int sz){
+    switch(typ.kind){
+        case axo_simple_kind:
+            return (sz ? fmtstr("%s %s[%d]", (char*)(typ.simple), name, sz) : fmtstr("%s* %s", (char*)(typ.simple), name));
+            break;
+        case axo_arr_kind:
+            return (sz ? fmtstr("axo__arr %s[%d]", name, sz) : fmtstr("axo__arr* %s", name));
+            break;
+        default:
+            return alloc_str("Arr type declaration no supported yet.");
+    }
+}
+
 char* axo_name_typ_decl(char* name, axo_typ typ){
     switch(typ.kind){
         case axo_simple_kind: return fmtstr("%s %s", typ.simple, name); break;
         case axo_struct_kind: return fmtstr("%s %s", ((axo_struct*)(typ.structure))->name, name); break;
         case axo_enum_kind: return fmtstr("%s %s", ((axo_enum*)(typ.enumerate))->name, name); break;
-        case axo_stat_arr_kind: return axo_typ_to_c_str(typ, name); break;
+        case axo_arr_kind:
+            axo_arr* arr = (axo_arr*)(typ.arr);
+            if (arr->sz){
+                char* data_ident = fmtstr("%s$stat_arr_data", name);
+                char* ret = fmtstr("%s; axo__arr %s = (axo__arr){.len=%d, .cap=0, .data=%s};", axo_get_arr_name_typ_decl(arr->typ, data_ident, arr->sz), name, arr->sz, data_ident);
+                free(data_ident);
+                return ret;
+            }else
+                return fmtstr("axo__arr %s = axo_new_arr(16)", name); //FIX! Cap?
+            break;
         case axo_ptr_kind: return axo_typ_to_c_str(typ, name); break;
         case axo_func_kind: return axo_typ_to_c_str(typ, name); break;
         default: break;
@@ -495,8 +477,6 @@ char* axo_for_loop_to_str(axo_for_loop lp){
 
 char* axo_get_var_decl_assign(YYLTYPE* loc, char* name, axo_expr expr){
     axo_typ typ = expr.typ;
-    char* ret;
-    char* helpr;
     switch(typ.kind){
         case axo_enum_kind:
             return fmtstr("%s %s=%s", ((axo_enum*)(typ.enumerate))->name, name, expr.val); break;
@@ -505,12 +485,8 @@ char* axo_get_var_decl_assign(YYLTYPE* loc, char* name, axo_expr expr){
         case axo_struct_kind:
             return fmtstr("%s %s=%s", ((axo_struct*)(typ.structure))->name, name, expr.val); break;
         case axo_func_kind:
-        case axo_stat_arr_kind:
-            helpr = axo_typ_to_c_str(expr.typ, name);
-            ret = fmtstr("%s = %s", helpr, expr.val);
-            free(helpr);
-            return ret;
-            break;
+        case axo_arr_kind:
+            return fmtstr("axo__arr %s = %s", name, expr.val); break;
         default:
             yyerror(loc,"Type assign declaration not yet supported for this (%d) kind!", typ.kind);
             return fmtstr("typ %s = %s", name, expr.val);
@@ -523,8 +499,7 @@ char* axo_typ_kind_to_str(axo_typ_kind tk){
         case axo_simple_kind: return "simple"; break;
         case axo_func_kind: return "function"; break;
         case axo_c_arg_list_kind: return "C arg list"; break;
-        case axo_dyn_arr_kind: return "dynamic array"; break;
-        case axo_stat_arr_kind: return "static array"; break;
+        case axo_arr_kind: return "array"; break;
         case axo_ptr_kind: return "pointer"; break;
         case axo_enum_kind: return "enum";
         case axo_no_kind: return "no type"; break;
@@ -541,7 +516,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
         case axo_simple_kind: return !(strcmp(t1.simple, t2.simple)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return t1.structure == t2.structure; break;
-        case axo_stat_arr_kind: 
+        case axo_arr_kind: 
             axo_arr* arr1 = (axo_arr*)(t1.arr);
             axo_arr* arr2 = (axo_arr*)(t2.arr);
             if (arr1->sz!=arr2->sz) return false;
