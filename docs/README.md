@@ -8,26 +8,19 @@ Lorem ipsum dolor sit amet, gravida semper suspendisse ipsum, nam maecenas curab
 
 Tempus etiam, justo nullam vel eros et. Conubia integer. Amet elit nulla, eu tortor fugit pede arcu wisi, elit maecenas commodo integer et vitae nonummy. 
 
-
-```bash
-    Lorem Ipsum
-```
-
 ```clike
 #include <stdio.h>
 
 fn main(){
-    printf("Hello world!\n)
+    printf("Hello world!\n")
     ret 0
 }
 ```
 
 ```terminal
-    >|axo main.axo
-    >|warning|Warning: A warning here!
-    >|error|Some error message.
+    >|axo run main.axo
     >|success|Compiled successfully!
-    >|info|hello world!
+    >|info|Hello world!
 ```
 
 Curabitur amet sed voluptas convallis, urna sodales vivamus dui id minim eget, dapibus nostra dignissim, vestibulum mauris a tortor morbi lobortis eu, felis odio. Eu ligula taciti cras, faucibus ac vel quis donec sodales. Lacinia euismod sed semper donec. Magna aliquam sed non, vestibulum cursus sed ut vivamus felis porttitor, vestibulum nibh augue a pede, vehicula integer ut nunc proin. 
