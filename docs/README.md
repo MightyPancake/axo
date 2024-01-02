@@ -13,6 +13,15 @@ Tempus etiam, justo nullam vel eros et. Conubia integer. Amet elit nulla, eu tor
     Lorem Ipsum
 ```
 
+```clike
+#include <stdio.h>
+
+fn main(){
+    printf("Hello world!\n)
+    ret 0
+}
+```
+
 ```terminal
     >|axo main.axo
     >|warning|Warning: A warning here!
