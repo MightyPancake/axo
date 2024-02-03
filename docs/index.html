@@ -96,16 +96,6 @@
             }
         }
     }
-  <!-- Style for custom highlighting -->
-  <style>
-  	/*
-  	 * Custom keyword styles
-  	 */
-  	.token.keyword.keyword-return, .token.keyword.keyword-if {
-  		/* Set the color to a nice red. */
-  		color: #fd8889;
-  	}
-  </style>
   </script>
   <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
   <!-- Plugins -->
@@ -124,5 +114,14 @@
     <script src="https://cdn.jsdelivr.net/npm/docsify-terminal-block@1.0.3"></script>
   <!-- C-like syntax highlithing -->
   <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js"></script>
+  <!-- Custom syntax colors -->
+  <style>
+  	/*
+  	 * Custom keyword styles
+  	 */
+  	.token.keyword.keyword-return, .token.keyword.keyword-if {
+  		color: #fd8889;
+  	}
+  </style>
 </body>
 </html>
