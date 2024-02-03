@@ -12,7 +12,9 @@ Tempus etiam, justo nullam vel eros et. Conubia integer. Amet elit nulla, eu tor
 #include <stdio.h>
 
 fn main(){
-    printf("Hello world!\n")
+    a = 42
+    if a == 42
+        printf("Hello world!\n")
     ret 0
 }
 ```
