@@ -65,10 +65,14 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "fn" {ret_null; return FN_KWRD; }
 "if" {ret_null; return IF_KWRD; }
 "for" {ret_null; return FOR_KWRD; }
+"each" {ret_null; return EACH_KWRD; }
 "till" {ret_null; return TILL_KWRD; }
 "else" {ret_null; return ELSE_KWRD; }
 "struct" {ret_null; return STRUCT_KWRD; }
 "is" {ret_null; return IS_KWRD; }
+"in" {ret_null; return IN_KWRD; }
+"or" {ret_null; return LOGICAL_OR_OP; }
+"and" {ret_null; return LOGICAL_AND_OP; }
 
 "--" {ret_null; return DECR_OP; }
 "++" {ret_null; return INCR_OP; }
@@ -76,8 +80,8 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "!=" {ret_null; return INEQ_OP; }
 "<=" {ret_null; return EQ_GRTR_OP; }
 ">=" {ret_null; return EQ_SMLR_OP; }
-"||" {ret_null; return LOGICAL_OR_OP; }
-"&&" {ret_null; return LOGICAL_AND_OP; }
+"||" {ret_null; return BIT_OR_OP; }
+"&&" {ret_null; return BIT_AND_OP; }
 "<<" {ret_null; return LEFT_SHIFT_OP; }
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
@@ -104,7 +108,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     return STRUCT_LITERAL_START;
   }
 }
-(\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^) {ret_def; return yytext[0]; }
+(\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\|) {ret_def; return yytext[0]; }
 \n {line++; col=1;}
 \r ;
 [ \t]+ {col=col+yyleng;}

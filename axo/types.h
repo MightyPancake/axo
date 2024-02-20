@@ -17,18 +17,24 @@ typedef struct hashmap* map;
 #define axo_types_def_cap 16
 #define axo_stat_arr_literal_cap 1
 #define axo_strings_cap 1
+#define axo_empty_arr_lit_cap 128
+#define axo_index_access_cap 2
 
 typedef enum axo_typ_kind{
     axo_simple_kind,
     axo_func_kind,
-    axo_c_arg_list_kind,
     axo_arr_kind,
     axo_ptr_kind,
     axo_enum_kind,
     axo_struct_kind,
     axo_no_kind,
-    axo_module_kind,
+    axo_c_arg_list_kind,
+    axo_map_kind,
+    axo_module_kind
 }axo_typ_kind;
+
+#define axo_subtyp(T) (axo_typ*)(T.subtyp)
+#define axo_get_arr_typ(T) (*((axo_arr_typ*)(T.arr)))
 
 typedef enum axo_include_path_kind{
     axo_local_include_path_kind,
@@ -46,23 +52,20 @@ typedef struct axo_typ {
     axo_typ_kind       kind;
     union {
         char*           simple;
+        void*           subtyp;
         void*           func_typ;
-        void*           arr;
-        void*           ptr;
         void*           enumerate;
         void*           structure;
+        void*           arr;
+        void*           map;
     };
     void*              def;
 }axo_typ;
 
-typedef struct axo_ptr{
-    axo_typ        typ;
-}axo_ptr;
-
-typedef struct axo_arr{
-    axo_typ        typ;
-    int            sz; //0 for dynamic arrays, anything positive for static arays
-}axo_arr;
+typedef struct axo_arr_typ{
+    axo_typ    subtyp;
+    int        dim_count;
+}axo_arr_typ;
 
 typedef struct axo_types_list{
     axo_typ*           values;
@@ -72,7 +75,7 @@ typedef struct axo_types_list{
 typedef enum axo_expr_kind{
     axo_expr_normal_kind,
     axo_expr_enum_typ_kind,
-    axo_expr_module_kind
+    axo_expr_module_kind,
 }axo_expr_kind;
 
 typedef enum axo_lval_kind{
@@ -91,7 +94,8 @@ typedef struct axo_expr{
 typedef enum axo_identifier_kind{
     axo_identifier_var_kind,
     axo_identifier_module_kind,
-    axo_identifier_typ_kind
+    axo_identifier_typ_kind,
+    axo_no_identifier_kind
 }axo_identifier_kind;
 
 typedef struct axo_identifier {
@@ -112,6 +116,7 @@ typedef enum axo_statement_kind{
     axo_if_else_statement_kind,
     axo_while_statement_kind,
     axo_for_statement_kind,
+    axo_each_statement_kind,
     axo_ret_statement_kind,
     axo_scope_statement_kind,
     axo_incr_decr_statement_kind,
@@ -119,13 +124,16 @@ typedef enum axo_statement_kind{
     axo_break_statement_kind,
     axo_stat_arr_init_statement_kind,
     axo_var_is_decl_statement_kind,
-    axo_expr_statement_kind
+    axo_expr_statement_kind,
+    axo_no_statement_kind
 }axo_statement_kind;
 
 typedef struct axo_statement{
     axo_statement_kind    kind;
     char*                 val;
 }axo_statement;
+
+#define axo_no_statement ((axo_statement){.kind=axo_no_statement_kind, .val=""})
 
 typedef enum axo_decl_kind{
     axo_enum_decl_kind,
@@ -202,6 +210,8 @@ typedef struct axo_state{
     axo_typ_def*           int_def;
 }axo_state;
 
+#define axo_int_typ(STATE) (STATE->int_def->typ)
+
 typedef struct axo_struct_field{
     char*           name;
     axo_expr        def;
@@ -270,18 +280,40 @@ typedef struct axo_enum {
     int    len;
 }axo_enum;
 
-typedef struct axo_stat_arr_val{
-    axo_typ        typ;
-    char**         data;
-    int            len;
-}axo_stat_arr_val;
+typedef struct axo_empty_arr_lit{
+    bool           dynamic;
+    int*           len;
+    int            dim_count;
+}axo_empty_arr_lit;
 
-typedef struct axo_stat_arr_init{
-    axo_expr        lval;
-    int*            dims;
-    char**          iters;
-    int             len;
-    axo_scope*      code;
-}axo_stat_arr_init;
+typedef struct axo_arr_lit{
+    bool       dynamic;
+    int*       len;
+    int        dim_count;
+    //new
+    unsigned   count;
+    char*      val;
+    axo_typ    typ;
+}axo_arr_lit;
+
+typedef struct axo_index_access{
+    axo_expr*      indexes;
+    int            index_count;
+}axo_index_access;
+
+typedef struct axo_each_loop{
+    int             dim_count;
+    axo_expr*       dim_iters;
+    axo_identifier  value_iter;
+    axo_expr        collection;
+    char*           body;
+    //Locations
+    void*           locs;
+    bool*           iter_over;
+    //0 -> value_iter_loc
+    //1 -> iter_dims_loc
+    //2 -> collection_loc
+    //3+ -> iter_locs (individuals)
+}axo_each_loop;
 
 #endif

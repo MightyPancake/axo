@@ -2,25 +2,39 @@
 #include "./axo/axo_include.h"
 #register int printf(char*, ...)
 
-fn main(){
-    n = 5
-    m = 5
-    arr is [][]int
-    for (i=0, i<n, i++){
-        arr << [.]int
-        arr[i] << 1
-        for (j=1, j<m, j++){
-            num = i
-            for (k=1, k<j, k++) num = num*i
-            arr[i] << num
-        }
+fn main([][]char args){
+    code = ":)"
+    arr = [0,1,4,9,16,25,36,49,64,81,100]
+    arr2 = [4|3][
+        1,2,3,4,
+        2,4,6,8,
+        3,6,9,12
+    ]
+
+    //Perform tests
+    printf("Test #1:\n")
+    for each [i] in arr {
+        printf("%d^2=%d\n", i, i*i)
     }
-    arr << [1, m*m, m*m*m]
-    for (i=0, i<arr.len, i++){
-        for (j=0, j<arr[i].len, j++){
-            printf("%d^%d=%d\n", i, j, arr[i][j])
-        }
+
+    printf("\nTest #2:\n")
+    for each [x|y] in arr2 {
+        printf("[%d|%d]\n", x, y)
     }
+
+    printf("\nTest #3:\n")
+    i = 0
+    for each v in arr2 {
+        printf("%d:%d\n", i++, v)
+    }
+
+    printf("\nTest #4:\n")
+    for each [x|] in arr2 {
+        for each [x|y], val in arr2 {
+            printf("%d ", val)
+        }
+        printf("\n")
+    }
+
     ret 0
 }
-
