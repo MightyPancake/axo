@@ -303,18 +303,19 @@ char* axo_func_to_typ_str(axo_func* fn){
 }
 
 char* axo_typ_to_str(axo_typ typ){
+    char* ret = (char[1024]){};
     switch (typ.kind){
         case axo_simple_kind:
             return typ.simple;
             break;
         case axo_func_kind:
             axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
-            char* ret = fmt_str(static_str_ptr(512), "(%s fn ", axo_typ_to_str(fnt.ret_typ));
+            ret = fmt_str((char**)&ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
-                if (i>0) strapnd(&ret, ",");
-                strapnd(&ret, axo_typ_to_str(fnt.args_types[i]));
+                if (i>0) strcat(ret, ",");
+                strcat(ret, axo_typ_to_str(fnt.args_types[i]));
             }
-            strapnd(&ret, ")");
+            strcat(ret, ")");
             return ret;
             break;
         case axo_c_arg_list_kind:
@@ -336,7 +337,7 @@ char* axo_typ_to_str(axo_typ typ){
             return ((axo_struct*)typ.structure)->name;
             break;
         case axo_ptr_kind:
-            return "ptr_type";
+            return fmt_str(&ret, "@%s", axo_typ_to_str(*axo_subtyp(typ)));
             break;
         default:
             return fmt_str(static_str_ptr(100), "unknown type kind (%d)", typ.kind);
@@ -407,7 +408,6 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
         case axo_struct_kind: return fmtstr("%s %s", ((axo_struct*)(typ.structure))->name, name); break;
         case axo_enum_kind: return fmtstr("%s %s", ((axo_enum*)(typ.enumerate))->name, name); break;
         case axo_arr_kind: return fmtstr("axo__arr %s", name); break;
-        case axo_ptr_kind: return axo_typ_to_c_str(typ); break;
         case axo_func_kind:
             axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
             char* ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
@@ -417,6 +417,17 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
             }
             strapnd(&ret, ")");
             return ret;
+            break;
+        case axo_ptr_kind:
+            switch(axo_subtyp(typ)->kind){
+                case axo_ptr_kind:
+                case axo_simple_kind:
+                    return fmtstr("%s %s", axo_typ_to_c_str(typ), name);
+                    break;
+                default:
+                    return fmtstr("Unsupported pointer type (pointing to %s)", axo_typ_to_str(*axo_subtyp(typ)));
+                    break;
+            }
             break;
         default: break;
     }
@@ -686,6 +697,9 @@ char* axo_get_var_decl_assign(char* name, axo_expr expr){
             return fmtstr("%s %s=%s", ((axo_struct*)(typ.structure))->name, name, expr.val); break;
         case axo_arr_kind:
             return fmtstr("axo__arr %s = %s", name, expr.val); break;
+        case axo_ptr_kind:
+            //FIX
+            return fmtstr("%s %s = %s", axo_typ_to_c_str(expr.typ), name, expr.val); break;
         default:
             yyerror(NULL, "Type assign declaration not yet supported for this (%d) kind!", typ.kind);
             return fmtstr("typ %s = %s", name, expr.val);

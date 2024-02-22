@@ -114,6 +114,7 @@
 %left '+' '-'
 %left '*' '/' '%'
 %left "in" LOOP_PREC
+%left '.'
 %left '(' ':'
 %left UMINUS '@' '^'
 %left INCR_OP DECR_OP '[' DOT_FIELD
@@ -278,8 +279,8 @@ incr_decr_op : expr INCR_OP {
   ;
 
 expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo_expr_normal_kind;}
-  | INTEGER_LITERAL {set_val(&$$, axo_mk_simple_typ("int"), $1); $$.kind=axo_expr_normal_kind; }
-  | FLOAT_LITERAL {set_val(&$$, axo_mk_simple_typ("float"), $1); $$.kind=axo_expr_normal_kind; }
+  | INTEGER_LITERAL {set_val(&$$, axo_mk_simple_typ("int"), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | FLOAT_LITERAL {set_val(&$$, axo_mk_simple_typ("float"), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | expr '+' expr {parse_operator(&@2, &$$, $1, "+", $3); }
   | expr '-' expr {parse_operator(&@2, &$$, $1, "-", $3); }
   | '-' expr {asprintf(&($$.val), "-%s", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; } %prec UMINUS
@@ -287,12 +288,23 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
   | '(' expr ')' {asprintf(&($$.val), "(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
-  | '@' expr {
+  | '@' expr { //Referencing
+    if ($2.lval_kind == axo_not_lval_kind)
+      yyerror(&@2, "Cannot reference a non l-value.");
     $$.typ.kind = axo_ptr_kind;
     $$.typ.subtyp = malloc(sizeof(axo_typ));
     *axo_subtyp($$.typ) = $2.typ;
     asprintf(&($$.val), "&%s", $2.val);
   }
+  | expr '^' { //Dereferencing
+    if ($1.typ.kind != axo_ptr_kind)
+      yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
+    $$.typ = *axo_subtyp($1.typ);
+    asprintf(&($$.val), "(*(%s))", $1.val);
+  }
+  // | expr '.' '(' val_typ ')' {
+  
+  // } %prec TYPE_CASTING_PREC
   | assignment
   | identifier {
     switch($1.kind){
@@ -346,9 +358,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     }
   }
   | func_call {$$ = axo_call_to_expr($1);}
-  | expr '^' {
-    $$=$1; //FIX!
-  }
   | expr '<' expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -418,6 +427,15 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
       };
     }
   }
+  | expr "<<" expr {
+    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
+      $$ = (axo_expr){
+        .kind = axo_expr_normal_kind,
+        .typ = $1.typ,
+        .val = fmtstr("%s<<%s", $1.val, $3.val)
+      };
+    }
+  }
   | struct_literal {
     $$.typ = $1.typ;
     axo_struct* structure = (axo_struct*)($$.typ.structure);
@@ -442,6 +460,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     $$.kind = axo_expr_normal_kind;
   }
   | expr index_access ']'{
+    @2.last_column = @3.last_column;
     switch($1.typ.kind){
       case axo_arr_kind:
         axo_arr_typ arr_typ = axo_get_arr_typ($1.typ);
@@ -453,6 +472,12 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
           $$.typ = arr_typ.subtyp;
           $$.lval_kind = ($1.lval_kind == axo_not_lval_kind ? axo_not_lval_kind : axo_other_lval_kind);
         }
+        break;
+      case axo_ptr_kind:
+        if ($index_access.index_count != 1)
+          yyerror(&@2, "Expected a 1 dimensional index to access a pointer, but got %d dimensional index.", $index_access.index_count);
+        $$.typ = *axo_subtyp($1.typ);
+        $$.val = fmtstr("%s[%s]", $1.val, $2.indexes[0].val);
         break;
       default:
         yyerror(&@1, "Cannot index an expression of type '%s'.", axo_typ_to_str($1.typ));
@@ -504,22 +529,30 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
           case axo_arr_kind: //.len, .data, .dims
             if (strcmp("len", $2)==0){
               //FIX! This should return an int pointer, not first element
+              axo_typ typ = (axo_typ){
+                .kind = axo_ptr_kind,
+                .subtyp=malloc(sizeof(axo_typ))
+              };
+              *axo_subtyp(typ) = state->int_def->typ;
               $$ = (axo_expr){
                 .kind=axo_expr_normal_kind,
-                .typ=state->int_def->typ,
-                .val=fmtstr("%s.len[0]", $1.val)
+                .typ = typ,
+                .val=fmtstr("%s.len", $1.val),
+                .lval_kind = axo_not_lval_kind
               };
             }else if (strcmp("dims", $2)==0){
               $$ = (axo_expr){
                 .kind=axo_expr_normal_kind,
                 .typ=state->int_def->typ,
-                .val=fmtstr("%d", axo_get_arr_typ($1.typ).dim_count)
+                .val=fmtstr("%d", axo_get_arr_typ($1.typ).dim_count),
+                .lval_kind = axo_not_lval_kind
               };
             }else if (strcmp("data", $2)==0){
               $$ = (axo_expr){
                 .kind=axo_expr_normal_kind,
                 .typ=state->int_def->typ,
-                .val=fmtstr("%s.data", $1.val)
+                .val=fmtstr("%s.data", $1.val),
+                .lval_kind = axo_other_lval_kind
               };
             }
             break;
@@ -532,6 +565,35 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   }
   | arr_literal
   | incr_decr_op
+  | expr '.' '(' val_typ ')' {
+    switch($1.typ.kind){
+      case axo_simple_kind:
+        if ($val_typ.kind != axo_simple_kind)
+          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+        else
+          $$ = (axo_expr){
+            .typ=$val_typ,
+            .val=fmtstr("((%s)(%s))", axo_typ_to_c_str($val_typ), $1.val),
+            .kind=axo_expr_normal_kind,
+            .lval_kind=$1.lval_kind
+          };
+        break;
+      case axo_ptr_kind:
+        if ($val_typ.kind != axo_ptr_kind)
+          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+        else
+          $$ = (axo_expr){
+            .typ=$val_typ,
+            .val=fmtstr("((%s)(%s))", axo_typ_to_c_str($val_typ), $1.val),
+            .kind=axo_expr_normal_kind,
+            .lval_kind=$1.lval_kind
+          };
+        break;
+      default:
+          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+        break;
+    }
+  }
   ;
 
 stat_arr_literal_start : '[' expr ',' expr {

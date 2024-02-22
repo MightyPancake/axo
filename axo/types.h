@@ -33,7 +33,7 @@ typedef enum axo_typ_kind{
     axo_module_kind
 }axo_typ_kind;
 
-#define axo_subtyp(T) (axo_typ*)(T.subtyp)
+#define axo_subtyp(T) ((axo_typ*)(T.subtyp))
 #define axo_get_arr_typ(T) (*((axo_arr_typ*)(T.arr)))
 
 typedef enum axo_include_path_kind{
