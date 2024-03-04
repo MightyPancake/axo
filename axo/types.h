@@ -2,7 +2,7 @@
 #define AXO_TYPES_H
 
 typedef struct hashmap* map;
-#define axo_no_typ ((axo_typ){.kind=axo_no_kind, .simple=NULL})
+#define axo_no_typ ((axo_typ){.kind=axo_no_kind})
 
 #include <stdbool.h>
 
@@ -47,11 +47,21 @@ typedef struct axo_strings {
 }axo_strings;
 #define axo_new_strings(LEN) ((axo_strings){.strs=(char**)malloc((LEN)*sizeof(char*)), .len=0})
 #define axo_empty_strings axo_new_strings(axo_strings_cap)
+#define new_struct_lit_ptr(TYP, PTYP, LIT) ({ \
+    PTYP RET_PTR = (PTYP)malloc(sizeof(TYP)); \
+    *RET_PTR = LIT; \
+    RET_PTR; \
+})
+
+typedef struct axo_simple_t{
+    char*        name;
+    char*        cname;
+}axo_simple_t;
 
 typedef struct axo_typ {
     axo_typ_kind       kind;
     union {
-        char*           simple;
+        axo_simple_t    simple;
         void*           subtyp;
         void*           func_typ;
         void*           enumerate;
@@ -208,9 +218,17 @@ typedef struct axo_state{
 
     //Default types
     axo_typ_def*           int_def;
+    axo_typ_def*           bool_def;
+    axo_typ_def*           float_def;
+    axo_typ_def*           byte_def;
+    axo_typ_def*           str_def;
 }axo_state;
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)
+#define axo_float_typ(STATE) (STATE->float_def->typ)
+#define axo_byte_typ(STATE) (STATE->byte_def->typ)
+#define axo_bool_typ(STATE) (STATE->bool_def->typ)
+#define axo_str_typ(STATE) (STATE->str_def->typ)
 
 typedef struct axo_struct_field{
     char*           name;

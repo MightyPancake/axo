@@ -73,6 +73,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "in" {ret_null; return IN_KWRD; }
 "or" {ret_null; return LOGICAL_OR_OP; }
 "and" {ret_null; return LOGICAL_AND_OP; }
+"null" {ret_null; return NULL_KWRD; }
 
 "--" {ret_null; return DECR_OP; }
 "++" {ret_null; return INCR_OP; }
@@ -100,7 +101,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 [a-zA-Z][0-9a-zA-Z_]*\{ {
   ret_def;
   yylval->str[yyleng-1] = '\0';
-  //Super dirty!
+  //Super dirty! Changes needed to structure literals
   if (strcmp(yylval->str, "else") == 0){
     unput('{');
     return ELSE_KWRD;

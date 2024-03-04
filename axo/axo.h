@@ -38,7 +38,8 @@ int map_cmp_typ_def(const void* a, const void* b, void *udata){return strcmp(((a
 uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_typ_def*)item)->name, strlen(((axo_typ_def*)item)->name), seed0, seed1);}
 
 char* axo_get_full_file_path(char* filename);
-#define axo_mk_simple_typ(str) (axo_typ){.kind = axo_simple_kind, .simple=str}
+#define axo_mk_simple_typ(NAME, CNAME) ((axo_typ){.kind = axo_simple_kind, .simple = (axo_simple_t){.name=NAME, .cname=CNAME}})
+#define axo_none_typ axo_mk_simple_typ("none", "void")
 //Styles
 #define axo_reset_style     "\x1B[0m"
 #define axo_bold_style      "\x1B[1m"
@@ -194,21 +195,25 @@ axo_state* axo_new_state(){
         .measure_time=false,
         .bug_hunter=false
     };
-    st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple="int", .def="0"}});
-    axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple="bool", .def="0"}});
-    axo_set_typ_def(NULL, st, (axo_typ_def){.name="float", .typ=(axo_typ){.kind=axo_simple_kind, .simple="float", .def="0.0"}});
-    axo_set_typ_def(NULL, st, (axo_typ_def){.name="char", .typ=(axo_typ){.kind=axo_simple_kind, .simple="char", .def="'\0'"}});
+    st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="i32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="i32", .cname="int"}, .def="0"}});
+    st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
+    st->float_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="f32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="f32", .cname="float"}, .def="0.0"}});
+    st->byte_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="byte", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="byte", .cname="char"}, .def="((char)0)"}});
+    // st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_arr_kind, .arr=new_struct_lit_ptr(axo_arr_typ, axo_arr_typ*, ((axo_arr_typ){.subtyp=axo_byte_typ(st), .dim_count=1})), .def="\"\""}});
+    st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_ptr_kind, .def="\"\""}});
+    st->str_def->typ.subtyp = &axo_byte_typ(st);
     return st;
 }
 
 axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td){
-    if (hashmap_get(st->types_def, &td) == NULL){
+    axo_typ_def* atd = hashmap_get(st->types_def, &td);
+    if (atd == NULL){
         new_ptr_one(ptr, axo_typ_def);
         *ptr = td;
         hashmap_set(st->types_def, ptr);
         return ptr;
     }else
-        yyerror(loc, "'%s' already defined as '%s'", "typ1", "typ2"); //FIX!!!
+        yyerror(loc, "'%s' already defined as '%s'", td.name, atd->name); //FIX!!!
     return NULL;
 }
 
@@ -306,7 +311,7 @@ char* axo_typ_to_str(axo_typ typ){
     char* ret = (char[1024]){};
     switch (typ.kind){
         case axo_simple_kind:
-            return typ.simple;
+            return typ.simple.name;
             break;
         case axo_func_kind:
             axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
@@ -359,7 +364,7 @@ char* axo_typ_to_c_str(axo_typ t){
     axo_typ cur_typ = t;
     switch(t.kind){
         case axo_simple_kind:
-            return alloc_str(t.simple);
+            return alloc_str(t.simple.cname);
             break;
         case axo_func_kind:
             axo_func_typ fnt = *((axo_func_typ*)(t.func_typ));
@@ -384,7 +389,7 @@ char* axo_typ_to_c_str(axo_typ t){
             stars[ptr_lvl] = '\0';
             switch(cur_typ.kind){
                 case axo_simple_kind:
-                    asprintf(&ret, "%s%s", cur_typ.simple, stars);
+                    asprintf(&ret, "%s%s", cur_typ.simple.cname, stars);
                     return ret;
                     break;
                 case axo_func_kind:
@@ -440,7 +445,7 @@ axo_decl axo_func_def_to_decl(axo_func func){
     for (int i = 0; i<func.f_typ.args_len; i++)
         sz = sz + strlen(axo_typ_to_str(func.f_typ.args_types[i])) + strlen(func.args_names[i]) + 2;
     char* str = (char*)malloc(sz*sizeof(char));
-    strcpy(str, axo_typ_to_str(func.f_typ.ret_typ));
+    strcpy(str, axo_typ_to_c_str(func.f_typ.ret_typ));
     strcat(str, " ");
     strcat(str, name);
     strcat(str, "(");
@@ -571,7 +576,7 @@ char* axo_typ_to_ctyp_str(axo_typ t){
     axo_typ cur_typ = t;
     switch(t.kind){
         case axo_simple_kind:
-            return alloc_str(t.simple);
+            return alloc_str(t.simple.cname);
             break;
         case axo_ptr_kind:
         case axo_arr_kind:
@@ -594,7 +599,7 @@ char* axo_typ_to_ctyp_str(axo_typ t){
 char* axo_get_arr_name_typ_decl(axo_typ typ, char* name, int sz){
     switch(typ.kind){
         case axo_simple_kind:
-            return (sz ? fmtstr("%s %s[%d]", (char*)(typ.simple), name, sz) : fmtstr("%s* %s", (char*)(typ.simple), name));
+            return (sz ? fmtstr("%s %s[%d]", (char*)(typ.simple.cname), name, sz) : fmtstr("%s* %s", (char*)(typ.simple.cname), name));
             break;
         case axo_arr_kind:
             return (sz ? fmtstr("axo__arr %s[%d]", name, sz) : fmtstr("axo__arr* %s", name));
@@ -727,10 +732,11 @@ char* axo_typ_kind_to_str(axo_typ_kind tk){
 bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     if (t1.kind != t2.kind) return false;
     switch(t1.kind){
-        case axo_simple_kind: return !(strcmp(t1.simple, t2.simple)); break;
+        case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return t1.structure == t2.structure; break;
         case axo_ptr_kind:
+            return axo_typ_eq(*((axo_typ*)(t1.subtyp)), *((axo_typ*)(t2.subtyp)));
         case axo_arr_kind:
             axo_arr_typ a1 = axo_get_arr_typ(t1);
             axo_arr_typ a2 = axo_get_arr_typ(t2);
@@ -756,7 +762,7 @@ bool axo_is_no_typ(axo_typ typ){
 }
 
 bool is_simple_typ_eq(axo_typ t1, char* t2){
-    return (t1.kind == axo_simple_kind) && (strcmp(t1.simple, t2) == 0);
+    return (t1.kind == axo_simple_kind) && (strcmp(t1.simple.cname, t2) == 0);
 }
 
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2){

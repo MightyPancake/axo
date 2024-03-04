@@ -72,6 +72,7 @@
 %token<str> LEFT_SHIFT_OP "<<"
 %token<str> RIGHT_SHIFT_OP ">>"
 %token<str> TILL_KWRD "till"
+%token<str> NULL_KWRD "null"
 %token<str> INCR_OP "++"
 %token<str> DECR_OP "--"
 %token<str> ENUM_KWRD "enum"
@@ -278,9 +279,18 @@ incr_decr_op : expr INCR_OP {
   }
   ;
 
-expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo_expr_normal_kind;}
-  | INTEGER_LITERAL {set_val(&$$, axo_mk_simple_typ("int"), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
-  | FLOAT_LITERAL {set_val(&$$, axo_mk_simple_typ("float"), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+//String literal should be a pointer!
+expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
+  | INTEGER_LITERAL {set_val(&$$, axo_int_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | FLOAT_LITERAL {set_val(&$$, axo_float_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | "null" {
+    $$ = (axo_expr){
+      .kind=axo_expr_normal_kind,
+      .lval_kind=axo_not_lval_kind,
+      .val="((char*)(NULL))",
+      .typ=axo_str_typ(state)
+    };
+  }
   | expr '+' expr {parse_operator(&@2, &$$, $1, "+", $3); }
   | expr '-' expr {parse_operator(&@2, &$$, $1, "-", $3); }
   | '-' expr {asprintf(&($$.val), "-%s", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; } %prec UMINUS
@@ -342,18 +352,17 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
         break;
     }
   }
-  | '(' expr '?' expr ':' expr ')' {
-    if (axo_validate_rval(&@2, $2) && axo_validate_rval(&@4, $4) && axo_validate_rval(&@6, $6)){
-      YYLTYPE loc = (YYLTYPE){.first_line=@4.first_line, .first_column=@4.first_column, .last_line=@6.last_line, .last_column=@6.last_column};
-      if (axo_typ_eq($4.typ, $6.typ)){
+  | expr '?' expr ':' expr {
+    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3) && axo_validate_rval(&@5, $5)){
+      if (axo_typ_eq($3.typ, $5.typ)){
         $$ = (axo_expr){
           .kind=axo_expr_normal_kind,
           .lval_kind=axo_not_lval_kind,
-          .val=fmtstr("(%s?%s:%s)", $2.val, $4.val, $6.val),
-          .typ=$4.typ
+          .val=fmtstr("(%s?%s:%s)", $1.val, $3.val, $5.val),
+          .typ=$3.typ
         };
       }else{
-        yyerror(&loc, "Ternary expression attempts to return different types: '%s' and '%s'.", axo_typ_to_str($4.typ), axo_typ_to_str($6.typ));
+        yyerror(&@$, "Ternary expression cannot return both '%s' and '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str($5.typ));
       }
     }
   }
@@ -361,42 +370,42 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
   | expr '<' expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s<%s", $1.val, $3.val)
     };
   }
   | expr '>' expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s>%s", $1.val, $3.val)
     };
   }
   | expr "==" expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s==%s", $1.val, $3.val)
     };
   }
   | expr "!=" expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s!=%s", $1.val, $3.val)
     };
   }
   | expr ">=" expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s>=%s", $1.val, $3.val)
     };
   }
   | expr "<=" expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
-      .typ = axo_mk_simple_typ("bool"),
+      .typ = axo_bool_typ(state),
       .val = fmtstr("%s<=%s", $1.val, $3.val)
     };
   }
@@ -404,7 +413,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_mk_simple_typ("char*"), $1); $$.kind=axo
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
       $$ = (axo_expr){
         .kind = axo_expr_normal_kind,
-        .typ = $1.typ,
+        .typ = axo_bool_typ(state),
         .val = fmtstr("%s||%s", $1.val, $3.val)
       };
     }
@@ -834,7 +843,7 @@ till_loop_start : TILL_KWRD '(' IDEN  '=' expr ')' {
     $$.lim = $5;
     printf("till iter %s created scope\n", $$.iter);
     axo_push_scope(scopes, axo_new_scope(top_scope));
-    axo_set_var(top_scope, (axo_var){.typ=axo_mk_simple_typ("int"), .name=$$.iter, .is_const=false});
+    axo_set_var(top_scope, (axo_var){.typ=state->int_def->typ, .name=$$.iter, .is_const=false});
   }
   ;
 
@@ -1148,18 +1157,9 @@ val_typ : IDEN {
   | arr_typ
   ;
   
-c_typ : IDEN {
-    $$.kind = axo_simple_kind;
-    $$.simple = alloc_str($1);
-  }
-  | c_typ '*' {
-    asprintf(&($1.simple), "%s*", $1.simple);
-    $$.simple = $1.simple;
-    $$.kind = $1.kind;
-  }
+c_typ : val_typ
   | '.' '.' '.' {
     $$.kind = axo_c_arg_list_kind;
-    $$.simple = NULL;
   }
   ;
 
@@ -1457,7 +1457,7 @@ struct_literal : struct_literal_start '}' {
 func_def : func_def_start code_scope {
     $$ = $1;
     $$.body = $2;
-    $$.f_typ.ret_typ = axo_is_no_typ($2->ret_typ) ? axo_mk_simple_typ("void") : $2->ret_typ;
+    $$.f_typ.ret_typ = axo_is_no_typ($2->ret_typ) ? axo_none_typ : $2->ret_typ;
     axo_func_typ* fnt_ptr = (axo_func_typ*)malloc(sizeof(axo_func_typ));
     *fnt_ptr = $$.f_typ;
     axo_typ typ = (axo_typ){
@@ -1560,12 +1560,6 @@ void overwrite_file_with_string(char *filepath, char *string) {
 }
 
 int playground(){
-  axo_typ typ = (axo_typ){
-    .kind=axo_simple_kind,
-    .simple=alloc_str("int")
-  };
-  
-  printf("Playground:"axo_magenta_fg"\n%s\n", axo_typ_to_ctyp_str(typ));
   return 0;
 }
 

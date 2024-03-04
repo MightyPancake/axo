@@ -82,19 +82,20 @@ extern int yydebug;
     LEFT_SHIFT_OP = 283,           /* "<<"  */
     RIGHT_SHIFT_OP = 284,          /* ">>"  */
     TILL_KWRD = 285,               /* "till"  */
-    INCR_OP = 286,                 /* "++"  */
-    DECR_OP = 287,                 /* "--"  */
-    ENUM_KWRD = 288,               /* "enum"  */
-    STRUCT_KWRD = 289,             /* "struct"  */
-    STRUCT_LITERAL_START = 290,    /* "struct{"  */
-    DOT_FIELD = 291,               /* ".field"  */
-    ARROW_OP = 292,                /* "->"  */
-    IS_KWRD = 293,                 /* "is"  */
-    IDENTIFIER_PREC = 294,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 295,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 296,               /* LOOP_PREC  */
-    UMINUS = 297,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 298   /* STRUCT_LIT_NAMED_FIELD  */
+    NULL_KWRD = 286,               /* "null"  */
+    INCR_OP = 287,                 /* "++"  */
+    DECR_OP = 288,                 /* "--"  */
+    ENUM_KWRD = 289,               /* "enum"  */
+    STRUCT_KWRD = 290,             /* "struct"  */
+    STRUCT_LITERAL_START = 291,    /* "struct{"  */
+    DOT_FIELD = 292,               /* ".field"  */
+    ARROW_OP = 293,                /* "->"  */
+    IS_KWRD = 294,                 /* "is"  */
+    IDENTIFIER_PREC = 295,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 296,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 297,               /* LOOP_PREC  */
+    UMINUS = 298,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 299   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -103,7 +104,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 125 "axo_gram.y"
+#line 126 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -126,7 +127,7 @@ union YYSTYPE
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
 
-#line 130 "axo_gram.tab.h"
+#line 131 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

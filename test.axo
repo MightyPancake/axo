@@ -1,32 +1,10 @@
 #include <stdio.h>
 #include "./axo/axo_include.h"
-#register int printf(char*, ...)
+#register i32 printf(@byte, ...)
 
-fn main([][]char args){
-    code = ":)"
-    ptr is @int
-    ptr2 is @@@int
-
-    //Tell arr dims
-    arr = [3|4][
-        0,1,2,3,
-        4,5,6,7,
-        8,9,10,11
-    ]
-
-    for i=0, i<arr.dims, i++
-        printf("dim #%d = %d\n", i+1, arr.len[i])
-    a = 12
-    b = @a
-    c = b^
-
-    d = @a^
-    
-    printf("%d\n", a)
-
-    f = d.(float)
-    
-    printf("f: %f", f)
-    // ptr3 is @(int fn @int, @int)
+fn main([][]byte args){
+    str = "Hello world!"
+    printf("%d\n", 12)
+    my_null = null
     ret 0
 }
