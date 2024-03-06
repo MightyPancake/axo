@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include "./axo/axo_include.h"
 #register i32 printf(@byte, ...)
+
+use stdlib
 
 fn main([][]byte args){
     str = "Hello world!"

@@ -87,15 +87,17 @@ extern int yydebug;
     DECR_OP = 288,                 /* "--"  */
     ENUM_KWRD = 289,               /* "enum"  */
     STRUCT_KWRD = 290,             /* "struct"  */
-    STRUCT_LITERAL_START = 291,    /* "struct{"  */
-    DOT_FIELD = 292,               /* ".field"  */
-    ARROW_OP = 293,                /* "->"  */
-    IS_KWRD = 294,                 /* "is"  */
-    IDENTIFIER_PREC = 295,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 296,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 297,               /* LOOP_PREC  */
-    UMINUS = 298,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 299   /* STRUCT_LIT_NAMED_FIELD  */
+    USE_KWRD = 291,                /* "use"  */
+    INCLUDE_KWRD = 292,            /* "include"  */
+    STRUCT_LITERAL_START = 293,    /* "struct{"  */
+    DOT_FIELD = 294,               /* ".field"  */
+    ARROW_OP = 295,                /* "->"  */
+    IS_KWRD = 296,                 /* "is"  */
+    IDENTIFIER_PREC = 297,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 298,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 299,               /* LOOP_PREC  */
+    UMINUS = 300,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 301   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -104,12 +106,13 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 126 "axo_gram.y"
+#line 129 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
   axo_scope* scope;
   axo_expr expression;
+  axo_decl declaration_type;
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
@@ -127,7 +130,7 @@ union YYSTYPE
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
 
-#line 131 "axo_gram.tab.h"
+#line 134 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

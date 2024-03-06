@@ -74,6 +74,8 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "or" {ret_null; return LOGICAL_OR_OP; }
 "and" {ret_null; return LOGICAL_AND_OP; }
 "null" {ret_null; return NULL_KWRD; }
+"use" {ret_null; return USE_KWRD; }
+"include" {ret_null; return INCLUDE_KWRD; }
 
 "--" {ret_null; return DECR_OP; }
 "++" {ret_null; return INCR_OP; }

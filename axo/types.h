@@ -210,7 +210,6 @@ typedef struct axo_state{
     int                    decls_len;
     axo_scope*             global_scope;
     axo_scope**            scopes_table;
-    char*                  filepath;
     
     map                    types_def;
     
@@ -222,6 +221,10 @@ typedef struct axo_state{
     axo_typ_def*           float_def;
     axo_typ_def*           byte_def;
     axo_typ_def*           str_def;
+
+    //File related
+    char*                  filepath;
+    char*                  root_path;
 }axo_state;
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)

@@ -3,6 +3,8 @@
 
 #ifdef _WIN32
     #include <windows.h>
+#elif __linux__
+    #include <unistd.h>
 #endif
 
 #include <string.h>
@@ -11,6 +13,9 @@
 #include "./axo_err.h"
 #include "../util/utils.h"
 #include "../axo_gram.tab.h"
+
+#include <errno.h>
+#include <dirent.h>
 
 #define static_str_ptr(SZ) ((char**)(&((char[SZ]){})))  
 
@@ -86,6 +91,12 @@ char* axo_get_full_file_path(char* filename);
 #define axo_terminal_link(LINK, TEXT) "\e]8;;"LINK"\a"TEXT"\e]8;;\a"
 #define axo_terminal_blink(TEXT) "\033[5m"TEXT"\033[0m"
 #include "./asciiart.h" //ASCII art for the mascot!
+
+#ifdef _WIN32
+    #define axo_dir_sep "\\"
+#else
+    #define axo_dir_sep "/"
+#endif
 //Function declarations
 //Yacc
 int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
@@ -182,7 +193,7 @@ char* axo_file_to_str(char* path){
     return str;
 }
 
-axo_state* axo_new_state(){
+axo_state* axo_new_state(char* root_path){
     new_ptr_one(st, axo_state);
     st->filepath = "";
     st->global_scope = axo_new_scope(NULL);
@@ -193,7 +204,8 @@ axo_state* axo_new_state(){
         .cc = axo_gcc_cc_kind,
         .output_name=NULL,
         .measure_time=false,
-        .bug_hunter=false
+        .bug_hunter=false,
+        .delete_c=true
     };
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="i32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="i32", .cname="int"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
@@ -202,6 +214,7 @@ axo_state* axo_new_state(){
     // st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_arr_kind, .arr=new_struct_lit_ptr(axo_arr_typ, axo_arr_typ*, ((axo_arr_typ){.subtyp=axo_byte_typ(st), .dim_count=1})), .def="\"\""}});
     st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_ptr_kind, .def="\"\""}});
     st->str_def->typ.subtyp = &axo_byte_typ(st);
+    st->root_path = root_path;
     return st;
 }
 
@@ -915,17 +928,71 @@ char* axo_swap_file_extension(char* filename, char* new_ext){
     return new_filename;
 }
 
+int axo_file_exists(const char *fname) {
+    FILE *file;
+    if ((file = fopen(fname, "r"))) {
+        fclose(file);
+        return 1; // File exists
+    }
+    return 0; // File does not exist
+}
+
+int axo_dir_exists(const char *dirname) {
+    DIR *dir = opendir(dirname);
+    if (dir) {
+        closedir(dir);
+        return 1; // Directory exists
+    } else if (ENOENT == errno) {
+        return 0; // Directory does not exist
+    } else {
+        return -1; // opendir() failed for some other reason
+    }
+}
+
 #ifdef _WIN32
     char* axo_get_full_file_path(char* filename){//FIX
         char buffer[MAX_PATH];
         char *lppPart={NULL};
-        GetFullPathName("test.axl", MAX_PATH, buffer, &lppPart);
+        GetFullPathName(filename, MAX_PATH, buffer, &lppPart);
         return alloc_str(buffer);
     }
-#else
+#elif __linux__
     char* axo_get_full_file_path(char* filename){ //FIX!
-        return alloc_str("full_path_to_file");
+        char ret[1000];
+        return realpath(filename, ret);
+    }
+#endif
+
+#ifdef _WIN32
+    //Missing!
+#elif __linux
+    char* axo_get_exec_path(char* buf, int sz){
+        ssize_t bytes = readlink("/proc/self/exe", buf, sz);
+        if (bytes >= 0) {
+            buf[bytes] = '\0';
+        } else {
+            perror("Error getting executable path");
+        }
+        return buf;
     }
 #endif
 
 #endif
+
+char* axo_get_parent_dir(char* path) {
+    char *last_slash;
+    #ifdef _WIN32
+        /* Replace all '\' with '/' for Windows paths */
+        for (char *p = path; *p != '\0'; p++) {
+            if (*p == '\\') {
+                *p = '/';
+            }
+        }
+    #endif
+
+    last_slash = strrchr(path, '/');
+    if (last_slash != NULL) {
+        *last_slash = '\0';  /* Null-terminate the path at the last slash */
+    }
+    return path;
+}

@@ -77,6 +77,8 @@
 %token<str> DECR_OP "--"
 %token<str> ENUM_KWRD "enum"
 %token<str> STRUCT_KWRD "struct"
+%token<str> USE_KWRD "use"
+%token<str> INCLUDE_KWRD "include"
 %token<str> STRUCT_LITERAL_START "struct{"
 %token<str> DOT_FIELD ".field"
 %token<str> ARROW_OP "->"
@@ -85,6 +87,7 @@
 %type<function> func_def func_args func_def_start
 %type<function_call> func_call_start func_call
 %type<expression> expr incr_decr_op if_condition assignment arr_literal
+%type<declaration_type> declaration
 %type<str> statements declarations while_loop_base
 %type<typ_type> val_typ c_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
 %type<types_list> c_typ_list
@@ -128,6 +131,7 @@
   axo_strings strings_type;
   axo_scope* scope;
   axo_expr expression;
+  axo_decl declaration_type;
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
@@ -208,19 +212,24 @@ declarations : /* EMPTY */ {}
     axo_set_typ_def(&@$, state, td);
     axo_add_decl(state, (axo_decl){.val=decl, .kind=axo_enum_decl_kind});
   }
-  | declarations struct_def { //Fix! Make this use realloc less
+  | declarations declaration {
+    axo_add_decl(state, $declaration);
+  }
+  ;
+
+declaration : struct_def { //Fix! Make this use realloc less
     new_ptr_one(strct, axo_struct);
-    *strct = $2;
+    *strct = $struct_def;
     char* decl = empty_str;
     strapnd(&decl, "typedef struct ");
-    strapnd(&decl, $2.name);
+    strapnd(&decl, $struct_def.name);
     strapnd(&decl, "{\n");
-    for (int i=0; i<$2.fields_len; i++){
-      strapnd(&decl, axo_name_typ_decl($2.fields[i].name, $2.fields[i].def.typ));
+    for (int i=0; i<$struct_def.fields_len; i++){
+      strapnd(&decl, axo_name_typ_decl($struct_def.fields[i].name, $struct_def.fields[i].def.typ));
       strapnd(&decl, ";\n");
     }
     strapnd(&decl, "}");
-    strapnd(&decl, $2.name);
+    strapnd(&decl, $struct_def.name);
     strapnd(&decl, ";");
     axo_typ_def td = (axo_typ_def){
       .name=strct->name,
@@ -233,9 +242,20 @@ declarations : /* EMPTY */ {}
     axo_set_typ_def(&@$, state, td);
     axo_add_decl(state, (axo_decl){.val=decl, .kind=axo_struct_decl_kind});
   }
+  | "use" IDEN {
+    printf("Using: %s\n", $2);
+    printf("Searching for dir...\n");
+    //Check local first
+    if (axo_dir_exists($2) == 1){
+      printf("Found locally!\n");
+    }else if (axo_dir_exists(fmt_str(static_str_ptr(500), "%s"axo_dir_sep"%s", state->root_path, $IDEN))){
+      printf("Found in root path\n");
+    }else
+      yyerror(&@2, "Couldn't find '%s' locally.", $IDEN);
+  }
   ;
 
-statements : /* EMPTY */ {}
+statements : statement {axo_add_statement(top_scope, $statement);}
   | statements statement {axo_add_statement(top_scope, $statement);}
   ;
 
@@ -1578,7 +1598,9 @@ int main(int argc, char** argv) {
   }
   yyin = file;
   //Initialize state
-  state = axo_new_state();
+  char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
+  state = axo_new_state(root_p);
+  printf("Root: %s\n", root_p);
   state->filepath = argv[1];
   global_scope = state->global_scope;
   //Scopes table
@@ -1612,5 +1634,7 @@ int main(int argc, char** argv) {
   }
   // printf("\n\n%s\n", axo_axelotl_str);
   fclose(file);
+  // if (state->config.delete_c)
+  //   remove();
   return prog_return;
 }
