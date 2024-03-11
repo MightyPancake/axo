@@ -1015,6 +1015,10 @@ int axo_dir_exists(const char *dirname) {
         char ret[axo_max_path_len];
         return realpath(filename, ret);
     }
+#elif __APPLE__ 
+    char* axo_resolve_path(char* filename){
+        return filename;
+    }
 #endif
 
 #ifdef _WIN32
@@ -1025,6 +1029,10 @@ int axo_dir_exists(const char *dirname) {
     int axo_chdir(char* path){
         // printf(axo_magenta_fg"cd '%s'\n"axo_reset_style, path);
         return chdir(path);
+    }
+#elif __APPLE__ 
+    int axo_chdir(char* path){
+        return 0;
     }
 #endif
 
@@ -1047,6 +1055,10 @@ int axo_dir_exists(const char *dirname) {
             perror("Error getting executable path");
         }
         return buf;
+    }
+#elif __APPLE__ 
+    char* axo_get_exec_path(char* buf, int sz){
+        return "";
     }
 #endif
 
