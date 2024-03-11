@@ -729,8 +729,8 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
     char* val;
     switch (lp.collection.typ.kind){
         case axo_arr_kind:
-            axo_arr_typ arr_typ = axo_get_arr_typ(lp.collection.typ);
             val = empty_str;
+            axo_arr_typ arr_typ = axo_get_arr_typ(lp.collection.typ);
             for (int i=0; i<lp.dim_count; i++){
                 if (lp.iter_over[i])
                     strapnd(&val, fmtstr("for(axo_arr_it_t %s=0; %s<(%s).len[%d]; %s++)", lp.dim_iters[i].val, lp.dim_iters[i].val, lp.collection.val, i, lp.dim_iters[i].val));    
@@ -795,6 +795,8 @@ char* axo_typ_kind_to_str(axo_typ_kind tk){
 
 bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     if (t1.kind != t2.kind) return false;
+    axo_arr_typ a1, a2;
+    axo_func_typ* fnt1, fnt2;
     switch(t1.kind){
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
@@ -802,12 +804,12 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
         case axo_ptr_kind:
             return axo_typ_eq(*((axo_typ*)(t1.subtyp)), *((axo_typ*)(t2.subtyp)));
         case axo_arr_kind:
-            axo_arr_typ a1 = axo_get_arr_typ(t1);
-            axo_arr_typ a2 = axo_get_arr_typ(t2);
+            a1 = axo_get_arr_typ(t1);
+            a2 = axo_get_arr_typ(t2);
             return axo_typ_eq(a1.subtyp, a2.subtyp) && a1.dim_count==a2.dim_count;  break;
         case axo_func_kind:
-            axo_func_typ* fnt1 = (axo_func_typ*)(t1.func_typ);
-            axo_func_typ* fnt2 = (axo_func_typ*)(t2.func_typ);
+            fnt1 = (axo_func_typ*)(t1.func_typ);
+            fnt2 = (axo_func_typ*)(t2.func_typ);
             if (!axo_typ_eq(fnt1->ret_typ, fnt2->ret_typ)) return false;
             if (fnt1->args_len != fnt2->args_len) return false;
             for (int i=0; i<fnt1->args_len; i++){
