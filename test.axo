@@ -1,9 +1,12 @@
 #include <stdio.h>
-#register int printf(char*, ...)
+#register i32 printf(@byte, ...)
 
-fn main(){
-    a = 1
-    printf("%d\n", (a<3 ? 42 : 10))
+include "libs/core/core.axo"
+
+include "./mod/file.axo"
+use stdlib
+
+fn main([][]byte args){
+    a = add(1,2)*sub(5,3)
     ret 0
 }
-
