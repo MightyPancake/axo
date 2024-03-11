@@ -185,9 +185,9 @@ char* fmtstr(const char fmt[], ...){
 }
 
 char* axo_file_to_str(char* path){
-    char* str;
-    long len;
-    FILE* file = fopen (path, "rb");
+    char* str = "";
+    long len = 0;
+    FILE* file = fopen(path, "rb");
     if (file){
         fseek (file, 0, SEEK_END);
         len = ftell (file);
@@ -421,13 +421,17 @@ char* axo_c_arr_of_typ(axo_typ typ, char* inside){
 
 char* axo_typ_to_c_str(axo_typ t){
     axo_typ cur_typ = t;
+    axo_func_typ fnt = (axo_func_typ){};
+    char* ret = "";
+    int ptr_lvl = 0;
+    char* stars = "";
     switch(t.kind){
         case axo_simple_kind:
             return alloc_str(t.simple.cname);
             break;
         case axo_func_kind:
-            axo_func_typ fnt = *((axo_func_typ*)(t.func_typ));
-            char* ret = fmtstr("%s(*)(", axo_typ_to_c_str(fnt.ret_typ));
+            fnt = *((axo_func_typ*)(t.func_typ));
+            ret = fmtstr("%s(*)(", axo_typ_to_c_str(fnt.ret_typ));
             for (int i = 0; i<fnt.args_len; i++){
                 if (i>0) strapnd(&ret, ",");
                 strapnd(&ret, axo_typ_to_c_str(fnt.args_types[i]));
@@ -438,12 +442,11 @@ char* axo_typ_to_c_str(axo_typ t){
         case axo_arr_kind:
             return alloc_str("axo__arr"); break;
         case axo_ptr_kind:
-            int ptr_lvl = 0;
             while(cur_typ.kind==axo_ptr_kind){
                 ptr_lvl++;
                 cur_typ = *axo_subtyp(cur_typ);
             }
-            char* stars = (char*)malloc(ptr_lvl+1);
+            stars = (char*)malloc(ptr_lvl+1);
             for(int i=0; i<ptr_lvl; i++) stars[i] = '*';
             stars[ptr_lvl] = '\0';
             switch(cur_typ.kind){
@@ -1021,7 +1024,15 @@ int axo_dir_exists(const char *dirname) {
 #endif
 
 #ifdef _WIN32
-    //Missing!
+    char* axo_get_exec_path(char* buf, int sz) {
+        DWORD bytes = GetModuleFileName(NULL, buf, sz);
+        if (bytes > 0) {
+            buf[bytes] = '\0';
+        } else {
+            fprintf(stderr, "Error getting executable path: %lu\n", GetLastError());
+        }
+        return buf;
+    }
 #elif __linux
     char* axo_get_exec_path(char* buf, int sz){
         ssize_t bytes = readlink("/proc/self/exe", buf, sz);
