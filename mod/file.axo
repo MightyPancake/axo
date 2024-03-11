@@ -1,0 +1,10 @@
+fn add(a|0, b|0){
+	ret a+b
+}
+
+include "./file2.axo"
+
+fn mul(a|0, b|0){
+	ret a*b
+}
+

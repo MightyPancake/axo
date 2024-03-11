@@ -3145,7 +3145,7 @@ yyreduce:
       .dim_iters=(axo_expr*)malloc(128*sizeof(axo_expr)),
       .locs=(YYLTYPE*)malloc(128*sizeof(YYLTYPE))
     };
-    (yyval.each_loop_type).dim_iters[0] = (axo_expr){.kind=axo_no_kind, .val=NULL};
+    (yyval.each_loop_type).dim_iters[0] = (axo_expr){.val=NULL};
     (yyval.each_loop_type).dim_iters[1] = (yyvsp[0].expression);
     ((YYLTYPE*)((yyval.each_loop_type).locs))[4] = (yylsp[0]);
   }
@@ -3164,7 +3164,7 @@ yyreduce:
   case 95: /* each_iter_dims: each_iter_dims '|'  */
 #line 999 "axo_gram.y"
                        {
-    (yyval.each_loop_type).dim_iters[(yyval.each_loop_type).dim_count++] = (axo_expr){.kind=axo_no_kind, .val=NULL};
+    (yyval.each_loop_type).dim_iters[(yyval.each_loop_type).dim_count++] = (axo_expr){.val=NULL};
   }
 #line 3170 "axo_gram.tab.c"
     break;

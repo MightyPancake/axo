@@ -1,0 +1,14 @@
+/*
+
+	AXO CORE
+
+	This file is included in every axo program
+	to provide basic functionality that C
+	itself just lacks by default.
+
+	It also includes some (hopefully small)
+	C headers.
+*/
+
+#include "./core.h"
+

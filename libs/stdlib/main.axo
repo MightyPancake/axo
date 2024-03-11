@@ -1,0 +1,9 @@
+#include "./c_include.h"
+
+#register i32 printf(@char, ...)
+
+fn main(){
+  
+}
+
+
