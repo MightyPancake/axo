@@ -455,8 +455,8 @@ char* axo_typ_to_c_str(axo_typ t){
                     return ret;
                     break;
                 case axo_func_kind:
-                    char* fn_name=fmtstr("%s", stars);
                     ret = axo_typ_to_c_str(cur_typ);
+                    char* fn_name=fmtstr("%s", stars);
                     free(fn_name);
                     return ret;
                     break;
@@ -476,6 +476,7 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
         case axo_enum_kind: return fmtstr("%s %s", ((axo_enum*)(typ.enumerate))->name, name); break;
         case axo_arr_kind: return fmtstr("axo__arr %s", name); break;
         case axo_func_kind:
+            0; //Silence stupid MacOS gcc errors
             axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
             char* ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
             for (int i = 0; i<fnt.args_len; i++){
