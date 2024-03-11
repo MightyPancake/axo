@@ -17,6 +17,10 @@
 #include <errno.h>
 #include <dirent.h>
 
+//YYLEX
+extern FILE *yyin;
+void yyrestart(FILE*);
+
 #define static_str_ptr(SZ) ((char**)(&((char[SZ]){})))  
 
 char* fmt_str(char** dest, const char fmt[], ...){
@@ -42,7 +46,6 @@ uint64_t map_hash_str(const void *item, uint64_t seed0, uint64_t seed1) {return 
 int map_cmp_typ_def(const void* a, const void* b, void *udata){return strcmp(((axo_typ_def*)(a))->name, ((axo_typ_def*)(b))->name); }
 uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_typ_def*)item)->name, strlen(((axo_typ_def*)item)->name), seed0, seed1);}
 
-char* axo_get_full_file_path(char* filename);
 #define axo_mk_simple_typ(NAME, CNAME) ((axo_typ){.kind = axo_simple_kind, .simple = (axo_simple_t){.name=NAME, .cname=CNAME}})
 #define axo_none_typ axo_mk_simple_typ("none", "void")
 //Styles
@@ -107,6 +110,7 @@ int asprintf(char **strp, const char *format, ...);
 
 //State
 axo_state* axo_new_state();
+void axo_switch_input_file(axo_state* st, char* path);
 char* axo_get_code(axo_state* st);
 axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td);
 void axo_add_decl(axo_state* st, axo_decl d);
@@ -165,6 +169,12 @@ char* repstr(char* str, int times);
 const char* axo_identifier_kind_to_str(axo_identifier_kind kind);
 void* axo_safe_malloc(size_t n);
 
+//Files
+int axo_chdir(char* path);
+char* axo_resolve_path(char* filename);
+char* axo_get_exec_path(char* buf, int sz);
+char* axo_get_parent_dir(char* path);
+
 char* fmtstr(const char fmt[], ...){
     char* ret;
     va_list args;
@@ -195,7 +205,6 @@ char* axo_file_to_str(char* path){
 
 axo_state* axo_new_state(char* root_path){
     new_ptr_one(st, axo_state);
-    st->filepath = "";
     st->global_scope = axo_new_scope(NULL);
     st->types_def = new_map(axo_typ_def, map_hash_typ_def, map_cmp_typ_def);
     st->decls=NULL;
@@ -214,8 +223,45 @@ axo_state* axo_new_state(char* root_path){
     // st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_arr_kind, .arr=new_struct_lit_ptr(axo_arr_typ, axo_arr_typ*, ((axo_arr_typ){.subtyp=axo_byte_typ(st), .dim_count=1})), .def="\"\""}});
     st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_ptr_kind, .def="\"\""}});
     st->str_def->typ.subtyp = &axo_byte_typ(st);
+    //File related
     st->root_path = root_path;
+    st->sources = NULL;
+    st->sources_len = 0;
     return st;
+}
+
+void axo_new_source(axo_state* st, char* path){
+    resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
+    axo_source* src = &(st->sources[st->sources_len]);
+    src->path = alloc_str(path);
+    src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
+    src->file = fopen(src->path, "r");
+    src->pos = 0;
+    src->line = 1;
+    src->col = 1;
+    axo_chdir(src->parent_dir);
+    if (!(src->file))
+        perror("fopen");
+    yyrestart(src->file);
+    st->sources_len++;
+    // printf("Switched to file: '%s'\n", src->path);
+}
+
+void axo_pop_source(axo_state* st){
+    st->sources_len--;
+    // printf("INPUT LEN: %d\n", st->sources_len);
+    // printf("Input '%s' ended, ", st->sources[st->sources_len].path);
+    // free(st->sources[st->sources_len].path);
+    // fclose(st->sources[st->sources_len].file);
+    if (st->sources_len>0){
+        axo_source* src = &(st->sources[st->sources_len-1]);
+        fseek(src->file, src->pos, SEEK_SET);
+        axo_chdir(src->parent_dir);
+        yyrestart(src->file);
+        // printf("switching to '%s':%ld\n", src->path, ftell(yyin));
+    }else{
+        printf("all sources ended. (this should never happen)\n");
+    }
 }
 
 axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td){
@@ -322,12 +368,14 @@ char* axo_func_to_typ_str(axo_func* fn){
 
 char* axo_typ_to_str(axo_typ typ){
     char* ret = (char[1024]){};
+    axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
+    int i;
+    char dim_stars[128];
     switch (typ.kind){
         case axo_simple_kind:
             return typ.simple.name;
             break;
         case axo_func_kind:
-            axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
             ret = fmt_str((char**)&ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
                 if (i>0) strcat(ret, ",");
@@ -343,8 +391,6 @@ char* axo_typ_to_str(axo_typ typ){
             return "no_type";
             break;
         case axo_arr_kind:
-            int i=1;
-            char dim_stars[128];
             for (i=1; i<axo_get_arr_typ(typ).dim_count; i++){
                 dim_stars[i-1] = ':';
             }
@@ -710,7 +756,7 @@ char* axo_get_var_decl_assign(char* name, axo_expr expr){
         case axo_enum_kind:
             return fmtstr("%s %s=%s", ((axo_enum*)(typ.enumerate))->name, name, expr.val); break;
         case axo_simple_kind:
-            return fmtstr("%s %s=%s", typ.simple, name, expr.val); break;
+            return fmtstr("%s %s=%s", typ.simple.cname, name, expr.val); break;
         case axo_struct_kind:
             return fmtstr("%s %s=%s", ((axo_struct*)(typ.structure))->name, name, expr.val); break;
         case axo_arr_kind:
@@ -826,7 +872,7 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     //Produce the error string from fmt and args
     char* line_num;
     //Add position and context to the error message
-    char* code = axo_file_to_str(st->filepath);
+    char* code = axo_file_to_str(axo_source(st)->path);
     int up_lines = 2;
     int down_lines = 2;
     int i = 0;
@@ -844,8 +890,8 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     line = line > 1 ? line : 1;
     char* ret;
     char website[] = "https://github.com/MightyPancake/axl/blob/main/errors/error_1.md";
-    char* full_filepath = axo_get_full_file_path(st->filepath);
-    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, st->filepath, 175, loc->first_line, loc->first_column, website, msg);
+    char* full_filepath = axo_resolve_path(axo_source(st)->path);
+    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, 175, loc->first_line, loc->first_column, website, msg);
     while (line<=loc->last_line+down_lines){
       if (code[i] == '\0') break;
       else if (col == loc->first_column && line == loc->first_line){
@@ -928,13 +974,13 @@ char* axo_swap_file_extension(char* filename, char* new_ext){
     return new_filename;
 }
 
-int axo_file_exists(const char *fname) {
+bool axo_file_exists(const char *fname) {
     FILE *file;
     if ((file = fopen(fname, "r"))) {
         fclose(file);
-        return 1; // File exists
+        return true; // File exists
     }
-    return 0; // File does not exist
+    return false; // File does not exist
 }
 
 int axo_dir_exists(const char *dirname) {
@@ -950,16 +996,27 @@ int axo_dir_exists(const char *dirname) {
 }
 
 #ifdef _WIN32
-    char* axo_get_full_file_path(char* filename){//FIX
+    char* axo_resolve_path(char* filename){
         char buffer[MAX_PATH];
         char *lppPart={NULL};
         GetFullPathName(filename, MAX_PATH, buffer, &lppPart);
         return alloc_str(buffer);
     }
 #elif __linux__
-    char* axo_get_full_file_path(char* filename){ //FIX!
-        char ret[1000];
+    char* axo_resolve_path(char* filename){
+        char ret[axo_max_path_len];
         return realpath(filename, ret);
+    }
+#endif
+
+#ifdef _WIN32
+    int axo_chdir(char* path){
+        return SetCurrentDirectory(path);
+    }
+#elif __linux 
+    int axo_chdir(char* path){
+        // printf(axo_magenta_fg"cd '%s'\n"axo_reset_style, path);
+        return chdir(path);
     }
 #endif
 

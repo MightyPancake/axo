@@ -108,6 +108,7 @@
 %left IDENTIFIER_PREC
 %left '$'
 %left EXPR_AS_STATEMENT
+%left RET_KWRD
 %right '='
 %left '?'
 %left "or"
@@ -124,7 +125,6 @@
 %left INCR_OP DECR_OP '[' DOT_FIELD
 %left IF_KWRD
 %left STRUCT_LIT_NAMED_FIELD
-%precedence RET_KWRD
 
 %union {
   char* str;
@@ -157,7 +157,15 @@ declarations : /* EMPTY */ {}
     axo_add_decl(state, axo_func_def_to_decl($2));
   }
   | declarations C_INCLUDE { //Fix: Check if file exists
-    axo_add_decl(state, (axo_decl){.val = fmtstr("#include %s", $C_INCLUDE), .kind=axo_c_include_decl_kind});
+    if ($C_INCLUDE[0] == '<'){
+      //Check if file exists? Hard to do probably, idk
+      axo_add_decl(state, (axo_decl){.val = fmtstr("#include %s", $C_INCLUDE), .kind=axo_c_include_decl_kind});
+    }else{
+      char* path = &($C_INCLUDE[1]);
+      path[strlen($C_INCLUDE)-2] = '\0';
+      printf("Path of c_include: %s\nResolved path: %s\n", path, axo_resolve_path(path));
+      axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", axo_resolve_path(path)), .kind=axo_c_include_decl_kind});
+    }
   }
   | declarations C_REGISTER c_typ IDEN '(' c_typ_list ')' {
     // printf("Starting to register a C function\n");
@@ -240,7 +248,7 @@ declaration : struct_def { //Fix! Make this use realloc less
       },
     };
     axo_set_typ_def(&@$, state, td);
-    axo_add_decl(state, (axo_decl){.val=decl, .kind=axo_struct_decl_kind});
+    $$ = (axo_decl){.val=decl, .kind=axo_struct_decl_kind};
   }
   | "use" IDEN {
     printf("Using: %s\n", $2);
@@ -248,10 +256,29 @@ declaration : struct_def { //Fix! Make this use realloc less
     //Check local first
     if (axo_dir_exists($2) == 1){
       printf("Found locally!\n");
-    }else if (axo_dir_exists(fmt_str(static_str_ptr(500), "%s"axo_dir_sep"%s", state->root_path, $IDEN))){
+    }else if (axo_dir_exists(fmt_str(static_str_ptr(500), "%s"axo_dir_sep"libs"axo_dir_sep"%s", state->root_path, $IDEN))){
       printf("Found in root path\n");
     }else
-      yyerror(&@2, "Couldn't find '%s' locally.", $IDEN);
+      yyerror(&@2, "Couldn't find '%s'.", $IDEN);
+    
+    $$ = (axo_decl){.val="//use lib", .kind=axo_use_decl_kind};
+  }
+  | "include" STRING_LITERAL {
+    char str[512];
+    strcpy(str, &($STRING_LITERAL[1]));
+    str[strlen(str)-1] = '\0';
+    printf("include %s\n", str);
+    printf("Checking for '%s'\n", str);
+    //Check local first
+    bool exists = axo_file_exists(str);
+    if (exists){
+      printf("Found!\n");
+      axo_new_source(state, str);
+    }else{
+      printf("Err!!!\n");
+      yyerror(&@2, "Couldn't find '%s'.\n", str);
+    }
+    $$ = (axo_decl){.val=fmtstr("//including '%s'", str), .kind=axo_use_decl_kind};
   }
   ;
 
@@ -1585,23 +1612,15 @@ int playground(){
 
 int main(int argc, char** argv) {
   if (test_playground) return playground();
-  //Get tokens from the given file instead of stdin
-  FILE *file;
   if (argc != 2) {
       fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
       return 1;
   }
-  file = fopen(argv[1], "r");
-  if (!file) {
-      perror("fopen");
-      return 1;
-  }
-  yyin = file;
-  //Initialize state
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
-  state = axo_new_state(root_p);
   printf("Root: %s\n", root_p);
-  state->filepath = argv[1];
+  //Initialize state
+  state = axo_new_state(root_p);
+  axo_new_source(state, argv[1]);
   global_scope = state->global_scope;
   //Scopes table
   scopes = alloc_one(axo_scopes);
@@ -1610,9 +1629,11 @@ int main(int argc, char** argv) {
   axo_push_scope(scopes, global_scope);
   //Parse
   yyparse();
+  printf("axo -> C: done!\n");
   //Handle produced C code
+  char* input_file_path = argv[1];
   if (!prog_return){
-    if (state->config.output_name==NULL) state->config.output_name = axo_swap_file_extension(state->filepath, "c");
+    if (state->config.output_name==NULL) state->config.output_name = axo_swap_file_extension(input_file_path, "c");
     char* code = axo_get_code(state);
     overwrite_file_with_string(state->config.output_name, code);
     free(code);
@@ -1633,7 +1654,7 @@ int main(int argc, char** argv) {
     prog_return = prog_return||res;
   }
   // printf("\n\n%s\n", axo_axelotl_str);
-  fclose(file);
+  // fclose(file);
   // if (state->config.delete_c)
   //   remove();
   return prog_return;

@@ -5,29 +5,36 @@
   #include <stdio.h>
   #include "axo_gram.tab.h"
   extern int prog_return;
+  extern axo_state* state;
+  void axo_pop_source(axo_state* st);
   int yywrap(void);
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char * fmt, ...);
-  #define adv_loc ({ \
-    yylloc->first_line=yylloc->last_line=line; \
-    yylloc->first_column=col; \
-    yylloc->last_column=col=col+yyleng; \
+
+  #define axo_adv_loc(ST) ({ \
+    yylloc->first_line=yylloc->last_line=axo_line(ST); \
+    yylloc->first_column=axo_col(ST); \
+    yylloc->last_column=axo_col(ST)=axo_col(ST)+yyleng; \
   })
-  #define ret_def ({ \
-    yylloc->first_line=yylloc->last_line=line; \
-    yylloc->first_column=col; \
-    yylloc->last_column=col=col+yyleng; \
+  #define axo_ret_def(ST) ({ \
+    yylloc->first_line=yylloc->last_line=axo_line(ST); \
+    yylloc->first_column=axo_col(ST); \
+    yylloc->last_column=axo_col(ST)+=yyleng; \
     yylval->str=alloc_str(yytext); \
   })
-  #define ret_null ({ \
-    yylloc->first_line=yylloc->last_line=line; \
-    yylloc->first_column=col; \
-    yylloc->last_column=col=col+yyleng; \
+  #define axo_ret_null(ST) ({ \
+    yylloc->first_line=yylloc->last_line=axo_line(ST); \
+    yylloc->first_column=axo_col(ST); \
+    yylloc->last_column=axo_col(ST)+=yyleng; \
     yylval->str=""; \
   })
-  int line = 1;
-  int col = 1;
+
+  #define ret_null axo_ret_null(state)
+  #define ret_def axo_ret_def(state)
+  #define adv_loc axo_adv_loc(state)
+  
   #define YY_NO_INPUT
+  #define YY_USER_ACTION axo_pos(state)+=yyleng;
   
 %}
 %x SINGLE_LINE_COMMENT
@@ -42,10 +49,10 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   
 <INITIAL>"/*" {BEGIN(MULTI_LINE_COMMENT);}
 <INITIAL>"//" {BEGIN(SINGLE_LINE_COMMENT);}
-<SINGLE_LINE_COMMENT>\n {line++; col=1; BEGIN(INITIAL);}
+<SINGLE_LINE_COMMENT>\n {axo_line(state)++; axo_col(state)=1; BEGIN(INITIAL);}
 <MULTI_LINE_COMMENT>"*/" {BEGIN(INITIAL);}
-<MULTI_LINE_COMMENT>\n {line++; col=1;};
-<SINGLE_LINE_COMMENT,MULTI_LINE_COMMENT>. col++;
+<MULTI_LINE_COMMENT>\n {axo_line(state)++; axo_col(state)=1;};
+<SINGLE_LINE_COMMENT,MULTI_LINE_COMMENT>. axo_col(state)++;
 "#register" {ret_null; return(C_REGISTER); }
 "#include" {adv_loc; BEGIN(INCLUDE_ST); }
 <INCLUDE_ST>{include_path_pat}/\s*\, {ret_def; BEGIN(INCLUDE_MORE_ST); return C_INCLUDE;}
@@ -94,9 +101,9 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 ([0-9]+\.[0-9]*|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z][0-9a-zA-Z_]* {ret_def; return IDEN; }
 \.[a-zA-Z][0-9a-zA-Z_]* {
-    yylloc->first_line=yylloc->last_line=line;
-    yylloc->first_column=col;
-    yylloc->last_column=col=col+yyleng;
+    yylloc->first_line=yylloc->last_line=axo_line(state);
+    yylloc->first_column=axo_col(state);
+    yylloc->last_column=axo_col(state)+=yyleng;
     yylval->str=alloc_str(&(yytext[1]));
     return DOT_FIELD;
 }
@@ -112,12 +119,20 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   }
 }
 (\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\|) {ret_def; return yytext[0]; }
-\n {line++; col=1;}
+\n {axo_line(state)++; axo_col(state)=1;}
 \r ;
-[ \t]+ {col=col+yyleng;}
+[ \t]+ {axo_col(state)+=yyleng;}
 . { printf("Lexical error: unexpected '%c' in input file\n", yytext[0]);
     return -1;
   }
+<<EOF>> {
+  printf("File ended.\n");
+  if (state->sources_len>1)
+    axo_pop_source(state);
+  else
+    return 0;
+}
+
 %%
 int yywrap(void) { return 1; }
 

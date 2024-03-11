@@ -1,11 +1,12 @@
 #include <stdio.h>
 #register i32 printf(@byte, ...)
 
+include "libs/core/core.axo"
+
+include "./mod/file.axo"
 use stdlib
 
 fn main([][]byte args){
-    str = "Hello world!"
-    printf("%d\n", 12)
-    my_null = null
+    a = add(1,2)*sub(5,3)
     ret 0
 }

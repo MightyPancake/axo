@@ -6,6 +6,8 @@ typedef struct hashmap* map;
 
 #include <stdbool.h>
 
+#define axo_max_path_len 2048
+
 //Memory management
 #define axo_scopes_cap 32
 #define axo_scopes_table_cap 8
@@ -19,6 +21,7 @@ typedef struct hashmap* map;
 #define axo_strings_cap 1
 #define axo_empty_arr_lit_cap 128
 #define axo_index_access_cap 2
+#define axo_state_sources_cap 4
 
 typedef enum axo_typ_kind{
     axo_simple_kind,
@@ -35,6 +38,15 @@ typedef enum axo_typ_kind{
 
 #define axo_subtyp(T) ((axo_typ*)(T.subtyp))
 #define axo_get_arr_typ(T) (*((axo_arr_typ*)(T.arr)))
+
+// typedef struct axo_loc{
+//     int        first_line;
+//     int        first_column;
+//     int        last_line;
+//     int        last_column;
+//     FILE*      file;
+//     pos        pos;
+// }axo_loc;
 
 typedef enum axo_include_path_kind{
     axo_local_include_path_kind,
@@ -149,6 +161,7 @@ typedef enum axo_decl_kind{
     axo_enum_decl_kind,
     axo_struct_decl_kind,
     axo_func_decl_kind,
+    axo_use_decl_kind,
     axo_c_include_decl_kind,
     axo_c_register_decl_kind
 }axo_decl_kind;
@@ -175,7 +188,7 @@ typedef struct axo_scopes{
     int             len;
 }axo_scopes;
 
-typedef struct axo_var {
+typedef struct axo_var{
     char*       name;
     axo_typ     typ;
     bool        is_const;
@@ -205,6 +218,15 @@ typedef struct axo_compiler_config{
     bool         bug_hunter;
 }axo_compiler_config;
 
+typedef struct axo_source{
+    char*            path;
+    char*            parent_dir;
+    FILE*            file;
+    long             pos;
+    int              line;
+    int              col;
+}axo_source;
+
 typedef struct axo_state{
     axo_decl*              decls;
     int                    decls_len;
@@ -223,9 +245,16 @@ typedef struct axo_state{
     axo_typ_def*           str_def;
 
     //File related
-    char*                  filepath;
     char*                  root_path;
+    axo_source*            sources;
+    int                    sources_len;
 }axo_state;
+
+#define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
+#define axo_line(ST) (axo_source(ST)->line)
+#define axo_col(ST) (axo_source(ST)->col)
+#define axo_pos(ST) (axo_source(ST)->pos)
+#define axo_src_path(ST) (axo_source(ST)->path)
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)
 #define axo_float_typ(STATE) (STATE->float_def->typ)
