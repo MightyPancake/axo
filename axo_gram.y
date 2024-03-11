@@ -546,6 +546,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   }
   | expr DOT_FIELD {
     axo_enum* enumerate;
+    axo_struct* structure;
     switch($1.kind){
       case axo_expr_enum_typ_kind:
         enumerate = (axo_enum*)($1.typ.enumerate);
@@ -567,7 +568,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         }
         break;
       default:
-        axo_struct* structure;
         switch($1.typ.kind){
           case axo_struct_kind:
             structure = (axo_struct*)($1.typ.structure);
@@ -1239,11 +1239,11 @@ func_call_start : expr '(' {
     if (axo_validate_rval(&@1, $1)) {
       switch($1.typ.kind){
         case axo_func_kind:
-          axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
-          char** defaults = fnt->args_defs;
           $$.typ = $1.typ;
           $$.called_val = $1.val;
           $$.params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
+          axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
+          char** defaults = fnt->args_defs;
           if (fnt->args_len>0){
             $$.params[0].val = defaults[0];
             $$.params_len = 1;

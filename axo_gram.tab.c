@@ -2583,6 +2583,7 @@ yyreduce:
 #line 547 "axo_gram.y"
                    {
     axo_enum* enumerate;
+    axo_struct* structure;
     switch((yyvsp[-1].expression).kind){
       case axo_expr_enum_typ_kind:
         enumerate = (axo_enum*)((yyvsp[-1].expression).typ.enumerate);
@@ -2604,7 +2605,6 @@ yyreduce:
         }
         break;
       default:
-        axo_struct* structure;
         switch((yyvsp[-1].expression).typ.kind){
           case axo_struct_kind:
             structure = (axo_struct*)((yyvsp[-1].expression).typ.structure);
@@ -3502,11 +3502,11 @@ yyreduce:
     if (axo_validate_rval(&(yylsp[-1]), (yyvsp[-1].expression))) {
       switch((yyvsp[-1].expression).typ.kind){
         case axo_func_kind:
-          axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-1].expression).typ.func_typ);
-          char** defaults = fnt->args_defs;
           (yyval.function_call).typ = (yyvsp[-1].expression).typ;
           (yyval.function_call).called_val = (yyvsp[-1].expression).val;
           (yyval.function_call).params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
+          axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-1].expression).typ.func_typ);
+          char** defaults = fnt->args_defs;
           if (fnt->args_len>0){
             (yyval.function_call).params[0].val = defaults[0];
             (yyval.function_call).params_len = 1;
