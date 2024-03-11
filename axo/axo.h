@@ -470,15 +470,16 @@ char* axo_typ_to_c_str(axo_typ t){
 }
 
 char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
+    char* ret = "";
+    axo_func_typ fnt = (axo_func_typ){};
     switch(typ.kind){
         case axo_simple_kind: return fmtstr("%s %s", axo_typ_to_c_str(typ), name); break;
         case axo_struct_kind: return fmtstr("%s %s", ((axo_struct*)(typ.structure))->name, name); break;
         case axo_enum_kind: return fmtstr("%s %s", ((axo_enum*)(typ.enumerate))->name, name); break;
         case axo_arr_kind: return fmtstr("axo__arr %s", name); break;
         case axo_func_kind:
-            0; //Silence stupid MacOS gcc errors
-            axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
-            char* ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
+            ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
+            fnt = *((axo_func_typ*)(typ.func_typ));
             for (int i = 0; i<fnt.args_len; i++){
                 if (i>0) strapnd(&ret, ",");
                 strapnd(&ret, axo_typ_to_c_str(fnt.args_types[i]));
@@ -559,9 +560,9 @@ char* axo_typ_def_val(axo_typ typ){
 }
 
 axo_typ axo_clean_typ(axo_typ typ){
+    axo_typ new_typ = typ;
     switch(typ.kind){
         case axo_func_kind:
-            axo_typ new_typ = typ;
             new_typ.func_typ = alloc_one(axo_func_typ);
             memcpy(new_typ.func_typ, typ.func_typ, sizeof(axo_func_typ));
             axo_func_typ* fnt = (axo_func_typ*)(new_typ.func_typ);
@@ -637,13 +638,13 @@ axo_expr axo_call_to_expr(axo_func_call cl){
 
 char* axo_typ_to_ctyp_str(axo_typ t){
     axo_typ cur_typ = t;
+    int dims = 0;
     switch(t.kind){
         case axo_simple_kind:
             return alloc_str(t.simple.cname);
             break;
         case axo_ptr_kind:
         case axo_arr_kind:
-            int dims=0;
             while (cur_typ.kind==axo_arr_kind||cur_typ.kind==axo_ptr_kind){
                 cur_typ = *axo_subtyp(cur_typ);
                 dims++;
