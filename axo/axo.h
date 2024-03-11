@@ -726,7 +726,7 @@ void axo_parse_each_loop(axo_each_loop* lp, axo_state* state, axo_scope* scope, 
 }
 
 axo_statement axo_each_to_statement(axo_each_loop lp){
-    char* val;
+    char* val = NULL;
     switch (lp.collection.typ.kind){
         case axo_arr_kind:
             val = empty_str;

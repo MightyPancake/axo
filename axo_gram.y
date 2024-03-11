@@ -364,9 +364,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   // } %prec TYPE_CASTING_PREC
   | assignment
   | identifier {
+    char* var_name = "";
+    axo_typ_def* td;
     switch($1.kind){
       case axo_identifier_var_kind:
-        char* var_name = (char*)($identifier.data);
+        var_name = (char*)($identifier.data);
         axo_var* var = axo_get_var(top_scope, (char*)($1.data));
         if (var == NULL && rval_now)
           yyerror(&@1, "Variable '%s' undefined before usage.", (char*)($1.data));
@@ -380,7 +382,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         }
         break;
       case axo_identifier_typ_kind:
-        axo_typ_def* td = (axo_typ_def*)($1.data);
+        td = (axo_typ_def*)($1.data);
         switch (td->typ.kind){
           case axo_enum_kind:
             $$ = (axo_expr){
@@ -517,9 +519,10 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   }
   | expr index_access ']'{
     @2.last_column = @3.last_column;
+    axo_arr_typ arr_typ;
     switch($1.typ.kind){
       case axo_arr_kind:
-        axo_arr_typ arr_typ = axo_get_arr_typ($1.typ);
+        arr_typ = axo_get_arr_typ($1.typ);
         @2.last_column = @3.last_column;
         if (arr_typ.dim_count != $index_access.index_count){
           yyerror(&@2, "Cannot index %d dimensional array with %d dimensional index.", arr_typ.dim_count, $index_access.index_count);
@@ -542,9 +545,10 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     $$.kind=axo_expr_normal_kind;
   }
   | expr DOT_FIELD {
+    axo_enum* enumerate;
     switch($1.kind){
       case axo_expr_enum_typ_kind:
-        axo_enum* enumerate = (axo_enum*)($1.typ.enumerate);
+        enumerate = (axo_enum*)($1.typ.enumerate);
         int index = -1;
         for (int i=0; i<enumerate->len; i++){
           if (strcmp(enumerate->names[i], $2)==0){
@@ -563,9 +567,10 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         }
         break;
       default:
+        axo_struct* structure;
         switch($1.typ.kind){
           case axo_struct_kind:
-            axo_struct* structure = (axo_struct*)($1.typ.structure);
+            structure = (axo_struct*)($1.typ.structure);
             int index = -1;
             for (int i=0;i<structure->fields_len; i++){
               if (strcmp(structure->fields[i].name, $2)==0){
