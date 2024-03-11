@@ -988,7 +988,7 @@ each_iter_dims : '[' expr {
       .dim_iters=(axo_expr*)malloc(128*sizeof(axo_expr)),
       .locs=(YYLTYPE*)malloc(128*sizeof(YYLTYPE))
     };
-    $$.dim_iters[0] = (axo_expr){.kind=axo_no_kind, .val=NULL};
+    $$.dim_iters[0] = (axo_expr){.val=NULL};
     $$.dim_iters[1] = $3;
     ((YYLTYPE*)($$.locs))[4] = @3;
   }
@@ -997,7 +997,7 @@ each_iter_dims : '[' expr {
     ((YYLTYPE*)($$.locs))[3+$$.dim_count++] = @3;
   }
   | each_iter_dims '|' {
-    $$.dim_iters[$$.dim_count++] = (axo_expr){.kind=axo_no_kind, .val=NULL};
+    $$.dim_iters[$$.dim_count++] = (axo_expr){.val=NULL};
   }
   ;
 
