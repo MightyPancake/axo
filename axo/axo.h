@@ -796,7 +796,8 @@ char* axo_typ_kind_to_str(axo_typ_kind tk){
 bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     if (t1.kind != t2.kind) return false;
     axo_arr_typ a1, a2;
-    axo_func_typ* fnt1, fnt2;
+    axo_func_typ* fnt1;
+    axo_func_typ* fnt2;
     switch(t1.kind){
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
