@@ -100,6 +100,7 @@ uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1) {ret
 #else
     #define axo_dir_sep "/"
 #endif
+#define axo_dir_sep_char axo_dir_sep[0]
 //Function declarations
 //Yacc
 int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
@@ -171,16 +172,21 @@ void* axo_safe_malloc(size_t n);
 
 //Files
 int axo_chdir(char* path);
+bool axo_dir_exists(char* dir_path);
+bool axo_file_exists(char* file_path);
 char* axo_resolve_path(char* filename);
 char* axo_get_exec_path(char* buf, int sz);
 char* axo_get_parent_dir(char* path);
+char* axo_strip_file_extension(char* filename);
 
 char* fmtstr(const char fmt[], ...){
     char* ret;
     va_list args;
     va_start(args, fmt);
-    vasprintf(&ret, fmt, args);
+    int r = vasprintf(&ret, fmt, args);
     va_end(args);
+    if (r<0)
+        printf("fmtstr error! Returned '%d'!\n", r);
     return ret;
 }
 
@@ -227,6 +233,9 @@ axo_state* axo_new_state(char* root_path){
     st->root_path = root_path;
     st->sources = NULL;
     st->sources_len = 0;
+    //Modules
+    st->modules = NULL;
+    st->modules_len = 0;
     return st;
 }
 
@@ -262,6 +271,83 @@ void axo_pop_source(axo_state* st){
     }else{
         printf("all sources ended. (this should never happen)\n");
     }
+}
+
+axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit){
+    char str[axo_max_path_len];
+    if (str_lit){
+        strcpy(str, &(filename[1]));
+        str[strlen(str)-1] = '\0';
+    }else{
+        strcpy(str, filename);
+    }
+    // printf("include %s\n", str);
+    // printf("Checking for '%s'\n", str);
+    //Check local first
+    bool exists = axo_file_exists(str);
+    if (exists){
+      // printf("Found!\n");
+      axo_new_source(st, str);
+    }else{
+      yyerror(loc, "Couldn't find '%s'.\n", str);
+    }
+    return (axo_decl){.val=fmtstr("//including '%s'", str), .kind=axo_use_decl_kind};
+}
+
+axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name){
+    // printf("use %s\n", name);
+    // printf("Searching for dir...\n");
+    //Check local first
+    char path[axo_max_path_len];
+    bool found = false;
+    strcpy(path, name);
+
+    if (!(found = axo_dir_exists(path))){
+        sprintf(path, "%s"axo_dir_sep"modules"axo_dir_sep"%s", st->root_path, name);
+        if (!(found = axo_dir_exists(path))){
+            yyerror(loc, "Couldn't find module '%s'.", name);
+        }
+    }
+    if (found){
+        strcat(path, axo_dir_sep);
+        strcat(path, name);
+        strcat(path, ".axo");
+        // printf("Found the folder, searching for the file:\n%s\n", path);
+        if (axo_file_exists(path))
+            axo_include_file(st, loc, path, false);
+        else
+            yyerror(loc, "No entry file for module. Missing '%s.axo' in module directory?", name);
+    }
+    return (axo_decl){.val=fmtstr("//use %s", name), .kind=axo_use_decl_kind};
+}
+
+void axo_load_module_defaults(axo_state* st, axo_module* mod){
+    if (!(mod->name)){
+        char* no_ext = axo_strip_file_extension(axo_src_path(st));
+        int i;
+        for (i = strlen(no_ext); i>=0; i++){
+            if (no_ext[i] == '.' || no_ext[i] == axo_dir_sep_char)
+                break;
+        }
+        mod->name = alloc_str(&(no_ext[i]));
+        free(no_ext);
+    }
+    mod->version = mod->version ? mod->version : alloc_str("0.0.0");
+    mod->author = mod->author ? mod->author : alloc_str("?");
+    mod->website = mod->website ? mod->website : alloc_str("www.example-website.com");
+    mod->license_name = mod->license_name ? mod->license_name : alloc_str("LICENSE");
+    mod->license = mod->license ? mod->license : alloc_str("https://www.license-website.org/license.html");
+    mod->description = mod->description ? mod->description : alloc_str("");
+}
+
+axo_decl axo_add_module(axo_state* st, axo_module mod){
+    resize_dyn_arr_if_needed(axo_module, st->modules, st->modules_len, axo_modules_cap);
+    st->modules[st->modules_len++] = mod;
+    char* ret  = fmtstr("/*\n\tname: %s\n\tversion: %s\n\tauthor: %s\n\twebsite: %s\n\tlicense_name: %s\n\tlicense: %s\n\tdescription: %s\n*/", mod.name, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description);
+    return (axo_decl){
+        .kind = axo_module_info_decl_kind,
+        .val = ret
+    };
 }
 
 axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td){
@@ -300,21 +386,17 @@ const char* axo_identifier_kind_to_str(axo_identifier_kind kind){
 }
 
 void axo_add_decl(axo_state* st, axo_decl d){
-    if (st->decls_len % axo_decls_cap == 0)
-        st->decls = (axo_decl*)realloc(st->decls, (st->decls_len+axo_decls_cap)*sizeof(axo_decl));
-    st->decls[st->decls_len] = d;
-    st->decls_len++;
+    resize_dyn_arr_if_needed(axo_decl, st->decls, st->decls_len, axo_decls_cap);
+    st->decls[st->decls_len++] = d;
 }
 
 void axo_add_statement(axo_scope* sc, axo_statement s){
-    if (sc->statements_len % axo_statements_cap == 0)
-        sc->statements = (axo_statement*)realloc(sc->statements, (sc->statements_len+axo_statements_cap)*sizeof(axo_statement));
-    sc->statements[sc->statements_len] = s;
-    sc->statements_len++;
+    resize_dyn_arr_if_needed(axo_statement, sc->statements, sc->statements_len, axo_statements_cap);
+    sc->statements[sc->statements_len++] = s;
 }
 
 void axo_set_var(axo_scope* sc, axo_var var){
-    printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
+    // printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
     new_ptr_one(ptr, axo_var);
     *ptr = var;
     hashmap_set(sc->variables, ptr);
@@ -857,10 +939,8 @@ axo_scope* axo_scopes_top(axo_scopes* scopes){
 }
 
 void axo_push_scope(axo_scopes* scopes, axo_scope* sc){
-    if (scopes->len % axo_scopes_table_cap == 0)
-        scopes->scopes = (axo_scope**)realloc(scopes->scopes, (scopes->len+axo_scopes_table_cap)*sizeof(axo_scope*));
-    scopes->scopes[scopes->len] = sc;
-    scopes->len++;
+    resize_dyn_arr_if_needed(axo_scope*, scopes->scopes, scopes->len, axo_scopes_table_cap);
+    scopes->scopes[scopes->len++] = sc;
 }
 
 char* itoa_spaced(int a){
@@ -982,7 +1062,7 @@ char* axo_swap_file_extension(char* filename, char* new_ext){
     return new_filename;
 }
 
-bool axo_file_exists(const char *fname) {
+bool axo_file_exists(char *fname) {
     FILE *file;
     if ((file = fopen(fname, "r"))) {
         fclose(file);
@@ -991,15 +1071,15 @@ bool axo_file_exists(const char *fname) {
     return false; // File does not exist
 }
 
-int axo_dir_exists(const char *dirname) {
+bool axo_dir_exists(char* dirname) {
     DIR *dir = opendir(dirname);
     if (dir) {
         closedir(dir);
-        return 1; // Directory exists
+        return true; // Directory exists
     } else if (ENOENT == errno) {
-        return 0; // Directory does not exist
+        return false; // Directory does not exist
     } else {
-        return -1; // opendir() failed for some other reason
+        return false; // opendir() failed for some other reason
     }
 }
 

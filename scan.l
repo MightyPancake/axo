@@ -83,6 +83,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "null" {ret_null; return NULL_KWRD; }
 "use" {ret_null; return USE_KWRD; }
 "include" {ret_null; return INCLUDE_KWRD; }
+"module" {ret_null; return MODULE_KWRD; }
 
 "--" {ret_null; return DECR_OP; }
 "++" {ret_null; return INCR_OP; }
@@ -96,7 +97,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
 
-\"[^\"\n]*\" {ret_def; return(STRING_LITERAL); }
+\"([^"\\]|\\.|\\\n)*\" {ret_def; return(STRING_LITERAL); }
 [0-9]+ {ret_def; return(INTEGER_LITERAL); }
 ([0-9]+\.[0-9]*|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z][0-9a-zA-Z_]* {ret_def; return IDEN; }
@@ -122,11 +123,12 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 \n {axo_line(state)++; axo_col(state)=1;}
 \r ;
 [ \t]+ {axo_col(state)+=yyleng;}
-. { printf("Lexical error: unexpected '%c' in input file\n", yytext[0]);
-    return -1;
+. { 
+    ret_null;
+    yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
   }
 <<EOF>> {
-  printf("File ended.\n");
+  // printf("File ended.\n");
   if (state->sources_len>1)
     axo_pop_source(state);
   else

@@ -91,13 +91,14 @@ extern int yydebug;
     INCLUDE_KWRD = 292,            /* "include"  */
     STRUCT_LITERAL_START = 293,    /* "struct{"  */
     DOT_FIELD = 294,               /* ".field"  */
-    ARROW_OP = 295,                /* "->"  */
-    IS_KWRD = 296,                 /* "is"  */
-    IDENTIFIER_PREC = 297,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 298,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 299,               /* LOOP_PREC  */
-    UMINUS = 300,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 301   /* STRUCT_LIT_NAMED_FIELD  */
+    MODULE_KWRD = 295,             /* "module"  */
+    ARROW_OP = 296,                /* "->"  */
+    IS_KWRD = 297,                 /* "is"  */
+    IDENTIFIER_PREC = 298,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 299,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 300,               /* LOOP_PREC  */
+    UMINUS = 301,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 302   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -106,7 +107,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 129 "axo_gram.y"
+#line 131 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -129,8 +130,9 @@ union YYSTYPE
   axo_empty_arr_lit empty_arr_lit_type;
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
+  axo_module module_type;
 
-#line 134 "axo_gram.tab.h"
+#line 136 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

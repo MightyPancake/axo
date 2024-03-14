@@ -17,11 +17,12 @@ typedef struct hashmap* map;
 #define axo_tok_locations_cap 1024
 #define axo_enum_names_cap 16
 #define axo_types_def_cap 16
-#define axo_stat_arr_literal_cap 1
-#define axo_strings_cap 1
+#define axo_stat_arr_literal_cap 16
+#define axo_strings_cap 512
 #define axo_empty_arr_lit_cap 128
-#define axo_index_access_cap 2
-#define axo_state_sources_cap 4
+#define axo_index_access_cap 128
+#define axo_state_sources_cap 12
+#define axo_modules_cap 12
 
 typedef enum axo_typ_kind{
     axo_simple_kind,
@@ -38,15 +39,6 @@ typedef enum axo_typ_kind{
 
 #define axo_subtyp(T) ((axo_typ*)(T.subtyp))
 #define axo_get_arr_typ(T) (*((axo_arr_typ*)(T.arr)))
-
-// typedef struct axo_loc{
-//     int        first_line;
-//     int        first_column;
-//     int        last_line;
-//     int        last_column;
-//     FILE*      file;
-//     pos        pos;
-// }axo_loc;
 
 typedef enum axo_include_path_kind{
     axo_local_include_path_kind,
@@ -163,7 +155,8 @@ typedef enum axo_decl_kind{
     axo_func_decl_kind,
     axo_use_decl_kind,
     axo_c_include_decl_kind,
-    axo_c_register_decl_kind
+    axo_c_register_decl_kind,
+    axo_module_info_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -227,6 +220,17 @@ typedef struct axo_source{
     int              col;
 }axo_source;
 
+typedef struct axo_module{
+    char*        name;
+    char*        version;
+    char*        author;
+    // char**       contributors
+    char*        website;
+    char*        license_name;
+    char*        license;
+    char*        description;
+}axo_module;
+
 typedef struct axo_state{
     axo_decl*              decls;
     int                    decls_len;
@@ -248,6 +252,10 @@ typedef struct axo_state{
     char*                  root_path;
     axo_source*            sources;
     int                    sources_len;
+
+    //Modules
+    axo_module*            modules;
+    int                    modules_len;
 }axo_state;
 
 #define axo_source(ST) (&(ST->sources[ST->sources_len-1]))

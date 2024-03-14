@@ -1,10 +1,12 @@
 #include <stdio.h>
 #register i32 printf(@byte, ...)
 
-include "libs/core/core.axo"
-
 include "./mod/file.axo"
-use stdlib
+// use stdlib
+
+fn lmao(a|1, b|2){
+    ret a-b+2
+}
 
 fn main([][]byte args){
     a = add(1,2)*sub(5,3)

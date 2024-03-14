@@ -81,6 +81,7 @@
 %token<str> INCLUDE_KWRD "include"
 %token<str> STRUCT_LITERAL_START "struct{"
 %token<str> DOT_FIELD ".field"
+%token<str> MODULE_KWRD "module"
 %token<str> ARROW_OP "->"
 %token<str> IS_KWRD "is"
 %type<scope> code_scope code_scope_start
@@ -103,6 +104,7 @@
 %type<index_access_type> index_access
 %type<arr_lit_type> stat_arr_literal stat_arr_literal_start
 %type<each_loop_type> each_iter_dims each_loop_base
+%type<module_type> module_info
 
 //Prec
 %left IDENTIFIER_PREC
@@ -148,6 +150,7 @@
   axo_empty_arr_lit empty_arr_lit_type;
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
+  axo_module module_type;
 }
 
 %%
@@ -163,7 +166,7 @@ declarations : /* EMPTY */ {}
     }else{
       char* path = &($C_INCLUDE[1]);
       path[strlen($C_INCLUDE)-2] = '\0';
-      printf("Path of c_include: %s\nResolved path: %s\n", path, axo_resolve_path(path));
+      // printf("Path of c_include: %s\nResolved path: %s\n", path, axo_resolve_path(path));
       axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", axo_resolve_path(path)), .kind=axo_c_include_decl_kind});
     }
   }
@@ -251,34 +254,50 @@ declaration : struct_def { //Fix! Make this use realloc less
     $$ = (axo_decl){.val=decl, .kind=axo_struct_decl_kind};
   }
   | "use" IDEN {
-    printf("Using: %s\n", $2);
-    printf("Searching for dir...\n");
-    //Check local first
-    if (axo_dir_exists($2) == 1){
-      printf("Found locally!\n");
-    }else if (axo_dir_exists(fmt_str(static_str_ptr(500), "%s"axo_dir_sep"libs"axo_dir_sep"%s", state->root_path, $IDEN))){
-      printf("Found in root path\n");
-    }else
-      yyerror(&@2, "Couldn't find '%s'.", $IDEN);
-    
-    $$ = (axo_decl){.val="//use lib", .kind=axo_use_decl_kind};
+    $$ = axo_use_module(state, &@2, $IDEN);
   }
   | "include" STRING_LITERAL {
-    char str[512];
-    strcpy(str, &($STRING_LITERAL[1]));
-    str[strlen(str)-1] = '\0';
-    printf("include %s\n", str);
-    printf("Checking for '%s'\n", str);
-    //Check local first
-    bool exists = axo_file_exists(str);
-    if (exists){
-      printf("Found!\n");
-      axo_new_source(state, str);
-    }else{
-      printf("Err!!!\n");
-      yyerror(&@2, "Couldn't find '%s'.\n", str);
-    }
-    $$ = (axo_decl){.val=fmtstr("//including '%s'", str), .kind=axo_use_decl_kind};
+    $$ = axo_include_file(state, &@2, $STRING_LITERAL, true);
+  }
+  | "module" module_info ')' {
+    //TODO: Make this into an info comment
+    axo_load_module_defaults(state, &$module_info);
+    $$ = axo_add_module(state, $module_info);
+    // $$ = (axo_decl){.kind=axo_module_info_decl_kind, .val=alloc_str("")};
+  }
+  ;
+
+module_info : '(' {
+    $$ = (axo_module){
+      .name = NULL,
+      .version = NULL,
+      .author = NULL,
+      .website = NULL,
+      .license_name = NULL,
+      .license = NULL,
+      .description = NULL
+    };
+  }
+  | module_info IDEN ':' STRING_LITERAL {
+    char* str_val = alloc_str(&($STRING_LITERAL[1]));
+    str_val[strlen(str_val)-1] = '\0';
+    if (strcmp($IDEN, "name") == 0){
+      $$.name = str_val;
+    }else if (strcmp($IDEN, "version") == 0){
+      $$.version = str_val;
+    }else if (strcmp($IDEN, "author") == 0){
+      $$.author = str_val;
+    }else if (strcmp($IDEN, "website") == 0){
+      $$.website = str_val;
+    }else if (strcmp($IDEN, "license_name") == 0){
+      $$.license_name = str_val;
+    }else if (strcmp($IDEN, "license") == 0){
+      $$.license = str_val;
+    }else if (strcmp($IDEN, "description") == 0){
+      $$.description = str_val;
+    }else
+      yyerror(&@2, "Not a valid module information field.");
+    // printf("Setting %s to %s\n", $IDEN, $STRING_LITERAL);
   }
   ;
 
@@ -827,12 +846,11 @@ matching_statement : expr {
   }
   | expr "is" val_typ {
     if ($1.lval_kind == axo_var_lval_kind){
-      //
-      axo_typ typ = axo_clean_typ($val_typ);
-      printf(axo_cyan_fg"Setting var '%s':"axo_reset_style"\n", $1.val);
-      printf("type: '%s'\n", axo_typ_to_str(typ));
-      printf("c_type: '%s'\n", axo_typ_to_c_str(typ));
-      printf("name_typ_decl: '%s'\n", axo_name_typ_decl($1.val, typ));
+      // axo_typ typ = axo_clean_typ($val_typ);
+      // printf(axo_cyan_fg"Setting var '%s':"axo_reset_style"\n", $1.val);
+      // printf("type: '%s'\n", axo_typ_to_str(typ));
+      // printf("c_type: '%s'\n", axo_typ_to_c_str(typ));
+      // printf("name_typ_decl: '%s'\n", axo_name_typ_decl($1.val, typ));
       //
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
@@ -1627,6 +1645,8 @@ int main(int argc, char** argv) {
   state = axo_new_state(root_p);
   axo_new_source(state, argv[1]);
   global_scope = state->global_scope;
+  //Use core module
+  axo_add_decl(state, axo_use_module(state, NULL, "core"));
   //Scopes table
   scopes = alloc_one(axo_scopes);
   scopes->scopes = (axo_scope**)malloc(axo_scopes_table_cap*sizeof(axo_scope*));
