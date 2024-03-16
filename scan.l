@@ -7,6 +7,7 @@
   extern int prog_return;
   extern axo_state* state;
   void axo_pop_source(axo_state* st);
+  void axo_add_decl(axo_state* st, axo_decl decl);
   int yywrap(void);
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char * fmt, ...);
@@ -129,6 +130,11 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   }
 <<EOF>> {
   // printf("File ended.\n");
+  if (state->in_core){
+    state->in_core = false;
+    axo_add_decl(state, (axo_decl){.kind=axo_assign_decl_kind, .val=NULL});
+    state->modules_decl = state->decls_len-1;
+  }
   if (state->sources_len>1)
     axo_pop_source(state);
   else

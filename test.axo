@@ -1,14 +1,10 @@
-#include <stdio.h>
-#register i32 printf(@byte, ...)
-
-include "./mod/file.axo"
-// use stdlib
-
-fn lmao(a|1, b|2){
-    ret a-b+2
-}
+//Provides print_module and printf!
+use std
 
 fn main([][]byte args){
-    a = add(1,2)*sub(5,3)
+    for each mod in modules {
+        print_module(mod)
+        printf("\n")
+    }
     ret 0
 }

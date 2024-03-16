@@ -15,7 +15,6 @@
   //State
   #define top_scope axo_scopes_top(scopes)
   axo_state* state;
-  axo_scope* global_scope;
   //Scopes
   axo_scopes* scopes;
   int in_loop_count = 0;
@@ -207,7 +206,7 @@ declarations : /* EMPTY */ {}
       if(i>0) strcat(decl, ",\n");
       char* field = fmtstr("%s$%s", $3, $5.names[i]);
       strcat(decl, field);
-      axo_set_var(global_scope, (axo_var){.name=field, .typ=axo_no_typ, .is_const=true});
+      axo_set_var(state->global_scope, (axo_var){.name=field, .typ=axo_no_typ, .is_const=true});
     }
     strcat(decl, "\n}");
     strcat(decl, $3);
@@ -236,7 +235,7 @@ declaration : struct_def { //Fix! Make this use realloc less
     strapnd(&decl, $struct_def.name);
     strapnd(&decl, "{\n");
     for (int i=0; i<$struct_def.fields_len; i++){
-      strapnd(&decl, axo_name_typ_decl($struct_def.fields[i].name, $struct_def.fields[i].def.typ));
+      strapnd(&decl, axo_name_typ_decl(strct->fields[i].name, strct->fields[i].typ));
       strapnd(&decl, ";\n");
     }
     strapnd(&decl, "}");
@@ -260,16 +259,44 @@ declaration : struct_def { //Fix! Make this use realloc less
     $$ = axo_include_file(state, &@2, $STRING_LITERAL, true);
   }
   | "module" module_info ')' {
-    //TODO: Make this into an info comment
     axo_load_module_defaults(state, &$module_info);
     $$ = axo_add_module(state, $module_info);
-    // $$ = (axo_decl){.kind=axo_module_info_decl_kind, .val=alloc_str("")};
+  }
+  | expr "is" val_typ {
+    if ($1.lval_kind == axo_var_lval_kind){
+      $$ = (axo_decl){
+        .kind=axo_is_decl_kind,
+        .val=axo_name_typ_decl($1.val, $3)
+      };
+      strapnd(&($$.val), ";");
+      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
+    }else{
+      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
+    }
+  }
+  ;
+
+struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
+    axo_struct_field* fields = (axo_struct_field*)malloc($4.f_typ.args_len*sizeof(axo_struct_field));
+    for (int i = 0; i<$4.f_typ.args_len; i++){
+      fields[i] = (axo_struct_field){
+        .name = alloc_str($func_args.args_names[i]),
+        .typ = $func_args.f_typ.args_types[i],
+        .def = $func_args.f_typ.args_defs[i]
+      };
+    }
+    $$ = (axo_struct){
+      .name=alloc_str($IDEN),
+      .fields=fields,
+      .fields_len=$4.f_typ.args_len
+    };
   }
   ;
 
 module_info : '(' {
     $$ = (axo_module){
       .name = NULL,
+      .prefix = NULL,
       .version = NULL,
       .author = NULL,
       .website = NULL,
@@ -283,6 +310,8 @@ module_info : '(' {
     str_val[strlen(str_val)-1] = '\0';
     if (strcmp($IDEN, "name") == 0){
       $$.name = str_val;
+    }else if (strcmp($IDEN, "prefix") == 0){
+      $$.prefix = str_val;
     }else if (strcmp($IDEN, "version") == 0){
       $$.version = str_val;
     }else if (strcmp($IDEN, "author") == 0){
@@ -602,7 +631,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
               $$ = (axo_expr){
                 .kind=axo_expr_normal_kind,
                 .val=fmtstr("%s.%s", $1.val, $2),
-                .typ=structure->fields[index].def.typ
+                .typ=structure->fields[index].typ
               };
             }
             break;
@@ -1390,19 +1419,6 @@ func_def_start : FN_KWRD IDEN '(' func_args ')' {
     }
   ;
 
-struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
-    axo_struct_field* fields = (axo_struct_field*)malloc($4.f_typ.args_len*sizeof(axo_struct_field));
-    for (int i = 0; i<$4.f_typ.args_len; i++){
-      fields[i].name = $4.args_names[i];
-      fields[i].def = (axo_expr){.kind=axo_expr_normal_kind, .val=$4.f_typ.args_defs[i], .typ=$4.f_typ.args_types[i]};
-    }
-    $$ = (axo_struct){
-      .name=alloc_str($2),
-      .fields=fields,
-      .fields_len=$4.f_typ.args_len
-    };
-  }  ;
-
 struct_literal_start : STRUCT_LITERAL_START {
     axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td==NULL){
@@ -1426,9 +1442,9 @@ struct_literal_start : STRUCT_LITERAL_START {
       yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
       yyerror(&@1, "Type '%s' is not a struture.", $1);
-    }else if (!axo_typ_eq(((axo_struct*)(td->typ.structure))->fields[0].def.typ, $2.typ)){
+    }else if (!axo_typ_eq(((axo_struct*)(td->typ.structure))->fields[0].typ, $2.typ)){
       axo_struct* structure = ((axo_struct*)(td->typ.structure));
-      yyerror(&@2,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[0].def.typ), structure->fields[0].name, structure->name, axo_typ_to_str($2.typ));
+      yyerror(&@2,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[0].typ), structure->fields[0].name, structure->name, axo_typ_to_str($2.typ));
     }else{
       int total_field_count = ((axo_struct*)(td->typ.structure))->fields_len;
       $$ = (axo_struct_val){
@@ -1463,8 +1479,8 @@ struct_literal_start : STRUCT_LITERAL_START {
         }
       }
       if (index<0) yyerror(&@2, "Structure '%s' doesn't have '%s' field.", structure->name, $2);
-      else if (!axo_typ_eq(structure->fields[index].def.typ, $4.typ)){
-        yyerror(&@4,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].def.typ), structure->fields[index].name, structure->name, axo_typ_to_str($4.typ));
+      else if (!axo_typ_eq(structure->fields[index].typ, $4.typ)){
+        yyerror(&@4,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($4.typ));
       }else{
         $$.fields[index] = $4.val;
       }
@@ -1475,8 +1491,8 @@ struct_literal_start : STRUCT_LITERAL_START {
     axo_struct* structure = (axo_struct*)($$.typ.structure);
     if ($$.fields_count==structure->fields_len){
       yyerror(&@3, "Too many fields provided to structure '%s'.", structure->name);
-    }else if (!axo_typ_eq(structure->fields[$$.fields_count].def.typ, $3.typ)){
-        yyerror(&@3,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[$$.fields_count].def.typ), structure->fields[$$.fields_count].name, structure->name, axo_typ_to_str($3.typ));
+    }else if (!axo_typ_eq(structure->fields[$$.fields_count].typ, $3.typ)){
+        yyerror(&@3,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[$$.fields_count].typ), structure->fields[$$.fields_count].name, structure->name, axo_typ_to_str($3.typ));
     }else if ($$.fields[$$.fields_count]==NULL){
       $$.fields[$$.fields_count] = $3.val;
       $$.fields_count++;
@@ -1490,7 +1506,7 @@ struct_literal_start : STRUCT_LITERAL_START {
     if ($$.fields_count==structure->fields_len){
       yyerror(&@2, "Too many fields provided to structure '%s'.", structure->name);
     }else if ($$.fields[$$.fields_count]==NULL){
-      $$.fields[$$.fields_count] = ((axo_struct*)($1.typ.structure))->fields[$$.fields_count].def.val;
+      $$.fields[$$.fields_count] = ((axo_struct*)($1.typ.structure))->fields[$$.fields_count].def;
       $$.fields_count++;
     }
   } %prec STRUCT_LIT_NAMED_FIELD
@@ -1505,8 +1521,8 @@ struct_literal_start : STRUCT_LITERAL_START {
       }
     }
     if (index<0) yyerror(&@3, "Structure '%s' doesn't have '%s' field.", structure->name, $3);
-    else if (!axo_typ_eq(structure->fields[index].def.typ, $5.typ)){
-        yyerror(&@5,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].def.typ), structure->fields[index].name, structure->name, axo_typ_to_str($5.typ));
+    else if (!axo_typ_eq(structure->fields[index].typ, $5.typ)){
+        yyerror(&@5,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($5.typ));
     }else if ($$.fields[index]==NULL){
       $$.fields[index] = $5.val;
     }else{
@@ -1519,7 +1535,7 @@ struct_literal : struct_literal_start '}' {
     $$=$1;
     axo_struct* structure = ((axo_struct*)$$.typ.structure);
     for(int i=0; i<structure->fields_len; i++){
-      if($$.fields[i] == NULL) $$.fields[i] = structure->fields[i].def.val;
+      if($$.fields[i] == NULL) $$.fields[i] = structure->fields[i].def;
     }
   }
   ;
@@ -1643,15 +1659,15 @@ int main(int argc, char** argv) {
   printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
-  axo_new_source(state, argv[1]);
-  global_scope = state->global_scope;
-  //Use core module
-  axo_add_decl(state, axo_use_module(state, NULL, "core"));
   //Scopes table
   scopes = alloc_one(axo_scopes);
-  scopes->scopes = (axo_scope**)malloc(axo_scopes_table_cap*sizeof(axo_scope*));
+  scopes->scopes = NULL;
   scopes->len = 0;
-  axo_push_scope(scopes, global_scope);
+  axo_push_scope(scopes, state->global_scope);
+  //Use core module
+  axo_new_source(state, argv[1]);
+  axo_add_decl(state, axo_use_module(state, NULL, "core"));
+  state->in_core = true;
   //Parse
   yyparse();
   printf("axo -> C: done!\n");

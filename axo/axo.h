@@ -22,13 +22,14 @@ extern FILE *yyin;
 void yyrestart(FILE*);
 
 #define static_str_ptr(SZ) ((char**)(&((char[SZ]){})))  
+#define s_str(SZ) ((char[SZ]){})
 
-char* fmt_str(char** dest, const char fmt[], ...){
+char* fmt_str(char* dest, const char fmt[], ...){
     va_list args;
     va_start(args, fmt);
-    vasprintf(dest, fmt, args);
+    vsprintf(dest, fmt, args);
     va_end(args);
-    return *dest;
+    return dest;
 }
 
 //Hashmap helpers
@@ -39,6 +40,9 @@ uint64_t map_hash_vars(const void *item, uint64_t seed0, uint64_t seed1) {return
 
 int map_cmp_func(const void* a, const void* b, void *udata){return strcmp(((axo_func*)(a))->name, ((axo_func*)(b))->name); }
 uint64_t map_hash_func(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_func*)item)->name, strlen(((axo_func*)item)->name), seed0, seed1);}
+
+int map_cmp_module(const void* a, const void* b, void *udata){return strcmp(((axo_module*)(a))->name, ((axo_module*)(b))->name); }
+uint64_t map_hash_module(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_module*)item)->name, strlen(((axo_module*)item)->name), seed0, seed1);}
 
 int map_cmp_str(const void* a, const void* b, void *udata){return strcmp((char*)a, (char*)b); }
 uint64_t map_hash_str(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(item, strlen((char*)item), seed0, seed1);}
@@ -222,7 +226,7 @@ axo_state* axo_new_state(char* root_path){
         .bug_hunter=false,
         .delete_c=true
     };
-    st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="i32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="i32", .cname="int"}, .def="0"}});
+    st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
     st->float_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="f32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="f32", .cname="float"}, .def="0.0"}});
     st->byte_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="byte", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="byte", .cname="char"}, .def="((char)0)"}});
@@ -234,7 +238,8 @@ axo_state* axo_new_state(char* root_path){
     st->sources = NULL;
     st->sources_len = 0;
     //Modules
-    st->modules = NULL;
+    st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
+    st->module_names = NULL;
     st->modules_len = 0;
     return st;
 }
@@ -332,18 +337,53 @@ void axo_load_module_defaults(axo_state* st, axo_module* mod){
         mod->name = alloc_str(&(no_ext[i]));
         free(no_ext);
     }
+    mod->prefix = mod->prefix ? mod->prefix : fmtstr("%s_mod_", mod->name);
     mod->version = mod->version ? mod->version : alloc_str("0.0.0");
     mod->author = mod->author ? mod->author : alloc_str("?");
-    mod->website = mod->website ? mod->website : alloc_str("www.example-website.com");
-    mod->license_name = mod->license_name ? mod->license_name : alloc_str("LICENSE");
-    mod->license = mod->license ? mod->license : alloc_str("https://www.license-website.org/license.html");
-    mod->description = mod->description ? mod->description : alloc_str("");
+    mod->website = mod->website ? mod->website : alloc_str("https://www.website.com");
+    mod->license_name = mod->license_name ? mod->license_name : alloc_str("Support free software! <3");
+    mod->license = mod->license ? mod->license : alloc_str("https://www.license-website.org/license.txt");
+    mod->description = mod->description ? mod->description : alloc_str("A cool module for cool people!");
+}
+
+void axo_set_module(axo_state* st, axo_module mod){
+    axo_module* ptr = alloc_one(axo_module);
+    *ptr = mod;
+    hashmap_set(st->modules, ptr);
+}
+
+axo_module* axo_get_module(axo_state* st, char* name){
+    axo_module placeholder = (axo_module){.name=name};
+    return (axo_module*)(hashmap_get(st->modules, &placeholder));
+}
+
+char* axo_generate_module_string(axo_module mod){
+    return fmtstr("(axo_module){.name=\"%s\",.prefix=\"%s\",.version=\"%s\", .author=\"%s\",.website=\"%s\",.license_name=\"%s\",.license=\"%s\",.description=\"%s\"}",
+    mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description);
+}
+
+char* axo_generate_modules(axo_state* st){
+    // char* ret = fmtstr("void axo_set_modules(){\naxo__arr tmp = (axo__arr){.data=((axo_module[]){");
+    char* ret = fmtstr("axo_module axo_mods[] = {");
+    for (int i=0; i<st->modules_len; i++){
+        char* name = st->module_names[i];
+        axo_module* mod = axo_get_module(st, name);
+        char* mod_str = axo_generate_module_string(*mod);
+        if (i>0) strapnd(&ret, ",");
+        strapnd(&ret, mod_str);
+        free(mod_str);
+    }
+    // strapnd(&ret, fmt_str(s_str(128), "}), .len=((axo_arr_dim_t[]){%d}),.flags=AXO_ARR_STATIC};\nmodules = tmp;\n}\n", st->modules_len));
+    strapnd(&ret, fmt_str(s_str(256), "};\naxo__arr modules = {.data=axo_mods, .len=((axo_arr_dim_t[]){%d}),.flags=AXO_ARR_STATIC};\n", st->modules_len));
+    return ret;
 }
 
 axo_decl axo_add_module(axo_state* st, axo_module mod){
-    resize_dyn_arr_if_needed(axo_module, st->modules, st->modules_len, axo_modules_cap);
-    st->modules[st->modules_len++] = mod;
-    char* ret  = fmtstr("/*\n\tname: %s\n\tversion: %s\n\tauthor: %s\n\twebsite: %s\n\tlicense_name: %s\n\tlicense: %s\n\tdescription: %s\n*/", mod.name, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description);
+    resize_dyn_arr_if_needed(char*, st->module_names, st->modules_len, axo_modules_cap);
+    st->module_names[st->modules_len++] = mod.name;
+    printf("mod_len = %d\n", st->modules_len);
+    axo_set_module(st, mod);
+    char* ret  = fmtstr("/*\n\tname: %s\n\tprefix: %s\n\tversion: %s\n\tauthor: %s\n\twebsite: %s\n\tlicense_name: %s\n\tlicense: %s\n\tdescription: %s\n*/", mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description);
     return (axo_decl){
         .kind = axo_module_info_decl_kind,
         .val = ret
@@ -369,10 +409,13 @@ axo_typ_def* axo_get_typ_def(axo_state* st, char* name){
 
 axo_scope* axo_new_scope(axo_scope* parent){
     new_ptr_one(sc, axo_scope);
+    sc->statements = NULL;
+    sc->statements_len = 0;
     sc->parent = parent;
     sc->variables = new_map(axo_var, map_hash_vars, map_cmp_vars);
     sc->ret_typ = axo_no_typ;
     sc->def_iter = (parent==NULL ? 0 : parent->def_iter);
+    sc->ret_assign = NULL;
     return sc;
 }
 
@@ -458,7 +501,7 @@ char* axo_typ_to_str(axo_typ typ){
             return typ.simple.name;
             break;
         case axo_func_kind:
-            ret = fmt_str((char**)&ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
+            ret = fmt_str(ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
                 if (i>0) strcat(ret, ",");
                 strcat(ret, axo_typ_to_str(fnt.args_types[i]));
@@ -477,23 +520,23 @@ char* axo_typ_to_str(axo_typ typ){
                 dim_stars[i-1] = ':';
             }
             dim_stars[i-1] = '\0';
-            return fmt_str(static_str_ptr(512),"[%s]%s", dim_stars, axo_typ_to_str(*axo_subtyp(typ)));
+            return fmt_str(s_str(512),"[%s]%s", dim_stars, axo_typ_to_str(*axo_subtyp(typ)));
             break;
         case axo_struct_kind:
             return ((axo_struct*)typ.structure)->name;
             break;
         case axo_ptr_kind:
-            return fmt_str(&ret, "@%s", axo_typ_to_str(*axo_subtyp(typ)));
+            return fmt_str(ret, "@%s", axo_typ_to_str(*axo_subtyp(typ)));
             break;
         default:
-            return fmt_str(static_str_ptr(100), "unknown type kind (%d)", typ.kind);
+            return fmt_str(s_str(128), "unknown type kind (%d)", typ.kind);
             break;
     }
 }
 
 char* axo_c_arr_of_typ(axo_typ typ, char* inside){
     switch(typ.kind){
-        case axo_simple_kind: return fmtstr("%s[%s]", typ.simple, inside); break;
+        case axo_simple_kind: return fmtstr("%s[%s]", typ.simple.cname, inside); break;
         case axo_arr_kind: return fmtstr("axo__arr[%s]", inside); break;
         default:
             yyerror(NULL, "Unsupported axo_c_arr_of_typ type '%s'!", axo_typ_to_str(typ));
@@ -546,9 +589,14 @@ char* axo_typ_to_c_str(axo_typ t){
                     yyerror(NULL, "Couldn't create a string for pointer of that kind!");
             }
             break;
-        default: break;
+        case axo_struct_kind:
+            return ((axo_struct*)t.structure)->name;
+            break;
+        default: 
+            return alloc_str("unhandled_typ");
+            break;
     }
-    return NULL;
+    return alloc_str("unknown_typ");
 }
 
 char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
@@ -659,7 +707,10 @@ axo_typ axo_clean_typ(axo_typ typ){
 }
 
 char* axo_get_code(axo_state* st){
+    //Generate rest of the code
+    //Load args
     char* ret = empty_str;
+    st->decls[st->modules_decl].val = axo_generate_modules(st);
     // strapnd(&ret, "axo_load_args(args);\n");
     for (int i = 0; i<st->decls_len; i++){
         strapnd(&ret, st->decls[i].val);

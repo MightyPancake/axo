@@ -1,7 +1,7 @@
 CC=gcc
 
 compile:
-	gcc axo_gram.tab.c lex.yy.c -o axo.exe -Wall
+	gcc axo_gram.tab.c lex.yy.c -o axo.exe -Wall -g
 	@echo "[92mCompiler built![0m"
 
 build:

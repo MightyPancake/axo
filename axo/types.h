@@ -11,18 +11,18 @@ typedef struct hashmap* map;
 //Memory management
 #define axo_scopes_cap 32
 #define axo_scopes_table_cap 8
-#define axo_decls_cap 16
-#define axo_statements_cap 16
-#define axo_func_args_cap 2
+#define axo_decls_cap 128
+#define axo_statements_cap 128
+#define axo_func_args_cap 128
 #define axo_tok_locations_cap 1024
-#define axo_enum_names_cap 16
+#define axo_enum_names_cap 32
 #define axo_types_def_cap 16
 #define axo_stat_arr_literal_cap 16
-#define axo_strings_cap 512
+#define axo_strings_cap 1024
 #define axo_empty_arr_lit_cap 128
 #define axo_index_access_cap 128
-#define axo_state_sources_cap 12
-#define axo_modules_cap 12
+#define axo_state_sources_cap 32
+#define axo_modules_cap 16
 
 typedef enum axo_typ_kind{
     axo_simple_kind,
@@ -156,7 +156,9 @@ typedef enum axo_decl_kind{
     axo_use_decl_kind,
     axo_c_include_decl_kind,
     axo_c_register_decl_kind,
-    axo_module_info_decl_kind
+    axo_module_info_decl_kind,
+    axo_assign_decl_kind,
+    axo_is_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -222,6 +224,7 @@ typedef struct axo_source{
 
 typedef struct axo_module{
     char*        name;
+    char*        prefix;
     char*        version;
     char*        author;
     // char**       contributors
@@ -254,8 +257,11 @@ typedef struct axo_state{
     int                    sources_len;
 
     //Modules
-    axo_module*            modules;
+    map                    modules;
+    char**                 module_names;
     int                    modules_len;
+    int                    modules_decl;
+    bool                   in_core;
 }axo_state;
 
 #define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
@@ -272,7 +278,8 @@ typedef struct axo_state{
 
 typedef struct axo_struct_field{
     char*           name;
-    axo_expr        def;
+    axo_typ         typ;
+    char*           def;
 }axo_struct_field;
 
 typedef struct axo_struct{

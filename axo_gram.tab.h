@@ -107,7 +107,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 131 "axo_gram.y"
+#line 130 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
