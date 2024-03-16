@@ -1,10 +1,13 @@
 //Provides print_module and printf!
 use std
+use math
 
 fn main([][]byte args){
     for each mod in modules {
+        // printf("%s\n", mod.name)
         print_module(mod)
         printf("\n")
     }
     ret 0
 }
+

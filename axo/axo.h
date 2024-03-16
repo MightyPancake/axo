@@ -326,6 +326,20 @@ axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name){
     return (axo_decl){.val=fmtstr("//use %s", name), .kind=axo_use_decl_kind};
 }
 
+axo_module axo_new_module(){
+    return (axo_module){
+        .name = NULL,
+        .prefix = NULL,
+        .version = NULL,
+        .author = NULL,
+        .website = NULL,
+        .license_name = NULL,
+        .license = NULL,
+        .description = NULL,
+        .scope = axo_new_scope(NULL)
+    };
+}
+
 void axo_load_module_defaults(axo_state* st, axo_module* mod){
     if (!(mod->name)){
         char* no_ext = axo_strip_file_extension(axo_src_path(st));
@@ -381,7 +395,6 @@ char* axo_generate_modules(axo_state* st){
 axo_decl axo_add_module(axo_state* st, axo_module mod){
     resize_dyn_arr_if_needed(char*, st->module_names, st->modules_len, axo_modules_cap);
     st->module_names[st->modules_len++] = mod.name;
-    printf("mod_len = %d\n", st->modules_len);
     axo_set_module(st, mod);
     char* ret  = fmtstr("/*\n\tname: %s\n\tprefix: %s\n\tversion: %s\n\tauthor: %s\n\twebsite: %s\n\tlicense_name: %s\n\tlicense: %s\n\tdescription: %s\n*/", mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description);
     return (axo_decl){
@@ -849,7 +862,6 @@ void axo_parse_each_loop(axo_each_loop* lp, axo_state* state, axo_scope* scope, 
                     }
                 }
                 //Finally, create the value iterator
-                printf("Setting value iter...\n");
                 axo_set_var(scope, (axo_var){.typ = arr_typ.subtyp, .name = lp->value_iter.data, .is_const=false});
             }
             break;

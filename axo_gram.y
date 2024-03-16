@@ -294,16 +294,7 @@ struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
   ;
 
 module_info : '(' {
-    $$ = (axo_module){
-      .name = NULL,
-      .prefix = NULL,
-      .version = NULL,
-      .author = NULL,
-      .website = NULL,
-      .license_name = NULL,
-      .license = NULL,
-      .description = NULL
-    };
+    $$ = axo_new_module();
   }
   | module_info IDEN ':' STRING_LITERAL {
     char* str_val = alloc_str(&($STRING_LITERAL[1]));
@@ -354,12 +345,19 @@ identifier : IDEN {
         .kind = axo_identifier_typ_kind,
         .data = td
       };
-    }else if (false) { //check for module!
-    }else{ //Then assume it was a variable
-      $$ = (axo_identifier){
-        .kind = axo_identifier_var_kind,
-        .data = (void*)alloc_str($1)
-      };
+    }else{
+      axo_module* mod = axo_get_module(state, $IDEN);
+      if (mod){
+        $$ = (axo_identifier){
+          .kind = axo_identifier_module_kind,
+          .data = mod
+        };
+      }else{
+        $$ = (axo_identifier){
+          .kind = axo_identifier_var_kind,
+          .data = (void*)alloc_str($1)
+        };
+      }
     }
   } %prec IDENTIFIER_PREC
   ;
@@ -1404,7 +1402,7 @@ func_def_start : FN_KWRD IDEN '(' func_args ')' {
     axo_code_scope_started = true;
     for (int i = 0; i<$$.f_typ.args_len; i++)
       axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
-    }
+  }
   | FN_KWRD val_typ IDEN '(' func_args ')' {
     $$.name = alloc_str($IDEN);
     $$.args_names = $func_args.args_names;
@@ -1416,7 +1414,21 @@ func_def_start : FN_KWRD IDEN '(' func_args ')' {
     axo_code_scope_started = true;
     for (int i = 0; i<$$.f_typ.args_len; i++)
       axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
-    }
+  }
+  | FN_KWRD IDEN DOT_FIELD '(' func_args ')' {
+    axo_module* mod = axo_get_module(state, $IDEN);
+    if (!mod)
+      yyerror(&@IDEN, "Module doesn't exist.");
+    $$.name = fmtstr("%s%s", mod->author, $DOT_FIELD);
+    $$.args_names = $func_args.args_names;
+    $$.f_typ.args_defs = $func_args.f_typ.args_defs;
+    $$.f_typ.args_types = $func_args.f_typ.args_types;
+    $$.f_typ.args_len = $func_args.f_typ.args_len;
+    axo_push_scope(scopes, axo_new_scope(top_scope));
+    axo_code_scope_started = true;
+    for (int i = 0; i<$$.f_typ.args_len; i++)
+      axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
+  }
   ;
 
 struct_literal_start : STRUCT_LITERAL_START {

@@ -232,6 +232,7 @@ typedef struct axo_module{
     char*        license_name;
     char*        license;
     char*        description;
+    axo_scope*   scope;
 }axo_module;
 
 typedef struct axo_state{
