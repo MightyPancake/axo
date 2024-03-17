@@ -1,0 +1,13 @@
+module(
+  name: "tim"
+  author: "mightypancake"
+  description: "Provides basic time functionality."
+)
+
+#include <time.h>
+
+#register int time(@byte)
+
+fn tim.now(){
+  ret time(null)
+}
