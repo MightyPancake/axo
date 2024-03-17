@@ -158,15 +158,16 @@ declarations : /* EMPTY */ {}
   | declarations func_def {
     axo_add_decl(state, axo_func_def_to_decl($2));
   }
-  | declarations C_INCLUDE { //Fix: Check if file exists
+  | declarations C_INCLUDE {
     if ($C_INCLUDE[0] == '<'){
-      //Check if file exists? Hard to do probably, idk
       axo_add_decl(state, (axo_decl){.val = fmtstr("#include %s", $C_INCLUDE), .kind=axo_c_include_decl_kind});
     }else{
       char* path = &($C_INCLUDE[1]);
       path[strlen($C_INCLUDE)-2] = '\0';
       // printf("Path of c_include: %s\nResolved path: %s\n", path, axo_resolve_path(path));
-      axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", axo_resolve_path(path)), .kind=axo_c_include_decl_kind});
+      char* res_path = axo_resolve_path(path);
+      axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", res_path), .kind=axo_c_include_decl_kind});
+      free(res_path);
     }
   }
   | declarations C_REGISTER c_typ IDEN '(' c_typ_list ')' {

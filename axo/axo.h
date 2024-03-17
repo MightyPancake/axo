@@ -226,6 +226,7 @@ axo_state* axo_new_state(char* root_path){
         .bug_hunter=false,
         .delete_c=true
     };
+    //Load types
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
     st->float_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="f32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="f32", .cname="float"}, .def="0.0"}});
@@ -1157,7 +1158,7 @@ bool axo_dir_exists(char* dirname) {
 #elif __linux__
     char* axo_resolve_path(char* filename){
         char ret[axo_max_path_len];
-        return realpath(filename, ret);
+        return alloc_str(realpath(filename, ret));
     }
 #elif __APPLE__ 
     char* axo_resolve_path(char* filename){
