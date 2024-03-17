@@ -274,6 +274,18 @@ declaration : struct_def { //Fix! Make this use realloc less
       yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
     }
   }
+  | expr "is" val_typ '=' expr {
+    if ($1.lval_kind == axo_var_lval_kind){
+      $$ = (axo_decl){
+        .kind=axo_is_decl_kind,
+        .val = axo_get_var_decl_assign($1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
+      };
+      strapnd(&($$.val), ";");
+      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
+    }else{
+      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
+    }
+  }
   ;
 
 struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
@@ -413,6 +425,17 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     char* var_name = "";
     axo_typ_def* td;
     switch($1.kind){
+      case axo_identifier_module_kind:
+        $$ = (axo_expr){
+          .val = alloc_str(""),
+          .typ = (axo_typ){
+            .kind = axo_module_kind,
+            .module = $identifier.data
+          },
+          .kind = axo_expr_module_kind,
+          .lval_kind=axo_not_lval_kind
+        };
+        break;
       case axo_identifier_var_kind:
         var_name = (char*)($identifier.data);
         axo_var* var = axo_get_var(top_scope, (char*)($1.data));
@@ -593,7 +616,21 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   | expr DOT_FIELD {
     axo_enum* enumerate;
     axo_struct* structure;
+    axo_var* var;
+    axo_module* mod;
     switch($1.kind){
+      case axo_expr_module_kind:
+        mod = (axo_module*)($1.typ.module);
+        var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $DOT_FIELD));        
+        if (var == NULL && rval_now)
+          yyerror(&@2, "Module '%s' doesn't have variable '%s'.", mod->name, $DOT_FIELD);
+        $$ = (axo_expr){
+          .val = fmtstr("%s%s", mod->prefix, $DOT_FIELD),
+          .typ=(var ? var->typ : axo_no_typ),
+          .kind = axo_expr_normal_kind,
+          .lval_kind = axo_var_lval_kind
+        };
+        break;
       case axo_expr_enum_typ_kind:
         enumerate = (axo_enum*)($1.typ.enumerate);
         int index = -1;
@@ -873,15 +910,21 @@ matching_statement : expr {
   }
   | expr "is" val_typ {
     if ($1.lval_kind == axo_var_lval_kind){
-      // axo_typ typ = axo_clean_typ($val_typ);
-      // printf(axo_cyan_fg"Setting var '%s':"axo_reset_style"\n", $1.val);
-      // printf("type: '%s'\n", axo_typ_to_str(typ));
-      // printf("c_type: '%s'\n", axo_typ_to_c_str(typ));
-      // printf("name_typ_decl: '%s'\n", axo_name_typ_decl($1.val, typ));
-      //
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
         .val=axo_name_typ_decl($1.val, $3)
+      };
+      strapnd(&($$.val), ";");
+      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
+    }else{
+      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
+    }
+  }
+  | expr "is" val_typ '=' expr {
+    if ($1.lval_kind == axo_var_lval_kind){
+      $$ = (axo_statement){
+        .kind=axo_assignment_statement_kind,
+        .val = axo_get_var_decl_assign($1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
       };
       strapnd(&($$.val), ";");
       axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
@@ -944,11 +987,11 @@ till_loop_start : TILL_KWRD '(' IDEN  '=' expr ')' {
   }
   ;
 
-while_loop_base : "while" '(' expr ')' {
-    if (axo_validate_rval(&@3, $expr))
+while_loop_base : "while" expr {
+    if (axo_validate_rval(&@2, $expr))
       $$ = alloc_str($expr.val);
     in_loop_count++;
-  }
+  } %prec LOOP_PREC
   ;
 
 matching_while : while_loop_base matching_statement {
@@ -1284,13 +1327,16 @@ func_call_start : expr '(' {
     if (axo_validate_rval(&@1, $1)) {
       switch($1.typ.kind){
         case axo_func_kind:
-          $$.typ = $1.typ;
-          $$.called_val = $1.val;
-          $$.params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
+          $$ = (axo_func_call){
+            .typ = $1.typ,
+            .called_val = $expr.val,
+            .params_len = 0,
+            .params = NULL
+          };
           axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
-          char** defaults = fnt->args_defs;
           if (fnt->args_len>0){
-            $$.params[0].val = defaults[0];
+            $$.params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
+            $$.params[0].val = fnt->args_defs[0];
             $$.params_len = 1;
           }
           break;
@@ -1419,7 +1465,7 @@ func_def_start : FN_KWRD IDEN '(' func_args ')' {
     axo_module* mod = axo_get_module(state, $IDEN);
     if (!mod)
       yyerror(&@IDEN, "Module doesn't exist.");
-    $$.name = fmtstr("%s%s", mod->author, $DOT_FIELD);
+    $$.name = fmtstr("%s%s", mod->prefix, $DOT_FIELD);
     $$.args_names = $func_args.args_names;
     $$.f_typ.args_defs = $func_args.f_typ.args_defs;
     $$.f_typ.args_types = $func_args.f_typ.args_types;

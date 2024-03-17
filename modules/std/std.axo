@@ -11,6 +11,19 @@ module(
 
 #include <stdio.h>
 #register int printf(@byte, ...)
+#register int scanf(@byte, ...)
+
+#register int srand(int)
+#register int rand()
+
+fn std.seed_rand(int seed){
+	srand(seed)
+	ret 0
+}
+
+fn std.rand(){
+	ret rand()
+}
 
 fn print_module(axo_module mod){
 	printf("name: %s\nprefix: %s\nversion: %s\nauthor: %s\nwebsite: %s\nlicense_name: %s\nlicense: %s\ndescription: %s\n",

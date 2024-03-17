@@ -1,12 +1,14 @@
 module(
-	name: "math"
+	// name: "math"
 	author: "mightypancake"
 )
 
-fn random_func(){
-	ret 0
-}
+#include <math.h>
+
+math.pi is f32 = 3.14
 
 fn math.sin(f32 x){
+	//To be fixed
 	ret 0.0
 }
+

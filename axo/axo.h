@@ -344,11 +344,11 @@ void axo_load_module_defaults(axo_state* st, axo_module* mod){
     if (!(mod->name)){
         char* no_ext = axo_strip_file_extension(axo_src_path(st));
         int i;
-        for (i = strlen(no_ext); i>=0; i++){
+        for (i = strlen(no_ext); i>=0; i--){
             if (no_ext[i] == '.' || no_ext[i] == axo_dir_sep_char)
                 break;
         }
-        mod->name = alloc_str(&(no_ext[i]));
+        mod->name = alloc_str(&(no_ext[i+1]));
         free(no_ext);
     }
     mod->prefix = mod->prefix ? mod->prefix : fmtstr("%s_mod_", mod->name);
@@ -648,21 +648,22 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
 
 axo_decl axo_func_def_to_decl(axo_func func){
     char* name = strcmp(func.name, "main") == 0 ? "axo__main" : func.name;
-    int sz = strlen(axo_typ_to_str(func.f_typ.ret_typ))+strlen(name)-(func.f_typ.args_len>0?1:0) + 4;    
-    for (int i = 0; i<func.f_typ.args_len; i++)
-        sz = sz + strlen(axo_typ_to_str(func.f_typ.args_types[i])) + strlen(func.args_names[i]) + 2;
-    char* str = (char*)malloc(sz*sizeof(char));
-    strcpy(str, axo_typ_to_c_str(func.f_typ.ret_typ));
-    strcat(str, " ");
-    strcat(str, name);
-    strcat(str, "(");
+    // int sz = strlen(axo_typ_to_str(func.f_typ.ret_typ))+strlen(name)-(func.f_typ.args_len>0?1:0) + 4;    
+    // for (int i = 0; i<func.f_typ.args_len; i++)
+    //     sz = sz + strlen(axo_typ_to_str(func.f_typ.args_types[i])) + strlen(func.args_names[i]) + 2;
+    // char* str = (char*)malloc(sz*sizeof(char));
+    char* str = alloc_str(axo_typ_to_c_str(func.f_typ.ret_typ));
+    // strcpy(str, axo_typ_to_c_str(func.f_typ.ret_typ));
+    strapnd(&str, " ");
+    strapnd(&str, name);
+    strapnd(&str, "(");
     for (int i = 0; i<func.f_typ.args_len; i++){
-        if (i!=0) strcat(str, ",");
-        strcat(str, axo_typ_to_c_str(func.f_typ.args_types[i]));
-        strcat(str, " ");
-        strcat(str, func.args_names[i]);
+        if (i!=0) strapnd(&str, ",");
+        strapnd(&str, axo_typ_to_c_str(func.f_typ.args_types[i]));
+        strapnd(&str, " ");
+        strapnd(&str, func.args_names[i]);
     }
-    strcat(str, ")");
+    strapnd(&str, ")");
     for (int i = 0; i<func.f_typ.args_len; i++)
         axo_del_var(func.body, func.args_names[i]);
     strapnd(&str, axo_scope_to_statement(func.body).val);

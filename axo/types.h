@@ -72,6 +72,7 @@ typedef struct axo_typ {
         void*           structure;
         void*           arr;
         void*           map;
+        void*           module;
     };
     void*              def;
 }axo_typ;

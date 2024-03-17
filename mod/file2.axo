@@ -1,3 +1,0 @@
-fn sub(a|0, b|0){
-	ret a-b
-}
