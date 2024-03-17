@@ -1,0 +1,12 @@
+module(
+	name: "math"
+	author: "mightypancake"
+)
+
+fn random_func(){
+	ret 0
+}
+
+fn math.sin(f32 x){
+	ret 0.0
+}

@@ -1,0 +1,19 @@
+module(
+	name: "std"
+	// prefix: "axo__"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Axo standard library."
+)
+
+#include <stdio.h>
+#register int printf(@byte, ...)
+
+fn print_module(axo_module mod){
+	printf("name: %s\nprefix: %s\nversion: %s\nauthor: %s\nwebsite: %s\nlicense_name: %s\nlicense: %s\ndescription: %s\n",
+	mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description)
+}
+

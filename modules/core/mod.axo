@@ -1,0 +1,14 @@
+#include "./mod.h"
+
+struct axo_module (
+	@byte name,
+	@byte prefix,
+  @byte version,
+	@byte author,
+	@byte website,
+	@byte license_name,
+	@byte license,
+	@byte description
+)
+
+modules is []axo_module

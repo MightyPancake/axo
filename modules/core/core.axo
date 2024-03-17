@@ -1,0 +1,17 @@
+module(
+	name: "axo"
+	// prefix: "axo__"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "This file is used in every axo program to provide basic functionality that C itself just lacks by default. It also includes some (hopefully light) C headers."
+)
+
+//Include axo types, functions and macros
+#include "./core.h"
+#include "./arr.h"
+include "./mod.axo"
+#include "./main.h"
+
