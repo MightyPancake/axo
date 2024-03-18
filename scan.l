@@ -128,20 +128,19 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     ret_null;
     yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
   }
-<<EOF>> {
-  // printf("File ended.\n");
+
+%%
+int yywrap(void) {
   if (state->in_core){
     state->in_core = false;
     axo_add_decl(state, (axo_decl){.kind=axo_assign_decl_kind, .val=NULL});
     state->modules_decl = state->decls_len-1;
   }
-  if (state->sources_len>1)
+  if (state->sources_len>1){
     axo_pop_source(state);
-  else
     return 0;
+  }
+  return 1;
 }
-
-%%
-int yywrap(void) { return 1; }
 
 //FIX: else{ ?

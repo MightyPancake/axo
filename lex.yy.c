@@ -697,7 +697,7 @@ char *yytext_ptr;
  */
 #include <unistd.h>
 #endif
-
+    
 #ifndef YY_EXTRA_TYPE
 #define YY_EXTRA_TYPE void *
 #endif
@@ -1305,31 +1305,18 @@ YY_RULE_SETUP
     yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
   }
 	YY_BREAK
-case YY_STATE_EOF(INITIAL):
-case YY_STATE_EOF(SINGLE_LINE_COMMENT):
-case YY_STATE_EOF(MULTI_LINE_COMMENT):
-case YY_STATE_EOF(INCLUDE_MORE_ST):
-case YY_STATE_EOF(INCLUDE_ST):
-#line 132 "scan.l"
-{
-  // printf("File ended.\n");
-  if (state->in_core){
-    state->in_core = false;
-    axo_add_decl(state, (axo_decl){.kind=axo_assign_decl_kind, .val=NULL});
-    state->modules_decl = state->decls_len-1;
-  }
-  if (state->sources_len>1)
-    axo_pop_source(state);
-  else
-    return 0;
-}
-	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 145 "scan.l"
+#line 133 "scan.l"
 ECHO;
 	YY_BREAK
-#line 1332 "lex.yy.c"
+#line 1313 "lex.yy.c"
+			case YY_STATE_EOF(INITIAL):
+			case YY_STATE_EOF(SINGLE_LINE_COMMENT):
+			case YY_STATE_EOF(MULTI_LINE_COMMENT):
+			case YY_STATE_EOF(INCLUDE_MORE_ST):
+			case YY_STATE_EOF(INCLUDE_ST):
+				yyterminate();
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2317,9 +2304,20 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 145 "scan.l"
+#line 133 "scan.l"
 
-int yywrap(void) { return 1; }
+int yywrap(void) {
+  if (state->in_core){
+    state->in_core = false;
+    axo_add_decl(state, (axo_decl){.kind=axo_assign_decl_kind, .val=NULL});
+    state->modules_decl = state->decls_len-1;
+  }
+  if (state->sources_len>1){
+    axo_pop_source(state);
+    return 0;
+  }
+  return 1;
+}
 
 //FIX: else{ ?
 

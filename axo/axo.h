@@ -250,7 +250,7 @@ void axo_new_source(axo_state* st, char* path){
     axo_source* src = &(st->sources[st->sources_len]);
     src->path = alloc_str(path);
     src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
-    src->file = fopen(src->path, "r");
+    src->file = fopen(src->path, "rb");
     src->pos = 0;
     src->line = 1;
     src->col = 1;
