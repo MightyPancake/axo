@@ -53,6 +53,7 @@
 %token<str> C_INCLUDE_LOCAL "#include 'local_file'"
 %token<str> C_INCLUDE "#include"
 %token<str> C_REGISTER "#register"
+%token<str> TAG_TYP "#typ"
 %token<str> FN_KWRD "fn"
 %token<str> WHILE_KWRD "while"
 %token<str> FOR_KWRD "for"
@@ -286,6 +287,14 @@ declaration : struct_def { //Fix! Make this use realloc less
     }else{
       yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
     }
+  }
+  | "#typ" IDEN {
+    char* name = alloc_str($IDEN);
+    st->byte_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name=name, .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name=name, .cname=name}, .def="0"}});
+      $$ = (axo_decl){
+        .kind = axo_typ_def_decl_kind,
+        .val = fmtstr("//accepting type %s", $IDEN);
+      };
   }
   ;
 

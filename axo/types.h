@@ -165,7 +165,8 @@ typedef enum axo_decl_kind{
     axo_c_register_decl_kind,
     axo_module_info_decl_kind,
     axo_assign_decl_kind,
-    axo_is_decl_kind
+    axo_is_decl_kind,
+    axo_typ_def_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {

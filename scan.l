@@ -65,6 +65,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
   }
 
+"#typ" {ret_null; return TAG_TYP; }
 "while" {ret_null; return WHILE_KWRD; }
 "enum" {ret_null; return ENUM_KWRD; }
 "ret" {ret_null; return RET_KWRD; }
