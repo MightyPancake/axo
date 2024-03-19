@@ -495,6 +495,9 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     }
   }
   | func_call {$$ = axo_call_to_expr($1);}
+  | func_call '!' '?' {
+    //Get error instead of return value
+  }
   | expr '<' expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,

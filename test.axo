@@ -18,6 +18,6 @@ fn main([][]byte args){
     //         printf("Wrong! The answer was %d. Try again!\n", answer)
     // }
     // printf("Yes, it was %d. You won!\n", answer)
-    fl = 1.0.(f64)
+    float = 1.0.(f64)
     ret 0
 }
