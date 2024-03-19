@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -64,41 +64,42 @@ extern int yydebug;
     C_INCLUDE_LOCAL = 265,         /* "#include 'local_file'"  */
     C_INCLUDE = 266,               /* "#include"  */
     C_REGISTER = 267,              /* "#register"  */
-    FN_KWRD = 268,                 /* "fn"  */
-    WHILE_KWRD = 269,              /* "while"  */
-    FOR_KWRD = 270,                /* "for"  */
-    EACH_KWRD = 271,               /* "each"  */
-    IN_KWRD = 272,                 /* "in"  */
-    IF_KWRD = 273,                 /* "if"  */
-    ELSE_KWRD = 274,               /* "else"  */
-    EQ_OP = 275,                   /* "=="  */
-    INEQ_OP = 276,                 /* "!="  */
-    EQ_SMLR_OP = 277,              /* ">="  */
-    EQ_GRTR_OP = 278,              /* "<="  */
-    BIT_OR_OP = 279,               /* "||"  */
-    BIT_AND_OP = 280,              /* "&&"  */
-    LOGICAL_OR_OP = 281,           /* "or"  */
-    LOGICAL_AND_OP = 282,          /* "and"  */
-    LEFT_SHIFT_OP = 283,           /* "<<"  */
-    RIGHT_SHIFT_OP = 284,          /* ">>"  */
-    TILL_KWRD = 285,               /* "till"  */
-    NULL_KWRD = 286,               /* "null"  */
-    INCR_OP = 287,                 /* "++"  */
-    DECR_OP = 288,                 /* "--"  */
-    ENUM_KWRD = 289,               /* "enum"  */
-    STRUCT_KWRD = 290,             /* "struct"  */
-    USE_KWRD = 291,                /* "use"  */
-    INCLUDE_KWRD = 292,            /* "include"  */
-    STRUCT_LITERAL_START = 293,    /* "struct{"  */
-    DOT_FIELD = 294,               /* ".field"  */
-    MODULE_KWRD = 295,             /* "module"  */
-    ARROW_OP = 296,                /* "->"  */
-    IS_KWRD = 297,                 /* "is"  */
-    IDENTIFIER_PREC = 298,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 299,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 300,               /* LOOP_PREC  */
-    UMINUS = 301,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 302   /* STRUCT_LIT_NAMED_FIELD  */
+    TAG_TYP = 268,                 /* "#typ"  */
+    FN_KWRD = 269,                 /* "fn"  */
+    WHILE_KWRD = 270,              /* "while"  */
+    FOR_KWRD = 271,                /* "for"  */
+    EACH_KWRD = 272,               /* "each"  */
+    IN_KWRD = 273,                 /* "in"  */
+    IF_KWRD = 274,                 /* "if"  */
+    ELSE_KWRD = 275,               /* "else"  */
+    EQ_OP = 276,                   /* "=="  */
+    INEQ_OP = 277,                 /* "!="  */
+    EQ_SMLR_OP = 278,              /* ">="  */
+    EQ_GRTR_OP = 279,              /* "<="  */
+    BIT_OR_OP = 280,               /* "||"  */
+    BIT_AND_OP = 281,              /* "&&"  */
+    LOGICAL_OR_OP = 282,           /* "or"  */
+    LOGICAL_AND_OP = 283,          /* "and"  */
+    LEFT_SHIFT_OP = 284,           /* "<<"  */
+    RIGHT_SHIFT_OP = 285,          /* ">>"  */
+    TILL_KWRD = 286,               /* "till"  */
+    NULL_KWRD = 287,               /* "null"  */
+    INCR_OP = 288,                 /* "++"  */
+    DECR_OP = 289,                 /* "--"  */
+    ENUM_KWRD = 290,               /* "enum"  */
+    STRUCT_KWRD = 291,             /* "struct"  */
+    USE_KWRD = 292,                /* "use"  */
+    INCLUDE_KWRD = 293,            /* "include"  */
+    STRUCT_LITERAL_START = 294,    /* "struct{"  */
+    DOT_FIELD = 295,               /* ".field"  */
+    MODULE_KWRD = 296,             /* "module"  */
+    ARROW_OP = 297,                /* "->"  */
+    IS_KWRD = 298,                 /* "is"  */
+    IDENTIFIER_PREC = 299,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 300,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 301,               /* LOOP_PREC  */
+    UMINUS = 302,                  /* UMINUS  */
+    STRUCT_LIT_NAMED_FIELD = 303   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -107,7 +108,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 130 "axo_gram.y"
+#line 131 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -132,7 +133,7 @@ union YYSTYPE
   axo_each_loop each_loop_type;
   axo_module module_type;
 
-#line 136 "axo_gram.tab.h"
+#line 137 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -156,6 +157,8 @@ struct YYLTYPE
 
 
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_AXO_GRAM_TAB_H_INCLUDED  */

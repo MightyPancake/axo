@@ -9,6 +9,9 @@ module(
 	description: "This file is used in every axo program to provide basic functionality that C itself just lacks by default. It also includes some (hopefully light) C headers."
 )
 
+#typ float
+#typ double
+
 //Include axo types, functions and macros
 #include "./core.h"
 #include "./arr.h"

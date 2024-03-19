@@ -4,7 +4,7 @@
   #include "util/utils.h"
   #include <stdio.h>
   #include <stdlib.h>
-  #include "axo/axo.h"
+  #include "axoc/axo.h"
   extern int yylineno;
   extern FILE *yyin;
   extern YYLTYPE yylloc;
@@ -290,10 +290,10 @@ declaration : struct_def { //Fix! Make this use realloc less
   }
   | "#typ" IDEN {
     char* name = alloc_str($IDEN);
-    st->byte_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name=name, .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name=name, .cname=name}, .def="0"}});
+    axo_set_typ_def(&@$, state, (axo_typ_def){.name=name, .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name=name, .cname=name}, .def="0"}});
       $$ = (axo_decl){
         .kind = axo_typ_def_decl_kind,
-        .val = fmtstr("//accepting type %s", $IDEN);
+        .val = fmtstr("//accepting type %s", $IDEN)
       };
   }
   ;

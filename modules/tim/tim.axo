@@ -4,10 +4,12 @@ module(
   description: "Provides basic time functionality."
 )
 
+#typ time_t
+
 #include <time.h>
 
-#register int time(@byte)
+#register int time(@time_t)
 
 fn tim.now(){
-  ret time(null)
+  ret time(null.(@time_t))
 }

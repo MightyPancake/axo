@@ -6,7 +6,7 @@ ifeq ($(OS), Windows_NT)
 	RM_CMD = del
 	TARGET_EXT = .exe
 else
-	SHWOW_FILE_CMD = bat
+	SHOW_FILE_CMD = bat
 	CLEAR_CMD = clear
 	RM_CMD = rm
 	TARGET_EXT = 
