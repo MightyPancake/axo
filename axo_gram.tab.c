@@ -4339,7 +4339,7 @@ int main(int argc, char** argv) {
       return 1;
   }
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
-  printf("Root: %s\n", root_p);
+  // printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
   //Scopes table
@@ -4357,7 +4357,8 @@ int main(int argc, char** argv) {
   //Handle produced C code
   char* input_file_path = argv[1];
   if (!prog_return){
-    if (state->config.output_name==NULL) state->config.output_name = axo_swap_file_extension(input_file_path, "c");
+    if (state->config.output_name==NULL)
+      state->config.output_name = axo_swap_file_extension(input_file_path, ".c");
     char* code = axo_get_code(state);
     overwrite_file_with_string(state->config.output_name, code);
     free(code);
@@ -4366,7 +4367,7 @@ int main(int argc, char** argv) {
     int res = 1;
     switch(state->config.cc){
       case axo_gcc_cc_kind:
-        compiler_cmd = fmtstr("gcc %s -o %s", state->config.output_name, axo_swap_file_extension(state->config.output_name, "exe"));
+        compiler_cmd = fmtstr("gcc %s -o %s", state->config.output_name, axo_swap_file_extension(state->config.output_name, AXO_BIN_EXT));
         res = system(compiler_cmd);
         break;
       default:

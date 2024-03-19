@@ -1122,8 +1122,7 @@ char* axo_swap_file_extension(char* filename, char* new_ext){
     int stripped_len = strlen(new_filename);
     int ext_len = strlen(new_ext);
     new_filename=realloc(new_filename, strlen(new_filename)+strlen(new_ext)+2);
-    new_filename[stripped_len] = '.';
-    memcpy(&(new_filename[stripped_len+1]), new_ext, ext_len+1);
+    memcpy(&(new_filename[stripped_len]), new_ext, ext_len+1);
     return new_filename;
 }
 

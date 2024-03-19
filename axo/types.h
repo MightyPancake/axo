@@ -24,6 +24,12 @@ typedef struct hashmap* map;
 #define axo_state_sources_cap 32
 #define axo_modules_cap 16
 
+#ifdef __WIN32
+    #define AXO_BIN_EXT ".exe"
+#else
+    #define AXO_BIN_EXT ""
+#endif
+
 typedef enum axo_typ_kind{
     axo_simple_kind,
     axo_func_kind,

@@ -1,7 +1,19 @@
-CC=gcc
+CC = gcc
+
+ifeq ($(OS), Windows_NT)
+	SHOW_FILE_CMD = type
+	CLEAR_CMD = cls
+	RM_CMD = del
+	TARGET_EXT = .exe
+else
+	SHWOW_FILE_CMD = bat
+	CLEAR_CMD = clear
+	RM_CMD = rm
+	TARGET_EXT = 
+endif
 
 compile:
-	gcc axo_gram.tab.c lex.yy.c -o axo.exe -Wall -g
+	$(CC) axo_gram.tab.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
 	@echo "[92mCompiler built![0m"
 
 build:
@@ -13,27 +25,27 @@ build:
 	@make -s compile
 
 run:
-	clear
+	$(CLEAR_CMD)
 	@make -s build
-	@bat test.axo
-	@./axo.exe test.axo
-	@bat test.c
+	@$(SHOW_FILE_CMD) test.axo
+	@./axo$(TARGET_EXT) test.axo
+	@$(SHOW_FILE_CMD) test.c
 	@echo "[92mRunning output program...[0m"
-	@./test.exe
+	@./test$(TARGET_EXT)
 	@make -s clean
-
+	
 show:
 	@make -s build
-	@bat test.axo
-	@bat test.c
+	@$(SHOW_FILE_CMD) test.axo
+	@$(SHOW_FILE_CMD) test.c
 
 clean:
-	@rm axo.exe
-	@rm test.c
-	@rm test.exe
+	@$(RM_CMD) axo$(TARGET_EXT)
+	@$(RM_CMD) test.c
+	@$(RM_CMD) test$(TARGET_EXT)
 
 playground:
 	clear
 	@make -s build
-	@./axo.exe
+	@./axo$(TARGET_EXT)
 
