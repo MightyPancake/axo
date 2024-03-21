@@ -40,6 +40,11 @@ typedef struct axo__arr{
 #define axo_arr_2d_at(TYP, AXO_ARR, A, B) (((TYP*)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]) + (B)])
 #define axo_arr_3d_at(TYP, AXO_ARR, A, B, C) (((TYP*)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]*(AXO_ARR.len[2])) + (B)*(AXO_ARR.len[1]) + (C)])   
 
+//FIX: Error handling
+#define axo_arr_1d_rsz(TYP, AXO_ARR, SZ1){ \
+    AXO_ARR.data = realloc(SZ1*sizeof(TYP*)); \
+}
+
 //TODO: Finish
 #define axo_arr_nd_at(TYP, AXO_ARR, INDICES) ({ \
     arr_it_t index=0; \
@@ -63,4 +68,5 @@ typedef struct axo__arr{
     .len=DIMS, \
     .data=DATA \
 })
+
 

@@ -4380,19 +4380,51 @@ void overwrite_file_with_string(char *filepath, char *string) {
 }
 
 int playground(){
+  int len;
+  long long int* msg = axo_encode_easter("Talking to your compiler? That's no good... How about finding some friends instead!", &len);
+  printf("Message: %s\n{", axo_decode_easter(msg));
+  for (int i=0; i<len; i++){
+    if (i>0) printf(", ");
+    printf("%lld", msg[i]);
+  }
+  printf("}\n");
+  long long int new_msg[] = {2334956330867777876, 7885630463268646772, 5197223730545977712, 8391735949001783151, 7453010313414796832, 8243311787948077856, 7955925896704976233, 36715014485107};
+  
+  printf("New message: %s\n", axo_decode_easter(new_msg));
+  if (strcmp(axo_decode_easter(msg), axo_decode_easter(new_msg)) == 0)
+    printf(axo_green_fg"Matched!"axo_reset_style"\n");
+  else
+    printf(axo_red_fg"Not matched!"axo_reset_style"\n");
+  
   return 0;
 }
 
 int main(int argc, char** argv) {
   if (test_playground) return playground();
-  if (argc != 2) {
-      fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-      return 1;
-  }
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
   // printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
+  //Load config from axo.config
+  axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
+  size_t cfg_sz;
+  axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes("axo.config", &cfg_sz);
+  state->config = *cfg;
+  char* cmd = argv[1];
+  if (strcmp(cmd, "run")==0){
+    printf(axo_green_fg"Run!\n"axo_reset_style);
+    return 0;
+  }else if (strcmp(cmd, "test")==0){
+    printf(axo_magenta_fg"Test!\n"axo_reset_style);
+    return 0;
+  }else if (strcmp(cmd, "cfg")==0){
+      return axo_cfg(state, argc, argv);
+  }else{
+    if (argc < 2) {
+        fprintf(stderr, "Invalid arguments.\nRun \'axo help\' for help on how to use axo!\n");
+        return 1;
+    }
+  }
   //Scopes table
   scopes = alloc_one(axo_scopes);
   scopes->scopes = NULL;
@@ -4408,17 +4440,17 @@ int main(int argc, char** argv) {
   //Handle produced C code
   char* input_file_path = argv[1];
   if (!prog_return){
-    if (state->config.output_name==NULL)
-      state->config.output_name = axo_swap_file_extension(input_file_path, ".c");
+    if (state->output_name==NULL)
+      state->output_name = axo_swap_file_extension(input_file_path, ".c");
     char* code = axo_get_code(state);
-    overwrite_file_with_string(state->config.output_name, code);
+    overwrite_file_with_string(state->output_name, code);
     free(code);
     //Compile program
     char* compiler_cmd;
     int res = 1;
     switch(state->config.cc){
       case axo_gcc_cc_kind:
-        compiler_cmd = fmtstr("gcc %s -o %s", state->config.output_name, axo_swap_file_extension(state->config.output_name, AXO_BIN_EXT));
+        compiler_cmd = fmtstr("gcc %s -o %s", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
         res = system(compiler_cmd);
         break;
       default:

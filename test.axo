@@ -2,22 +2,23 @@ use std
 use math
 use tim
 
+fn add(int a, int b){
+    ret a+b
+}
+
+fn sub(int a, int b){
+    ret a+b
+}
+
 rand_range is int = 6
 
 fn main([][]byte args){
-    // std.seed_rand(tim.now())
-    // guess = 0
-    // answer = 1
-    // while 1 {
-    //     answer = std.rand() % rand_range
-    //     printf("Your guess (0-%d):\n", rand_range-1)
-    //     scanf("%d", @guess)
-    //     if (guess == answer)
-    //         break
-    //     else
-    //         printf("Wrong! The answer was %d. Try again!\n", answer)
-    // }
-    // printf("Yes, it was %d. You won!\n", answer)
-    float = 1.0.(f64)
+    fn_arr = [2][
+        add, sub
+    ]
+    ret 0
+}
+
+fn test([][]byte args){
     ret 0
 }

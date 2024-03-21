@@ -45,8 +45,3 @@ clean:
 	@$(RM_CMD) test$(TARGET_EXT)
 	
 
-playground:
-	clear
-	@make -s build
-	@./axo$(TARGET_EXT)
-

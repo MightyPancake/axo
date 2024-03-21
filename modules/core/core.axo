@@ -13,8 +13,10 @@ module(
 #typ double
 
 //Include axo types, functions and macros
+#include <stdbool.h>
 #include "./core.h"
 #include "./arr.h"
 include "./mod.axo"
+include "./test.axo"
 #include "./main.h"
 

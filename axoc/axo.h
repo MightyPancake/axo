@@ -21,6 +21,8 @@
 extern FILE *yyin;
 void yyrestart(FILE*);
 
+long long int axo_easter_msg1[] = {2334956330867777876, 2338060278192697204, 8243113893085146979, 8297728800164421695, 7237125614924164640, 2339460887010487854, 7594793506165449313, 8030798189137847406, 7954880256880436589, 7310595013176488804, 2188385};
+
 #define static_str_ptr(SZ) ((char**)(&((char[SZ]){})))  
 #define s_str(SZ) ((char[SZ]){})
 
@@ -223,11 +225,13 @@ axo_state* axo_new_state(char* root_path){
     st->decls_len=0;
     st->config = (axo_compiler_config){
         .cc = axo_gcc_cc_kind,
-        .output_name=NULL,
         .measure_time=false,
         .bug_hunter=false,
-        .delete_c=true
+        .delete_c=true,
+        .color_support=true,
+        .plain_ascii_mode=true
     };
+    st->output_name = NULL;
     //Load types
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
@@ -252,6 +256,35 @@ axo_state* axo_new_state(char* root_path){
     st->module_names = NULL;
     st->modules_len = 0;
     return st;
+}
+
+char* axo_bool_to_str(bool a, bool color_support){
+    if (color_support)
+        return a ? axo_green_fg"true"axo_reset_style : axo_red_fg"false"axo_reset_style;
+    return a ? "true" : "false";
+}
+
+char* axo_cc_to_str(axo_cc_kind cc){
+    switch(cc){
+        case axo_gcc_cc_kind: return "gcc"; break;
+        default: return "other cc"; break;
+    }
+    return "other cc";
+}
+
+void axo_print_config(axo_state* st){
+    axo_compiler_config cfg = st->config;
+    if (cfg.color_support)
+        printf("AXO CONFIG:\n\tcc: "axo_magenta_fg"%s"axo_reset_style"\n\tdelete_c: %s\n\tmeasure_time %s\n\tcolor_support: %s\n\tplain_ascii_mode: %s\n",
+        axo_cc_to_str(cfg.cc), axo_bool_to_str(cfg.delete_c, cfg.color_support), axo_bool_to_str(cfg.measure_time, cfg.color_support), axo_bool_to_str(cfg.color_support, cfg.color_support), axo_bool_to_str(cfg.plain_ascii_mode, cfg.color_support));
+    else
+        printf("AXO CONFIG:\n\tcc: %s\n\tdelete_c: %s\n\tmeasure_time %s\n\tcolor_support: %s\n\tplain_ascii_mode: %s\n",
+        axo_cc_to_str(cfg.cc), axo_bool_to_str(cfg.delete_c, cfg.color_support), axo_bool_to_str(cfg.measure_time, cfg.color_support), axo_bool_to_str(cfg.color_support, cfg.color_support), axo_bool_to_str(cfg.plain_ascii_mode, cfg.color_support));
+}
+
+int axo_cfg(axo_state* st, int argc, char** argv){
+    axo_print_config(st);
+    return 0;
 }
 
 void axo_new_source(axo_state* st, char* path){
@@ -558,9 +591,21 @@ char* axo_typ_to_str(axo_typ typ){
 }
 
 char* axo_c_arr_of_typ(axo_typ typ, char* inside){
+    char* ret = NULL;
+    axo_func_typ fnt;
     switch(typ.kind){
         case axo_simple_kind: return fmtstr("%s[%s]", typ.simple.cname, inside); break;
         case axo_arr_kind: return fmtstr("axo__arr[%s]", inside); break;
+        case axo_func_kind:
+            fnt = *((axo_func_typ*)(typ.func_typ));
+            ret = fmtstr("%s(*[])(", axo_typ_to_c_str(fnt.ret_typ));
+            for (int i = 0; i<fnt.args_len; i++){
+                if (i>0) strapnd(&ret, ",");
+                strapnd(&ret, axo_typ_to_c_str(fnt.args_types[i]));
+            }
+            strapnd(&ret, ")");
+            return ret;
+            break;
         default:
             yyerror(NULL, "Unsupported axo_c_arr_of_typ type '%s'!", axo_typ_to_str(typ));
             return alloc_str("unsupported_type");
@@ -623,7 +668,7 @@ char* axo_typ_to_c_str(axo_typ t){
 }
 
 char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
-    char* ret = "";
+    char* ret = NULL;
     axo_func_typ fnt = (axo_func_typ){};
     switch(typ.kind){
         case axo_simple_kind: return fmtstr("%s %s", axo_typ_to_c_str(typ), name); break;
@@ -631,8 +676,8 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
         case axo_enum_kind: return fmtstr("%s %s", ((axo_enum*)(typ.enumerate))->name, name); break;
         case axo_arr_kind: return fmtstr("axo__arr %s", name); break;
         case axo_func_kind:
-            ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
             fnt = *((axo_func_typ*)(typ.func_typ));
+            ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), name);
             for (int i = 0; i<fnt.args_len; i++){
                 if (i>0) strapnd(&ret, ",");
                 strapnd(&ret, axo_typ_to_c_str(fnt.args_types[i]));
@@ -1098,6 +1143,42 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     return ret;
 }
 
+void axo_bytes_to_file(const char *filename, char* bytes, size_t size) {
+    FILE *file = fopen(filename, "wb");
+    if (file != NULL) {
+        fwrite(bytes, sizeof(char), size, file);
+        fclose(file);
+    } else {
+        printf("Failed to open the file %s\n", filename);
+    }
+}
+
+char* axo_file_to_bytes(const char *filename, size_t *size) {
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        printf("Failed to open the file %s\n", filename);
+        return NULL;
+    }
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    rewind(file);
+    char *byte_array = malloc(*size);
+    if (byte_array == NULL) {
+        printf("Failed to allocate memory\n");
+        fclose(file);
+        return NULL;
+    }
+    if (fread(byte_array, 1, *size, file) != *size) {
+        printf("Failed to read the file\n");
+        free(byte_array);
+        fclose(file);
+        return NULL;
+    }
+
+    fclose(file);
+    return byte_array;
+}
+
 char* axo_strip_file_extension(char* filename){
     int len = strlen(filename);
     int i;
@@ -1154,6 +1235,19 @@ bool axo_dir_exists(char* dirname) {
     } else {
         return false; // opendir() failed for some other reason
     }
+}
+
+long long int* axo_encode_easter(char* input, int* out_len){
+    //Assume long long int is 8 bytes
+    int len = strlen(input);
+    *out_len = (len+1)/8 + 1;
+    long long int* ret = (long long int*)malloc((*out_len)*sizeof(long long int));
+    ret = memcpy(ret, input, len+1);
+    return ret;
+}
+
+char* axo_decode_easter(long long int* data){
+    return (char*)data;
 }
 
 #ifdef _WIN32

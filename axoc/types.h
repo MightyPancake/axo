@@ -215,10 +215,11 @@ typedef enum axo_cc_kind{
 
 typedef struct axo_compiler_config{
     axo_cc_kind  cc;
-    char*        output_name;
     bool         delete_c;
     bool         measure_time;
     bool         bug_hunter;
+    bool         color_support;
+    bool         plain_ascii_mode;
 }axo_compiler_config;
 
 typedef struct axo_source{
@@ -252,6 +253,7 @@ typedef struct axo_state{
     map                    types_def;
     
     axo_compiler_config    config;
+    char*                  output_name;
 
     //Default types
     axo_typ_def*           int_def;
