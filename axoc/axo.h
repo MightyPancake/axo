@@ -184,6 +184,7 @@ char* axo_resolve_path(char* filename);
 char* axo_get_exec_path(char* buf, int sz);
 char* axo_get_parent_dir(char* path);
 char* axo_strip_file_extension(char* filename);
+void axo_bytes_to_file(const char *filename, char* bytes, size_t size);
 
 char* fmtstr(const char fmt[], ...){
     char* ret;
@@ -282,9 +283,55 @@ void axo_print_config(axo_state* st){
         axo_cc_to_str(cfg.cc), axo_bool_to_str(cfg.delete_c, cfg.color_support), axo_bool_to_str(cfg.measure_time, cfg.color_support), axo_bool_to_str(cfg.color_support, cfg.color_support), axo_bool_to_str(cfg.plain_ascii_mode, cfg.color_support));
 }
 
-int axo_cfg(axo_state* st, int argc, char** argv){
+int axo_info_cmd(axo_state* st, int argc, char** argv){
+    
     axo_print_config(st);
     return 0;
+}
+
+int axo_set_cmd(axo_state* st, int argc, char** argv){
+    if (argc < 4){
+        printf("Not enough arguments. Usage:\naxo set <setting> <value>\n");
+        return 1;
+    }
+    bool valid = true;
+    char* setting = argv[2];
+    char* val = argv[3];
+    if (strcmp(setting, "cc") == 0){
+        if (strcmp(val, "gcc")==0){
+            st->config.cc = axo_gcc_cc_kind;
+        }else{
+            printf("Invalid C compiler.\n");
+            valid = false;
+        }
+    }else if (strcmp(setting, "delete_c") == 0){
+        if (strcmp(val, "true")==0){
+            st->config.delete_c = true;
+        }else if (strcmp(val, "false")==0) {
+            st->config.delete_c = false;
+        }else{
+            printf("Setting 'delete_c' can only be set to false/true.\n");
+            valid = false;
+        }
+    }else if (strcmp(setting, "measure_time") == 0){
+        if (strcmp(val, "true")==0){
+            st->config.measure_time = true;
+        }else if (strcmp(val, "false")==0) {
+            st->config.measure_time = false;
+        }else{
+            printf("Setting 'measure_time' can only be set to false/true.\n");
+            valid = false;
+        }
+    }else{
+        printf("Unknown setting '%s.\n'", setting);
+        valid = false;
+    }
+    if (valid){
+        printf("Saving new config...\n");
+        axo_bytes_to_file("axo.config", (char*)(&(st->config)), sizeof(axo_compiler_config));
+        return axo_info_cmd(st, argc, argv);
+    }
+    return 1;
 }
 
 void axo_new_source(axo_state* st, char* path){

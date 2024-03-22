@@ -5,6 +5,7 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include "axoc/axo.h"
+  #include <time.h>
   extern int yylineno;
   extern FILE *yyin;
   extern YYLTYPE yylloc;
@@ -1737,70 +1738,83 @@ int playground(){
 }
 
 int main(int argc, char** argv) {
+  //Start timing the event
+  clock_t start, end;
+  double cpu_time_used;
   if (test_playground) return playground();
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
   // printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
   //Load config from axo.config
-  axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
+  // axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
   size_t cfg_sz;
   axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes("axo.config", &cfg_sz);
   state->config = *cfg;
+  if (state->config.measure_time){
+    start = clock();
+  }
   char* cmd = argv[1];
   if (strcmp(cmd, "run")==0){
     printf(axo_green_fg"Run!\n"axo_reset_style);
-    return 0;
+    prog_return = 0;
   }else if (strcmp(cmd, "test")==0){
     printf(axo_magenta_fg"Test!\n"axo_reset_style);
-    return 0;
-  }else if (strcmp(cmd, "cfg")==0){
-      return axo_cfg(state, argc, argv);
+    prog_return = 0;
+  }else if (strcmp(cmd, "info")==0){
+      prog_return = axo_info_cmd(state, argc, argv);
+  }else if (strcmp(cmd, "set")==0){
+    prog_return = axo_set_cmd(state, argc, argv);
   }else{
     if (argc < 2) {
         fprintf(stderr, "Invalid arguments.\nRun \'axo help\' for help on how to use axo!\n");
         return 1;
     }
-  }
-  //Scopes table
-  scopes = alloc_one(axo_scopes);
-  scopes->scopes = NULL;
-  scopes->len = 0;
-  axo_push_scope(scopes, state->global_scope);
-  //Use core module
-  axo_new_source(state, argv[1]);
-  axo_add_decl(state, axo_use_module(state, NULL, "core"));
-  state->in_core = true;
-  //Parse
-  yyparse();
-  printf("axo -> C: done!\n");
-  //Handle produced C code
-  char* input_file_path = argv[1];
-  if (!prog_return){
-    if (state->output_name==NULL)
-      state->output_name = axo_swap_file_extension(input_file_path, ".c");
-    char* code = axo_get_code(state);
-    overwrite_file_with_string(state->output_name, code);
-    free(code);
-    //Compile program
-    char* compiler_cmd;
-    int res = 1;
-    switch(state->config.cc){
-      case axo_gcc_cc_kind:
-        compiler_cmd = fmtstr("gcc %s -o %s", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
-        res = system(compiler_cmd);
-        break;
-      default:
-        fprintf(stderr, "This C compiler is not yet supported!\n");
-        break;
+    //Scopes table
+    scopes = alloc_one(axo_scopes);
+    scopes->scopes = NULL;
+    scopes->len = 0;
+    axo_push_scope(scopes, state->global_scope);
+    //Use core module
+    axo_new_source(state, argv[1]);
+    axo_add_decl(state, axo_use_module(state, NULL, "core"));
+    state->in_core = true;
+    //Parse
+    yyparse();
+    printf("axo -> C: done!\n");
+    //Handle produced C code
+    char* input_file_path = argv[1];
+    if (!prog_return){
+      if (state->output_name==NULL)
+        state->output_name = axo_swap_file_extension(input_file_path, ".c");
+      char* code = axo_get_code(state);
+      overwrite_file_with_string(state->output_name, code);
+      free(code);
+      //Compile program
+      char* compiler_cmd;
+      int res = 1;
+      switch(state->config.cc){
+        case axo_gcc_cc_kind:
+          compiler_cmd = fmtstr("gcc %s -o %s", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
+          res = system(compiler_cmd);
+          break;
+        default:
+          fprintf(stderr, "This C compiler is not yet supported!\n");
+          break;
+      }
+      if (res != 0)
+        printf("Error while compiling the output C file! D:\n");
+      prog_return = prog_return||res;
+      if (state->config.delete_c){
+        remove(state->output_name);
+      }
     }
-    if (res != 0)
-      printf("Error while compiling the output C file! D:\n");
-    prog_return = prog_return||res;
+    // printf("\n\n%s\n", axo_axelotl_str);
   }
-  // printf("\n\n%s\n", axo_axelotl_str);
-  // fclose(file);
-  // if (state->config.delete_c)
-  //   remove();
+  if (state->config.measure_time){
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("Took: %fs\n", cpu_time_used);
+  }
   return prog_return;
 }
