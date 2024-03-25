@@ -1738,6 +1738,8 @@ int playground(){
 }
 
 int main(int argc, char** argv) {
+  //Seed the pseudo random number generator
+  srand(time(NULL));
   //Start timing the event
   clock_t start, end;
   double cpu_time_used;
@@ -1748,10 +1750,14 @@ int main(int argc, char** argv) {
   state = axo_new_state(root_p);
   //Load config from axo.config
   // axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
+  // axo_lolprintf(axo_col_sup(state), rand(), "Hello %s!\n", "world");
   size_t cfg_sz;
   axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes("axo.config", &cfg_sz);
+  // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
+  // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
-  if (state->config.measure_time){
+  bool measure_time = state->config.timer;
+  if (measure_time){
     start = clock();
   }
   char* cmd = argv[1];
@@ -1766,7 +1772,7 @@ int main(int argc, char** argv) {
   }else if (strcmp(cmd, "set")==0){
     prog_return = axo_set_cmd(state, argc, argv);
   }else{
-    if (argc < 2) {
+    if (argc < 1) {
         fprintf(stderr, "Invalid arguments.\nRun \'axo help\' for help on how to use axo!\n");
         return 1;
     }
@@ -1805,13 +1811,13 @@ int main(int argc, char** argv) {
       if (res != 0)
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
-      if (state->config.delete_c){
+      if (!(state->config.keep_c)){
         remove(state->output_name);
       }
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
-  if (state->config.measure_time){
+  if (state->config.timer){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("Took: %fs\n", cpu_time_used);

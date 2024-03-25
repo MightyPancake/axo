@@ -213,13 +213,19 @@ typedef enum axo_cc_kind{
     axo_clang_cc_kind
 }axo_cc_kind;
 
+typedef enum axo_color_support_kind{
+    axo_no_color_support_kind,
+    axo_limited_color_support_kind,
+    axo_full_color_support_kind
+}axo_color_support_kind;
+
 typedef struct axo_compiler_config{
-    axo_cc_kind  cc;
-    bool         delete_c;
-    bool         measure_time;
-    bool         bug_hunter;
-    bool         color_support;
-    bool         plain_ascii_mode;
+    axo_cc_kind               cc;
+    bool                      keep_c;
+    bool                      timer;
+    bool                      bug_hunter;
+    axo_color_support_kind    color_support;
+    bool                      ascii_only;
 }axo_compiler_config;
 
 typedef struct axo_source{
@@ -274,6 +280,9 @@ typedef struct axo_state{
     int                    modules_decl;
     bool                   in_core;
 }axo_state;
+    
+
+#define axo_col_sup(ST) (ST->config.color_support)
 
 #define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
 #define axo_line(ST) (axo_source(ST)->line)

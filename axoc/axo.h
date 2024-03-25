@@ -1,6 +1,9 @@
 #ifndef AXO_H
 #define AXO_H
 
+
+#define AXO_VERSION "0.0.0"
+
 #ifdef _WIN32
     #include <windows.h>
 #elif __linux__
@@ -226,11 +229,11 @@ axo_state* axo_new_state(char* root_path){
     st->decls_len=0;
     st->config = (axo_compiler_config){
         .cc = axo_gcc_cc_kind,
-        .measure_time=false,
+        .timer=false,
         .bug_hunter=false,
-        .delete_c=true,
-        .color_support=true,
-        .plain_ascii_mode=true
+        .keep_c=false,
+        .color_support=axo_limited_color_support_kind,
+        .ascii_only=false
     };
     st->output_name = NULL;
     //Load types
@@ -259,10 +262,10 @@ axo_state* axo_new_state(char* root_path){
     return st;
 }
 
-char* axo_bool_to_str(bool a, bool color_support){
-    if (color_support)
-        return a ? axo_green_fg"true"axo_reset_style : axo_red_fg"false"axo_reset_style;
-    return a ? "true" : "false";
+char* axo_bool_to_str(bool a, axo_color_support_kind col_sup){
+    if (col_sup == axo_no_color_support_kind)
+        return a ? "true" : "false";
+    return a ? axo_green_fg"true"axo_reset_style : axo_red_fg"false"axo_reset_style;
 }
 
 char* axo_cc_to_str(axo_cc_kind cc){
@@ -270,21 +273,168 @@ char* axo_cc_to_str(axo_cc_kind cc){
         case axo_gcc_cc_kind: return "gcc"; break;
         default: return "other cc"; break;
     }
-    return "other cc";
+    return "invalid cc";
+}
+
+char* axo_color_support_to_str(axo_color_support_kind col_sup){
+    switch(col_sup){
+        case axo_full_color_support_kind: return "full"; break;
+        case axo_limited_color_support_kind: return "limited"; break;
+        default: return "no"; break;
+    }
+    return "invalid color support";
+}
+
+int axo_color_count(axo_color_support_kind col_sup){
+    switch(col_sup){
+        case axo_no_color_support_kind: return 1; break;
+        case axo_limited_color_support_kind: return 30; break;
+        case axo_full_color_support_kind: return 255*255*255; break;
+    }
+    return 0;
+}
+
+char* axo_get_color_esc(int index, axo_color_support_kind col_sup){
+    static char cols[30][16] = {
+        "\033[38;5;196m",
+        "\033[38;5;202m",
+        "\033[38;5;208m",
+        "\033[38;5;214m",
+        "\033[38;5;220m",
+        "\033[38;5;226m",
+        "\033[38;5;190m",
+        "\033[38;5;154m",
+        "\033[38;5;118m",
+        "\033[38;5;82m",
+        "\033[38;5;46m",
+        "\033[38;5;47m",
+        "\033[38;5;48m",
+        "\033[38;5;49m",
+        "\033[38;5;50m",
+        "\033[38;5;51m",
+        "\033[38;5;45m",
+        "\033[38;5;39m",
+        "\033[38;5;33m",
+        "\033[38;5;27m",
+        "\033[38;5;21m",
+        "\033[38;5;57m",
+        "\033[38;5;93m",
+        "\033[38;5;129m",
+        "\033[38;5;165m",
+        "\033[38;5;201m",
+        "\033[38;5;200m",
+        "\033[38;5;199m",
+        "\033[38;5;198m",
+        "\033[38;5;197m"
+    };
+    switch(col_sup){
+        case axo_no_color_support_kind: return ""; break;
+        case axo_full_color_support_kind:
+        case axo_limited_color_support_kind:
+            return cols[index];
+            break;
+    }
+    return "";
+}
+
+void axo_lolprintf(axo_color_support_kind col_sup, int seed, const char* fmt, ...){
+    char* str = NULL;
+    va_list args;
+    int len;
+    int col_count;
+    int c;
+    switch(col_sup){
+        case axo_no_color_support_kind:
+            va_start(args, fmt);
+            vprintf(fmt, args);
+            va_end(args);
+            break;
+        case axo_full_color_support_kind:
+        case axo_limited_color_support_kind:
+            va_start(args, fmt);
+            vasprintf(&str, fmt, args);
+            va_end(args);
+            len = strlen(str);
+            col_count = axo_color_count(col_sup);
+            c = seed % col_count;
+            for (int i = 0; i<len; i++){
+                c = (c+1) % col_count;
+                printf("%s%c", axo_get_color_esc(c, col_sup), str[i]);
+            }
+            printf(axo_reset_style);
+            break;
+    }
+}
+
+char* axo_lolsprintf(axo_color_support_kind col_sup, int seed, char* dest, const char* fmt, ...){
+    char* str = NULL;
+    va_list args;
+    int len;
+    int col_count;
+    int c;
+    switch(col_sup){
+        case axo_no_color_support_kind:
+            va_start(args, fmt);
+            vsprintf(dest, fmt, args);
+            va_end(args);
+            return dest;
+            break;
+        case axo_full_color_support_kind:
+        case axo_limited_color_support_kind:
+            va_start(args, fmt);
+            vasprintf(&str, fmt, args);
+            va_end(args);
+            len = strlen(str);
+            col_count = axo_color_count(col_sup);
+            c = seed % col_count;
+            char hlpr[2] = " ";
+            for (int i = 0; i<len; i++){
+                c = (c+1) % col_count;
+                strcat(dest, axo_get_color_esc(c, col_sup));
+                hlpr[0] = str[i];
+                strcat(dest, hlpr);
+            }
+            strcat(dest, axo_reset_style);
+            return dest;
+            break;
+    }
+    return dest;
+}
+
+
+void axo_color_printf(int index, axo_color_support_kind col_sup, const char* fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    if (col_sup == axo_no_color_support_kind){
+        vprintf(fmt, args);
+        va_end(args);
+        return;
+    }
+    printf(axo_get_color_esc(index, col_sup));
+    vprintf(fmt, args);
+    printf(axo_reset_style);
+    va_end(args);
 }
 
 void axo_print_config(axo_state* st){
     axo_compiler_config cfg = st->config;
-    if (cfg.color_support)
-        printf("AXO CONFIG:\n\tcc: "axo_magenta_fg"%s"axo_reset_style"\n\tdelete_c: %s\n\tmeasure_time %s\n\tcolor_support: %s\n\tplain_ascii_mode: %s\n",
-        axo_cc_to_str(cfg.cc), axo_bool_to_str(cfg.delete_c, cfg.color_support), axo_bool_to_str(cfg.measure_time, cfg.color_support), axo_bool_to_str(cfg.color_support, cfg.color_support), axo_bool_to_str(cfg.plain_ascii_mode, cfg.color_support));
+    axo_color_support_kind col_sup = axo_col_sup(st);
+    int col_count = axo_color_count(col_sup);
+    int seed = rand() % col_count;
+    printf(axo_get_color_esc(28, col_sup));
+    if (col_sup == axo_no_color_support_kind)
+        system("./printmoji");
     else
-        printf("AXO CONFIG:\n\tcc: %s\n\tdelete_c: %s\n\tmeasure_time %s\n\tcolor_support: %s\n\tplain_ascii_mode: %s\n",
-        axo_cc_to_str(cfg.cc), axo_bool_to_str(cfg.delete_c, cfg.color_support), axo_bool_to_str(cfg.measure_time, cfg.color_support), axo_bool_to_str(cfg.color_support, cfg.color_support), axo_bool_to_str(cfg.plain_ascii_mode, cfg.color_support));
+        system("./printcolmoji");
+    printf("  v.%s\n", AXO_VERSION);
+    printf(axo_reset_style"cc: %s\n", axo_lolsprintf(col_sup, seed, (char[64]){}, axo_cc_to_str(cfg.cc)));
+    printf("keep_c: %s\n", axo_bool_to_str(cfg.keep_c, col_sup));
+    printf("timer: %s\n", axo_bool_to_str(cfg.timer, col_sup));
+    printf("color_support: %s\n", axo_lolsprintf(col_sup, (seed+10)%col_count, (char[64]){}, axo_color_support_to_str(col_sup)));
+    printf("ascii_only: %s\n", axo_bool_to_str(cfg.ascii_only, col_sup));
 }
 
 int axo_info_cmd(axo_state* st, int argc, char** argv){
-    
     axo_print_config(st);
     return 0;
 }
@@ -304,22 +454,33 @@ int axo_set_cmd(axo_state* st, int argc, char** argv){
             printf("Invalid C compiler.\n");
             valid = false;
         }
-    }else if (strcmp(setting, "delete_c") == 0){
+    }else if (strcmp(setting, "keep_c") == 0){
         if (strcmp(val, "true")==0){
-            st->config.delete_c = true;
+            st->config.keep_c = true;
         }else if (strcmp(val, "false")==0) {
-            st->config.delete_c = false;
+            st->config.keep_c = false;
         }else{
-            printf("Setting 'delete_c' can only be set to false/true.\n");
+            printf("Setting 'keep_c' can only be set to false/true.\n");
             valid = false;
         }
-    }else if (strcmp(setting, "measure_time") == 0){
-        if (strcmp(val, "true")==0){
-            st->config.measure_time = true;
-        }else if (strcmp(val, "false")==0) {
-            st->config.measure_time = false;
+    }else if (strcmp(setting, "color_support") == 0){
+        if (strcmp(val, "limited")==0){
+            st->config.color_support = axo_limited_color_support_kind;
+        }else if (strcmp(val, "full")==0) {
+            st->config.color_support = axo_full_color_support_kind;
+        }else if (strcmp(val, "no")==0) {
+            st->config.color_support = axo_no_color_support_kind;
         }else{
-            printf("Setting 'measure_time' can only be set to false/true.\n");
+            printf("Setting 'color_support' can only be set to full/limited/no.\n");
+            valid = false;
+        }
+    }else if (strcmp(setting, "timer") == 0){
+        if (strcmp(val, "true")==0){
+            st->config.timer = true;
+        }else if (strcmp(val, "false")==0) {
+            st->config.timer = false;
+        }else{
+            printf("Setting 'timer' can only be set to false/true.\n");
             valid = false;
         }
     }else{
