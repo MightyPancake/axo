@@ -249,7 +249,7 @@ axo_state* axo_new_state(char* root_path){
     axo_new_numeric_typ(st, "i16", "short int", "0");
     axo_new_numeric_typ(st, "i64", "long long int", "0");
     axo_new_numeric_typ(st, "u16", "short unsigned", "0");
-    axo_new_numeric_typ(st, "u32", "unsigned unsigned", "0");
+    axo_new_numeric_typ(st, "u32", "unsigned", "0");
     axo_new_numeric_typ(st, "u64", "long long unsigned", "0");
     //File related
     st->root_path = root_path;
@@ -856,9 +856,13 @@ char* axo_typ_to_c_str(axo_typ t){
                     return ret;
                     break;
                 case axo_func_kind:
-                    ret = axo_typ_to_c_str(cur_typ);
-                    char* fn_name=fmtstr("%s", stars);
-                    free(fn_name);
+                    fnt = *((axo_func_typ*)(cur_typ.func_typ));
+                    ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), stars);
+                    for (int i = 0; i<fnt.args_len; i++){
+                        if (i>0) strapnd(&ret, ",");
+                        strapnd(&ret, axo_typ_to_c_str(fnt.args_types[i]));
+                    }
+                    strapnd(&ret, ")");
                     return ret;
                     break;
                 default:
@@ -935,15 +939,20 @@ axo_decl axo_func_def_to_decl(axo_func func){
 
 char* axo_arr_access_to_str(YYLTYPE* arr_loc, axo_expr arr, YYLTYPE* index_loc, axo_index_access index){
     axo_arr_typ arr_typ = axo_get_arr_typ(arr.typ);
+    axo_typ t = (axo_typ){
+        .kind=axo_ptr_kind,
+        .subtyp=&(arr_typ.subtyp),
+        .def=NULL
+    };
     switch(arr_typ.dim_count){
         case 1:
-            return fmtstr("axo_arr_1d_at(%s,%s,%s)", axo_typ_to_c_str(arr_typ.subtyp), arr.val, index.indexes[0].val);
+            return fmtstr("axo_arr_1d_at(%s,%s,%s)", axo_typ_to_c_str(t), arr.val, index.indexes[0].val);
             break;
         case 2:
-            return fmtstr("axo_arr_2d_at(%s,%s,%s,%s)", axo_typ_to_c_str(arr_typ.subtyp), arr.val, index.indexes[0].val, index.indexes[1].val);
+            return fmtstr("axo_arr_2d_at(%s,%s,%s,%s)", axo_typ_to_c_str(t), arr.val, index.indexes[0].val, index.indexes[1].val);
             break;
         case 3:
-            return fmtstr("axo_arr_3d_at(%s,%s,%s,%s,%s)", axo_typ_to_c_str(arr_typ.subtyp), arr.val, index.indexes[0].val, index.indexes[1].val, index.indexes[2].val);
+            return fmtstr("axo_arr_3d_at(%s,%s,%s,%s,%s)", axo_typ_to_c_str(t), arr.val, index.indexes[0].val, index.indexes[1].val, index.indexes[2].val);
             break;
         default:
             yyerror(index_loc, "Indexing arrays above 3 dimensions is not yet implemented.");

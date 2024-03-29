@@ -76,6 +76,10 @@
 %token<str> NULL_KWRD "null"
 %token<str> INCR_OP "++"
 %token<str> DECR_OP "--"
+%token<str> ASSIGN_ADD "+="
+%token<str> ASSIGN_SUB "-="
+%token<str> ASSIGN_MUL "*="
+%token<str> ASSIGN_DIV "/="
 %token<str> ENUM_KWRD "enum"
 %token<str> STRUCT_KWRD "struct"
 %token<str> USE_KWRD "use"
@@ -86,11 +90,11 @@
 %token<str> ARROW_OP "->"
 %token<str> IS_KWRD "is"
 %type<scope> code_scope code_scope_start
-%type<function> func_def func_args func_def_start
+%type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call
 %type<expression> expr incr_decr_op if_condition assignment arr_literal
 %type<declaration_type> declaration
-%type<str> statements declarations while_loop_base
+%type<str> statements declarations while_loop_base func_def_ret_typ
 %type<typ_type> val_typ c_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
 %type<types_list> c_typ_list
 %type<function_argument> func_arg
@@ -426,6 +430,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     if ($1.typ.kind != axo_ptr_kind)
       yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
     $$.typ = *axo_subtyp($1.typ);
+    $$.lval_kind=$1.lval_kind;
     asprintf(&($$.val), "(*(%s))", $1.val);
   }
   // | expr '.' '(' val_typ ')' {
@@ -908,16 +913,21 @@ matching_statement : expr {
     $$.kind = axo_call_statement_kind;
   }
   | RET_KWRD expr {
+    $$.val="return;";
     $$.kind = axo_ret_statement_kind;
     char* ret_assign = axo_get_ret_assign(top_scope);
     if (ret_assign == NULL)
       asprintf(&($$.val), "return %s;", $2.val);
     else
       asprintf(&($$.val), "%s = %s;", ret_assign, $2.val);
+  
     if (axo_is_no_typ(top_scope->ret_typ)) //Add line it was done in? FIX
       top_scope->ret_typ = $2.typ;
-    else if(!axo_typ_eq(top_scope->ret_typ, $2.typ))
-      yyerror(&@2, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str($2.typ), axo_typ_to_str(top_scope->ret_typ));
+    else if(!axo_typ_eq(top_scope->ret_typ, $2.typ)){
+      char hlpr[64] = "";
+      strcpy(hlpr, axo_typ_to_str(top_scope->ret_typ));
+      yyerror(&@2, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str($2.typ), hlpr);
+    }
   }
   | code_scope {
     $$ = axo_scope_to_statement($1);
@@ -1452,38 +1462,90 @@ code_scope : code_scope_start statements '}' {
   }
   ;
 
-func_def_start : FN_KWRD IDEN '(' func_args ')' {
-    $$.name = alloc_str($IDEN);
-    $$.args_names = $func_args.args_names;
-    $$.f_typ.args_defs = $func_args.f_typ.args_defs;
-    $$.f_typ.args_types = $func_args.f_typ.args_types;
-    $$.f_typ.args_len = $func_args.f_typ.args_len;
-    axo_push_scope(scopes, axo_new_scope(top_scope));
-    axo_code_scope_started = true;
-    for (int i = 0; i<$$.f_typ.args_len; i++)
-      axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
+func_def_name : IDEN {
+    $$ = (axo_func){
+      .name=alloc_str($IDEN),
+      .args_names=NULL
+    };
   }
-  | FN_KWRD val_typ IDEN '(' func_args ')' {
-    $$.name = alloc_str($IDEN);
-    $$.args_names = $func_args.args_names;
-    $$.f_typ.args_defs = $func_args.f_typ.args_defs;
-    $$.f_typ.args_types = $func_args.f_typ.args_types;
-    $$.f_typ.args_len = $func_args.f_typ.args_len;
-    axo_push_scope(scopes, axo_new_scope(top_scope));
-    top_scope->ret_typ = $val_typ;
-    axo_code_scope_started = true;
-    for (int i = 0; i<$$.f_typ.args_len; i++)
-      axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
-  }
-  | FN_KWRD IDEN DOT_FIELD '(' func_args ')' {
+  | IDEN DOT_FIELD {
     axo_module* mod = axo_get_module(state, $IDEN);
     if (!mod)
       yyerror(&@IDEN, "Module doesn't exist.");
-    $$.name = fmtstr("%s%s", mod->prefix, $DOT_FIELD);
-    $$.args_names = $func_args.args_names;
-    $$.f_typ.args_defs = $func_args.f_typ.args_defs;
-    $$.f_typ.args_types = $func_args.f_typ.args_types;
-    $$.f_typ.args_len = $func_args.f_typ.args_len;
+    else
+      $$ = (axo_func){
+        .name=fmtstr("%s%s", mod->prefix, $DOT_FIELD),
+        .args_names=NULL
+      };
+  }
+  | val_typ ':' IDEN {
+    axo_typ* subtyp = alloc_one(axo_typ);
+    *subtyp = $val_typ;
+    axo_typ typ = (axo_typ){
+      .kind=axo_ptr_kind,
+      .subtyp=subtyp,
+      .def=alloc_str("NULL")
+    };
+    switch($val_typ.kind){
+      case axo_simple_kind:
+      case axo_struct_kind:
+      case axo_enum_kind:
+        $$ = (axo_func){
+          .name=fmtstr("met_%s_%s", axo_typ_to_str($val_typ), $IDEN),
+          .args_names = (char**)malloc(sizeof(char*)),
+          .f_typ = (axo_func_typ){
+            .args_len = 1,
+            .args_defs = (char**)malloc(sizeof(char*)),
+            .args_types = (axo_typ*)malloc(sizeof(axo_typ)),
+          }
+        };
+        $$.f_typ.args_defs[0] = typ.def;
+        $$.f_typ.args_types[0] = typ;
+        $$.args_names[0] = alloc_str("self");
+        break;
+      default:
+        free(subtyp);
+        yyerror(&@1, "Method are only allowed for structs, enums and primitives, but got %s.", axo_typ_kind_to_str($val_typ.kind));
+        break;
+    }
+  }
+  ;
+
+func_def_ret_typ : "fn"
+  | val_typ "fn" {
+    top_scope->ret_typ = $val_typ;
+  }
+  ;
+
+func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
+    int args_len = $func_args.f_typ.args_len;
+    $$ = (axo_func){
+      .name=$func_def_name.name
+    };
+    if ($func_def_name.args_names){
+      args_len += $func_def_name.f_typ.args_len;
+      $$.args_names = (char**)malloc(args_len*sizeof(char*));
+      $$.f_typ = (axo_func_typ){
+        .args_len = 0,
+        .args_types=(axo_typ*)malloc(args_len*sizeof(axo_typ)),
+        .args_defs=(char**)malloc(args_len*sizeof(char*)),
+      };
+      for (int i=0; i<$func_def_name.f_typ.args_len; i++){
+        $$.args_names[$$.f_typ.args_len] = $func_def_name.args_names[i];
+        $$.f_typ.args_types[$$.f_typ.args_len] = $func_def_name.f_typ.args_types[i];
+        $$.f_typ.args_defs[$$.f_typ.args_len++] = $func_def_name.f_typ.args_defs[i];
+      }
+      for (int i=0; i<$func_args.f_typ.args_len; i++){
+        $$.args_names[$$.f_typ.args_len] = $func_args.args_names[i];
+        $$.f_typ.args_types[$$.f_typ.args_len] = $func_args.f_typ.args_types[i];
+        $$.f_typ.args_defs[$$.f_typ.args_len++] = $func_args.f_typ.args_defs[i];
+      }
+    }else{
+      $$.args_names = $func_args.args_names;
+      $$.f_typ.args_defs = $func_args.f_typ.args_defs;
+      $$.f_typ.args_types = $func_args.f_typ.args_types;
+      $$.f_typ.args_len = args_len;
+    }
     axo_push_scope(scopes, axo_new_scope(top_scope));
     axo_code_scope_started = true;
     for (int i = 0; i<$$.f_typ.args_len; i++)
@@ -1817,7 +1879,7 @@ int main(int argc, char** argv) {
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
-  if (state->config.timer){
+  if (state->config.timer && measure_time){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("Took: %fs\n", cpu_time_used);

@@ -36,9 +36,9 @@ typedef struct axo__arr{
 #define axo_arr_is_dynamic(AXO_ARR) ((AXO_ARR_DYN_FLAG & AXO_ARR.flags)>>7)
 #define axo_arr_dim_count(AXO_ARR) (0x7F & AXO_ARR.flags)
 
-#define axo_arr_1d_at(TYP, AXO_ARR, A) (((TYP*)(AXO_ARR.data))[A])
-#define axo_arr_2d_at(TYP, AXO_ARR, A, B) (((TYP*)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]) + (B)])
-#define axo_arr_3d_at(TYP, AXO_ARR, A, B, C) (((TYP*)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]*(AXO_ARR.len[2])) + (B)*(AXO_ARR.len[1]) + (C)])   
+#define axo_arr_1d_at(TYP, AXO_ARR, A) (((TYP)(AXO_ARR.data))[A])
+#define axo_arr_2d_at(TYP, AXO_ARR, A, B) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]) + (B)])
+#define axo_arr_3d_at(TYP, AXO_ARR, A, B, C) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]*(AXO_ARR.len[2])) + (B)*(AXO_ARR.len[1]) + (C)])   
 
 //FIX: Error handling
 #define axo_arr_1d_rsz(TYP, AXO_ARR, SZ1){ \

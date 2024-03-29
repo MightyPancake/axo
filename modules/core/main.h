@@ -12,7 +12,7 @@ int main(int argc, char** argv){
         .len=(axo_arr_dim_t[]){argc}
     };
     for (int i=0; i<argc; i++)
-        axo_arr_1d_at(axo__arr, args, i) = axo_arr_from_stat_str(argv[i]);
+        axo_arr_1d_at(axo__arr*, args, i) = axo_arr_from_stat_str(argv[i]);
     axo__main(args);
 }
 

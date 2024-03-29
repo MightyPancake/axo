@@ -98,6 +98,10 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "<<" {ret_null; return LEFT_SHIFT_OP; }
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
+"+=" {ret_null; return ASSIGN_ADD; }
+"-=" {ret_null; return ASSIGN_SUB; }
+"*=" {ret_null; return ASSIGN_MUL; }
+"/=" {ret_null; return ASSIGN_DIV; }
 
 \"([^"\\]|\\.|\\\n)*\" {ret_def; return(STRING_LITERAL); }
 [0-9]+ {ret_def; return(INTEGER_LITERAL); }

@@ -1,6 +1,7 @@
 use std
 use math
 use tim
+use test
 
 fn add(int a, int b){
     ret a+b
@@ -12,13 +13,34 @@ fn sub(int a, int b){
 
 rand_range is int = 6
 
-fn main([][]byte args){
-    fn_arr = [2][
-        add, sub
-    ]
+fn test1(@byte data){
+    printf("test 1\n")
+    a = 1
+    ret a.(bool)
+}
+
+fn int:add(int b){
+    self^ = self^+b
+    ret self
+}
+
+fn test2(@byte data){
+    ret data.(@bool)^
+}
+
+//axo test file.axo my_module
+//to run the test!
+fn test.my_module(){
+    // batch = test.new([2][test1, test2])
+    // // batch:run(test1, null)
+    // // batch:run(test2, null)
+    // batch.tests[0](null)
     ret 0
 }
 
-fn test([][]byte args){
+fn main([][]byte args){
+    // test.my_module()
+    a = 12
     ret 0
 }
+
