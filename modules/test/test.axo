@@ -1,0 +1,26 @@
+module(
+	name: "test"
+	// prefix: "axo__"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "A module used for writing tests in axo"
+)
+
+struct unit_test (
+	// @byte 					name,
+	(bool fn @byte)	func
+)
+
+struct test_batch (
+	[](bool fn @byte)	tests,
+	u32								total,
+	u32								passsed,
+	u32								failed
+)
+
+fn test.new([](bool fn @byte) tests){
+	ret test_batch{tests, tests.len[0].(u32), (0).(u32), (0).(u32)}
+}

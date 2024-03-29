@@ -86,20 +86,25 @@ extern int yydebug;
     NULL_KWRD = 287,               /* "null"  */
     INCR_OP = 288,                 /* "++"  */
     DECR_OP = 289,                 /* "--"  */
-    ENUM_KWRD = 290,               /* "enum"  */
-    STRUCT_KWRD = 291,             /* "struct"  */
-    USE_KWRD = 292,                /* "use"  */
-    INCLUDE_KWRD = 293,            /* "include"  */
-    STRUCT_LITERAL_START = 294,    /* "struct{"  */
-    DOT_FIELD = 295,               /* ".field"  */
-    MODULE_KWRD = 296,             /* "module"  */
-    ARROW_OP = 297,                /* "->"  */
-    IS_KWRD = 298,                 /* "is"  */
-    IDENTIFIER_PREC = 299,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 300,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 301,               /* LOOP_PREC  */
-    UMINUS = 302,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 303   /* STRUCT_LIT_NAMED_FIELD  */
+    ASSIGN_ADD = 290,              /* "+="  */
+    ASSIGN_SUB = 291,              /* "-="  */
+    ASSIGN_MUL = 292,              /* "*="  */
+    ASSIGN_DIV = 293,              /* "/="  */
+    ENUM_KWRD = 294,               /* "enum"  */
+    STRUCT_KWRD = 295,             /* "struct"  */
+    USE_KWRD = 296,                /* "use"  */
+    INCLUDE_KWRD = 297,            /* "include"  */
+    STRUCT_LITERAL_START = 298,    /* "struct{"  */
+    DOT_FIELD = 299,               /* ".field"  */
+    MODULE_KWRD = 300,             /* "module"  */
+    ARROW_OP = 301,                /* "->"  */
+    IS_KWRD = 302,                 /* "is"  */
+    IDENTIFIER_PREC = 303,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 304,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 305,               /* LOOP_PREC  */
+    UMINUS = 306,                  /* UMINUS  */
+    CALL_PREC = 307,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 308   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -108,7 +113,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 132 "axo_gram.y"
+#line 137 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -133,7 +138,7 @@ union YYSTYPE
   axo_each_loop each_loop_type;
   axo_module module_type;
 
-#line 137 "axo_gram.tab.h"
+#line 142 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

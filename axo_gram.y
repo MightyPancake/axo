@@ -91,7 +91,7 @@
 %token<str> IS_KWRD "is"
 %type<scope> code_scope code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
-%type<function_call> func_call_start func_call
+%type<function_call> func_call_start func_call called_expr
 %type<expression> expr incr_decr_op if_condition assignment arr_literal
 %type<declaration_type> declaration
 %type<str> statements declarations while_loop_base func_def_ret_typ
@@ -129,6 +129,7 @@
 %left '.'
 %left '(' ':'
 %left UMINUS '@' '^'
+%left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
 %left IF_KWRD
 %left STRUCT_LIT_NAMED_FIELD
@@ -418,13 +419,13 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
   | '(' expr ')' {asprintf(&($$.val), "(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
-  | '@' expr { //Referencing
-    if ($2.lval_kind == axo_not_lval_kind)
-      yyerror(&@2, "Cannot reference a non l-value.");
+  | expr '@' { //Referencing
+    if ($1.lval_kind == axo_not_lval_kind)
+      yyerror(&@1, "Cannot reference a non l-value.");
     $$.typ.kind = axo_ptr_kind;
     $$.typ.subtyp = malloc(sizeof(axo_typ));
-    *axo_subtyp($$.typ) = $2.typ;
-    asprintf(&($$.val), "&%s", $2.val);
+    *axo_subtyp($$.typ) = $1.typ;
+    asprintf(&($$.val), "&%s", $1.val);
   }
   | expr '^' { //Dereferencing
     if ($1.typ.kind != axo_ptr_kind)
@@ -433,9 +434,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     $$.lval_kind=$1.lval_kind;
     asprintf(&($$.val), "(*(%s))", $1.val);
   }
-  // | expr '.' '(' val_typ ')' {
-  
-  // } %prec TYPE_CASTING_PREC
   | assignment
   | identifier {
     char* var_name = "";
@@ -501,7 +499,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     }
   }
   | func_call {$$ = axo_call_to_expr($1);}
-  | func_call '!' '?' {
+  | func_call '!' '?' { //FIX: Change that. Should'nt discard return value
     //Get error instead of return value
   }
   | expr '<' expr {
@@ -922,7 +920,7 @@ matching_statement : expr {
       asprintf(&($$.val), "%s = %s;", ret_assign, $2.val);
   
     if (axo_is_no_typ(top_scope->ret_typ)) //Add line it was done in? FIX
-      top_scope->ret_typ = $2.typ;
+      top_scope->ret_typ = $expr.typ;
     else if(!axo_typ_eq(top_scope->ret_typ, $2.typ)){
       char hlpr[64] = "";
       strcpy(hlpr, axo_typ_to_str(top_scope->ret_typ));
@@ -1347,57 +1345,83 @@ c_typ_list : /*  EMPTY  */ {
   }
   ;
 
-func_call_start : expr '(' {
-    if (axo_validate_rval(&@1, $1)) {
+called_expr : expr '(' {
+    if (axo_validate_rval(&@expr, $expr)){
       switch($1.typ.kind){
         case axo_func_kind:
           $$ = (axo_func_call){
-            .typ = $1.typ,
+            .typ = $expr.typ,
             .called_val = $expr.val,
-            .params_len = 0,
-            .params = NULL
+            .params_len=0,
+            .params=NULL
           };
-          axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
-          if (fnt->args_len>0){
-            $$.params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
-            $$.params[0].val = fnt->args_defs[0];
-            $$.params_len = 1;
-          }
           break;
         default:
-          yyerror(&@1, "Cannot call a non-funtion value.");
+          yyerror(&@1, "Cannot call an expression of non-function type '%s'.", axo_typ_to_str($expr.typ));
           break;
       }
+    }else{
+      yyerror(&@1, "Cannot call an invalid rval.");
     }
-  }
-  | expr ':' IDEN '('{
-    //TODO: Methods
-  }
-  | expr '(' expr {
-    if (axo_validate_rval(&@1, $1)){
-      switch($1.typ.kind){
-        case axo_func_kind:
-          if (axo_validate_rval(&@3, $3)) {
-            axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
-            $$.typ = $1.typ;
-            $$.called_val = $1.val;
-            $$.params = (axo_expr*)malloc(sizeof(axo_expr)*axo_func_args_cap);
-            $$.params[0] = $3;
-            $$.params_len = 1;
-            if ($$.params_len <= fnt->args_len){
-              if (!axo_typ_eq(fnt->args_types[0], $3.typ))
-                yyerror(&@3, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len-1]), $$.params_len, axo_typ_to_str($$.params[$$.params_len-1].typ));
+    // printf("ret_typ: %s\n", axo_typ_to_str(((axo_func*)($$.typ.func_typ))->f_typ.ret_typ));
+  } %prec CALL_PREC
+  | expr ':' IDEN '(' {
+    if ($expr.typ.kind != axo_ptr_kind){
+      yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
+    }else{
+      axo_typ subtyp = *axo_subtyp($expr.typ);
+      char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str(subtyp), $IDEN);
+      axo_var* var = axo_get_var(top_scope, fn_name);
+      switch(subtyp.kind){
+        case axo_enum_kind:
+        case axo_simple_kind:
+        case axo_struct_kind:
+          if (var == NULL && rval_now)
+            yyerror(&@1, "Method '%s' undefined before usage.", $IDEN);
+          else{
+            if (var->typ.kind != axo_func_kind){
+              yyerror(&@3, "Attempted to call a non-function method. (Naming clash?)");  
             }else{
-              if (fnt->args_types[0].kind != axo_c_arg_list_kind)
-                yyerror(&@1, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
+              $$ = (axo_func_call){
+                .typ = var->typ,
+                .called_val = fn_name,
+                .params_len=1,
+                .params=(axo_expr*)malloc(axo_func_args_cap*sizeof(axo_expr))
+              };
+              $$.params[0] = $expr;
             }
           }
           break;
         default:
-          yyerror(&@1, "Cannot call a non-function value of type '%s'.", axo_typ_to_str($$.typ));
+          yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
           break;
       }
-  
+    }
+  } %prec CALL_PREC
+  ;
+
+func_call_start : called_expr {
+    axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
+    if ($$.params_len<fnt->args_len){
+      resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
+      $$.params[$$.params_len].val = fnt->args_defs[$$.params_len];
+      $$.params_len++;
+    }
+  }
+  | called_expr expr {
+    if (axo_validate_rval(&@expr, $expr)) {
+      axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
+      if ($$.params_len <= fnt->args_len){
+        if (!axo_typ_eq(fnt->args_types[$$.params_len], $expr.typ))
+          yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len-1]), $$.params_len, axo_typ_to_str($$.params[$$.params_len-1].typ));
+        else{
+          resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
+          $$.params[$$.params_len++] = $expr;
+        }
+      }else{
+        if (fnt->args_types[0].kind != axo_c_arg_list_kind)
+          yyerror(&@1, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
+      }
     }
   }
   | func_call_start ',' expr {
@@ -1407,13 +1431,13 @@ func_call_start : expr '(' {
     int i = $$.params_len;
     if (fnt->args_types[fnt->args_len-1].kind != axo_c_arg_list_kind){
       if (i < fnt->args_len){
-        if (!axo_typ_eq(fnt->args_types[i], $3.typ))
-          yyerror(&@3, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[i]), i, axo_typ_to_str($$.params[i].typ));
+        if (!axo_typ_eq(fnt->args_types[i], $expr.typ))
+          yyerror(&@3, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[i]), i, axo_typ_to_str($expr.typ));
       }else{
           yyerror(&@3, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
       }
     }
-    $$.params[i] = $3;
+    $$.params[i] = $expr;
     $$.params_len++;
   }
   | func_call_start ',' {
@@ -1511,9 +1535,14 @@ func_def_name : IDEN {
   }
   ;
 
-func_def_ret_typ : "fn"
+func_def_ret_typ : "fn" {
+    axo_push_scope(scopes, axo_new_scope(top_scope));
+    axo_code_scope_started = true;
+  }
   | val_typ "fn" {
+    axo_push_scope(scopes, axo_new_scope(top_scope));
     top_scope->ret_typ = $val_typ;
+    axo_code_scope_started = true;
   }
   ;
 
@@ -1546,8 +1575,6 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
       $$.f_typ.args_types = $func_args.f_typ.args_types;
       $$.f_typ.args_len = args_len;
     }
-    axo_push_scope(scopes, axo_new_scope(top_scope));
-    axo_code_scope_started = true;
     for (int i = 0; i<$$.f_typ.args_len; i++)
       axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
   }
@@ -1675,7 +1702,6 @@ struct_literal : struct_literal_start '}' {
   ;
 
 func_def : func_def_start code_scope {
-    $$ = $1;
     $$.body = $2;
     $$.f_typ.ret_typ = axo_is_no_typ($2->ret_typ) ? axo_none_typ : $2->ret_typ;
     axo_func_typ* fnt_ptr = (axo_func_typ*)malloc(sizeof(axo_func_typ));

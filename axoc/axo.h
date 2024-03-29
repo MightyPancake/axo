@@ -688,7 +688,7 @@ const char* axo_identifier_kind_to_str(axo_identifier_kind kind){
         case axo_identifier_var_kind: return "variable"; break;
         case axo_identifier_module_kind: return "module"; break;
         case axo_identifier_typ_kind: return "type"; break;
-        default: return "unknown"; break;
+        default: return "!!!"; break;
     }
 }
 
@@ -792,8 +792,11 @@ char* axo_typ_to_str(axo_typ typ){
         case axo_ptr_kind:
             return fmt_str(ret, "@%s", axo_typ_to_str(*axo_subtyp(typ)));
             break;
+        case axo_enum_kind:
+            return "enum";
+            break;
         default:
-            return fmt_str(s_str(128), "unknown type kind (%d)", typ.kind);
+            return fmt_str(s_str(128), "TYP%d", typ.kind);
             break;
     }
 }
@@ -1185,8 +1188,8 @@ char* axo_get_var_decl_assign(char* name, axo_expr expr){
         case axo_arr_kind:
             return fmtstr("axo__arr %s = %s", name, expr.val); break;
         case axo_ptr_kind:
-            //FIX
-            return fmtstr("%s %s = %s", axo_typ_to_c_str(expr.typ), name, expr.val); break;
+            //FIX: This doesn't always work. Example: function pointers
+            return fmtstr("%s %s = %s", axo_typ_to_c_str(typ), name, expr.val); break;
         default:
             yyerror(NULL, "Type assign declaration not yet supported for this (%d) kind!", typ.kind);
             return fmtstr("typ %s = %s", name, expr.val);

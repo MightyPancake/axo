@@ -11,6 +11,10 @@ fn sub(int a, int b){
     ret a+b
 }
 
+fn my_fn(){
+    ret "xd"
+}
+
 rand_range is int = 6
 
 fn test1(@byte data){
@@ -24,23 +28,15 @@ fn int:add(int b){
     ret self
 }
 
-fn test2(@byte data){
-    ret data.(@bool)^
-}
-
-//axo test file.axo my_module
-//to run the test!
-fn test.my_module(){
-    // batch = test.new([2][test1, test2])
-    // // batch:run(test1, null)
-    // // batch:run(test2, null)
-    // batch.tests[0](null)
-    ret 0
+fn int:mul(int b){
+    self^ = self^*b
+    ret self
 }
 
 fn main([][]byte args){
-    // test.my_module()
-    a = 12
+    a = 10
+    a@:add(2):mul(2)
+    printf("%d\n", a)
     ret 0
 }
 
