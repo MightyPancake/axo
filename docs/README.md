@@ -37,7 +37,7 @@ Below is a list of just some of the language's numerous features
 One of axo's goals was to make an easy-to-learn and read tool that is also fast. It should be really simple to learn axo even despite not being dynamic because of its syntax, shortcuts, and convenience changes over C/C++.
 
 ### *C*-mpli-*C*-ty
-During development keeping the language as simple as possible was one of (even not **THE**) main features. Axo essentially emphasizes and tries to go with the idea of making things as simple as they should be. Write code and run it. That's what's all about. It should be fun; no OOP, no keywords that rot in your brain that are not being used 99% of the time, and overcomplicated build and test systems. Just you, simple syntax, speed, and the wind blowing in your hair... (Unless you're bold, but the point remains)
+During development keeping the language as simple as possible was one of (if not **THE**) main features. Axo essentially emphasizes and tries to go with the idea of making things as simple as they should be. Write code and run it. That's what's all about. It should be fun; no OOP, no keywords that rot in your brain that are not being used 99% of the time, and overcomplicated build and test systems. Just you, simple syntax, speed, and the wind blowing in your hair... (Unless you're bold, but the point remains)
 <div style="text-align: center;">
     <img src="images/axo_c.png" alt="axo playing with c" width="35%"/>
 </div>
