@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>>ᑢᑔ<</title>
+  <title>>ᑢᑔ< axo</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
   <meta name="description" content="Description">
   <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
@@ -15,6 +15,24 @@
     title="docsify-darklight-theme"
     type="text/css"
   />
+  <style>
+  	.token.keyword {
+      color: #fc2f62;
+  	}
+    .token.number, .token.boolean {
+      color: #ff9729;
+      color: #8657a1;
+    }
+    .token.function {
+      color: #fe8f98;
+    }
+    .token.string {
+      color: #20f5ce;
+    }
+    .h1 {
+      color: #fe8f98;
+    }
+  </style>
 </head>
 <body>
   <div id="app">Loading, please wait...</div>
@@ -36,7 +54,7 @@
       //Search
       search: 'auto',
       coverpage: true,
-      name: 'axo',
+      // name: 'axo',
       search: {
         noData: {
           '/': 'No results!'
@@ -80,7 +98,7 @@
                 toogleImage : 'url(https://cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/icons/sun.svg)'
             },
             light: {
-                accent: 'hsl(345.07, 97.16%, 58.63%)',
+                accent: 'hsl(345.07, 95.16%, 58.63%)',
                 toogleBackground : '#091a28',
                 background: '#ffffff',
                 textColor: '#34495e',
@@ -102,7 +120,7 @@
   <!-- Progress -->
     <script src="https://cdn.jsdelivr.net/npm/docsify-progress@latest/dist/progress.min.js"></script>
   <!-- Better search -->
-    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+    <!-- script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
   <!-- Darkligh theme -->
     <script 
       src="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/index.min.js"
@@ -112,16 +130,7 @@
     <script src="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/docsify-sidebar-collapse.min.js"></script>
   <!-- Pretty terminal -->
     <script src="https://cdn.jsdelivr.net/npm/docsify-terminal-block@1.0.3"></script>
-  <!-- C-like syntax highlithing -->
-  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js"></script>
   <!-- Custom syntax colors -->
-  <style>
-  	/*
-  	 * Custom keyword styles
-  	 */
-  	.token.keyword.keyword-return, .token.keyword.keyword-if {
-  		color: #fd8889;
-  	}
-  </style>
+    <script src="./axo-syntax-highlighting.js"></script>
 </body>
 </html>

@@ -2,8 +2,5 @@
 
 > **Write fast, run faster!**
 
-- Easy to learn, beginner-friendly syntax.
-- Compiled to C which makes it run fast and integrates with existing C.
-
 [Download](https://github.com/MightyPancake/axo)
-[Getting Started](#headline)
+[Getting Started](install)
