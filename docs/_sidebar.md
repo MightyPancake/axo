@@ -1,10 +1,18 @@
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/sidebar.min.css" />
 
+[![Home](images/axo_think.png)]()
+
+
 - Getting started
-  - [Download](quickstart.md)
-  - [Install](quickstart.md)
-  - [What's next?](quickstart.md)
-- Docs
-  - [Stuff 1](quickstart.md)
-  - [Stuff 2](quickstart.md)
-  - [Stuff 3](quickstart.md)
+  - [Install](install)
+  - ~First program~
+  - ~What's next?~
+- Beginners tutorial
+  - ~Tutorial #1~
+  - ~Tutorial #2~
+  - ~Tutorial #3~
+  - ~Tutorial #4~
+  - ~Tutorial #5~
+- ~Inside look at axo~  
+- ~Blog~
+- ~Contact~
