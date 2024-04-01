@@ -1,0 +1,14 @@
+use std
+
+fn main([][]byte args){
+    printf("Hello world\n")
+    ret 0
+}
+
+fn nice([][]byte args){
+    for each [i], arg in args {
+        printf("arg #%d: %s\n", i, arg.data)
+    }
+    ret 0
+}
+
