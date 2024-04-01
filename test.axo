@@ -3,18 +3,6 @@ use math
 use tim
 use test
 
-fn add(int a, int b){
-    ret a+b
-}
-
-fn sub(int a, int b){
-    ret a+b
-}
-
-fn my_fn(){
-    ret "xd"
-}
-
 rand_range is int = 6
 
 fn test1(@byte data){
@@ -34,9 +22,16 @@ fn int:mul(int b){
 }
 
 fn main([][]byte args){
-    a = 10
-    a@:add(2):mul(2)
-    printf("%d\n", a)
+    arr = ?[0]int
+    arr@:append(3)
+    arr@:append(1)
+    arr@:append(4)
+    arr@:append(5)
+    arr@:append(9)
+    arr@:append(12)
+    for each [i], v in arr
+        printf("arr[%d] = %d\n", i, v)
+    printf("arr.first = %d\n", arr.first)
     ret 0
 }
 

@@ -689,7 +689,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
             break;
           case axo_arr_kind: //.len, .data, .dims
             if (strcmp("len", $2)==0){
-              //FIX! This should return an int pointer, not first element
               axo_typ typ = (axo_typ){
                 .kind = axo_ptr_kind,
                 .subtyp=malloc(sizeof(axo_typ))
@@ -715,6 +714,22 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
                 .val=fmtstr("%s.data", $1.val),
                 .lval_kind = axo_other_lval_kind
               };
+            }else if (strcmp("first", $2)==0){
+              axo_typ typ = (axo_typ){
+                .kind = axo_ptr_kind,
+                .subtyp=malloc(sizeof(axo_typ))
+              };
+              *axo_subtyp(typ) = axo_get_arr_typ($1.typ).subtyp;
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .typ = axo_get_arr_typ($1.typ).subtyp,
+                .val=fmtstr("axo_arr_1d_at(%s, %s, 0)", axo_typ_to_c_str(typ), $1.val),
+                .lval_kind = axo_not_lval_kind
+              };
+              free(typ.subtyp);
+            }else{
+              
+            yyerror(&@1, "Invalid array field.");
             }
             break;
           default:
@@ -779,7 +794,7 @@ stat_arr_literal_start : '[' expr ',' expr {
             yyerror(&@6, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($6.typ), axo_typ_to_str($4.typ));
     }
     $$ = (axo_arr_lit){
-      .dynamic=false,
+      .dynamic=$empty_arr_dims.dynamic,
       .len=$1.len,
       .dim_count=$1.dim_count,
       .count=2,
@@ -826,7 +841,7 @@ stat_arr_literal : '[' expr ',' ']' {
       sprintf(hlpr, "%d", $$.len[i]);
       strapnd(&len_str, hlpr);
     }
-    strapnd(&($$.val), fmtstr("}, .len=%s},.flags=AXO_ARR_STATIC}", len_str));
+    strapnd(&($$.val), fmtstr("}, .len=%s},.flags=%s}", len_str, $$.dynamic ? "AXO_ARR_DYNAMIC" : "AXO_ARR_STATIC"));
     free(len_str);
   }
   ;
@@ -868,7 +883,7 @@ arr_literal : stat_arr_literal {
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
       .val= $1.dynamic ?
-          fmtstr("axo_arr_new_dyn(malloc((%u)*sizeof(%s)), ((axo_arr_dim_t[]){%s}))", total_sz, axo_typ_to_c_str(axo_get_arr_typ(typ).subtyp), dims_str)
+          fmtstr("axo_arr_new_dyn(malloc((%u)*sizeof(%s)), axo_dyn_bytes_cpy(axo_arr_dim_t*, (axo_arr_dim_t[]){%s}, (%u)*sizeof(axo_arr_dim_t)))", total_sz, axo_typ_to_c_str(axo_get_arr_typ(typ).subtyp), dims_str, total_sz)
           : fmtstr("axo_arr_new_stat((%s){}, ((axo_arr_dim_t[]){%s}))", axo_c_arr_of_typ($val_typ, sz_str), dims_str),
       .typ=typ
     };
@@ -1392,6 +1407,9 @@ called_expr : expr '(' {
             }
           }
           break;
+        case axo_arr_kind:
+          $$ = axo_get_array_method(&@expr, &@IDEN, $expr, $IDEN);
+          break;
         default:
           yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
           break;
@@ -1413,7 +1431,7 @@ func_call_start : called_expr {
       axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
       if ($$.params_len <= fnt->args_len){
         if (!axo_typ_eq(fnt->args_types[$$.params_len], $expr.typ))
-          yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len-1]), $$.params_len, axo_typ_to_str($$.params[$$.params_len-1].typ));
+          yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len]), $$.params_len+1, axo_typ_to_str($expr.typ));
         else{
           resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
           $$.params[$$.params_len++] = $expr;
@@ -1889,7 +1907,7 @@ int main(int argc, char** argv) {
       int res = 1;
       switch(state->config.cc){
         case axo_gcc_cc_kind:
-          compiler_cmd = fmtstr("gcc %s -o %s", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
+          compiler_cmd = fmtstr("gcc %s -o %s -g", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
           res = system(compiler_cmd);
           break;
         default:
@@ -1908,7 +1926,7 @@ int main(int argc, char** argv) {
   if (state->config.timer && measure_time){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Took: %fs\n", cpu_time_used);
+    axo_lolprintf(state->config.color_support, rand(), "Took: %fs\n", cpu_time_used);
   }
   return prog_return;
 }

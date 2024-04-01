@@ -337,6 +337,52 @@ char* axo_get_color_esc(int index, axo_color_support_kind col_sup){
     return "";
 }
 
+axo_func_call axo_get_array_method(YYLTYPE* expr_loc, YYLTYPE* name_loc, axo_expr expr, char* name){
+    //FIX! This is huge
+    axo_typ deref_typ = *axo_subtyp(expr.typ);
+    axo_func_call ret;
+    axo_func_typ* f_typ = alloc_one(axo_func_typ);
+    if (strcmp("append", name) == 0){
+        *f_typ = (axo_func_typ){
+            .args_len = 3,
+            .args_types = malloc(3*sizeof(axo_typ)),
+            .args_defs=malloc(3*sizeof(axo_typ)),
+            .ret_typ=expr.typ
+        };
+        f_typ->args_types[0] = expr.typ;
+        f_typ->args_types[1] = expr.typ;
+        axo_typ subtyp = *axo_subtyp(expr.typ);
+        f_typ->args_types[2] = axo_get_arr_typ(subtyp).subtyp;
+        ret = (axo_func_call){
+            .called_val = alloc_str("axo_arr_1d_append"),
+            .typ = (axo_typ){
+                .kind=axo_func_kind,
+                .func_typ=f_typ
+            },
+            .params_len=2,
+            .params=(axo_expr*)malloc(3*sizeof(axo_expr))
+        };
+        axo_typ* t = alloc_one(axo_typ);
+        *t = axo_get_arr_typ(expr.typ).subtyp;
+        ret.params[0] = (axo_expr){
+            .typ=expr.typ,
+            .val=fmtstr("%s, %s",
+            axo_typ_to_c_str((axo_typ){.kind=axo_ptr_kind, .subtyp=&(axo_get_arr_typ(deref_typ).subtyp)}), axo_typ_to_c_str(axo_get_arr_typ(deref_typ).subtyp))
+        };
+        // printf("arr subtyp: %s\n", axo_typ_to_c_str(axo_get_arr_typ(expr.typ).subtyp));
+        // printf("expr typ: %s\n", axo_typ_to_str(expr.typ));
+        ret.params[1] = (axo_expr){
+            .typ=expr.typ,
+            .val=fmtstr("%s", expr.val)
+        };
+        free(t);
+        return ret;
+    }else{
+        yyerror(name_loc, "Undefined array method.");
+    }
+    return (axo_func_call){};
+}
+
 void axo_lolprintf(axo_color_support_kind col_sup, int seed, const char* fmt, ...){
     char* str = NULL;
     va_list args;
@@ -858,6 +904,10 @@ char* axo_typ_to_c_str(axo_typ t){
                     asprintf(&ret, "%s%s", cur_typ.simple.cname, stars);
                     return ret;
                     break;
+                case axo_arr_kind:
+                    asprintf(&ret, "axo__arr%s", stars);
+                    return ret;
+                    break;
                 case axo_func_kind:
                     fnt = *((axo_func_typ*)(cur_typ.func_typ));
                     ret = fmtstr("%s(*%s)(", axo_typ_to_c_str(fnt.ret_typ), stars);
@@ -869,7 +919,7 @@ char* axo_typ_to_c_str(axo_typ t){
                     return ret;
                     break;
                 default:
-                    yyerror(NULL, "Couldn't create a string for pointer of that kind!");
+                    yyerror(NULL, "Couldn't create a string for pointer of that kind (kind=%d)", t.kind);
             }
             break;
         case axo_struct_kind:

@@ -27,7 +27,6 @@ typedef struct axo__arr{
     void*           data;
 }axo__arr;
 
-//FIX: Flags?
 #define axo_arr_from_stat_str(STR) (axo__arr){ \
     .data=STR, \
     .len=(axo_arr_dim_t[]){(axo_arr_dim_t)strlen(STR)} \
@@ -36,14 +35,25 @@ typedef struct axo__arr{
 #define axo_arr_is_dynamic(AXO_ARR) ((AXO_ARR_DYN_FLAG & AXO_ARR.flags)>>7)
 #define axo_arr_dim_count(AXO_ARR) (0x7F & AXO_ARR.flags)
 
+#define axo_global_arr_cap ((axo_arr_dim_t)(16))
+
+#define axo_arr_1d_cap_0(ARR) axo_global_arr_cap
+
 #define axo_arr_1d_at(TYP, AXO_ARR, A) (((TYP)(AXO_ARR.data))[A])
 #define axo_arr_2d_at(TYP, AXO_ARR, A, B) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]) + (B)])
 #define axo_arr_3d_at(TYP, AXO_ARR, A, B, C) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]*(AXO_ARR.len[2])) + (B)*(AXO_ARR.len[1]) + (C)])   
 
 //FIX: Error handling
 #define axo_arr_1d_rsz(TYP, AXO_ARR, SZ1){ \
-    AXO_ARR.data = realloc(SZ1*sizeof(TYP*)); \
+    (AXO_ARR).data = realloc((AXO_ARR).data, (SZ1)*sizeof(TYP*)); \
 }
+
+#define axo_arr_1d_append(TYP, ELEM_TYP, AXO_ARR, ELEM) ({ \
+    if ((AXO_ARR)->len[0] % axo_arr_1d_cap_0(AXO_ARR) == 0) \
+        axo_arr_1d_rsz(TYP, *(AXO_ARR), ((AXO_ARR)->len[0]+axo_arr_1d_cap_0((AXO_ARR)))*sizeof(ELEM_TYP)) \
+    axo_arr_1d_at(TYP, (*(AXO_ARR)), (AXO_ARR)->len[0]++) = ELEM; \
+    ELEM; \
+})
 
 //TODO: Finish
 #define axo_arr_nd_at(TYP, AXO_ARR, INDICES) ({ \
@@ -60,7 +70,16 @@ typedef struct axo__arr{
     .data=DATA \
 })
 
-#define axo_arr_new_dyn(DATA, DIMS) axo_arr_new(DATA, DIMS, AXO_ARR_DYNAMIC)
+#define axo_arr_new_dyn(DATA, DIMS) ({ \
+    axo_arr_new(DATA, DIMS, AXO_ARR_DYNAMIC); \
+})
+
+#define axo_dyn_bytes_cpy(RES_TYP, SRC, SZ) ({ \
+    RES_TYP TMP = malloc(SZ); \
+    TMP = memcpy(TMP, (SRC), (SZ)); \
+    TMP; \
+})
+
 #define axo_arr_new_stat(DATA, DIMS) axo_arr_new(DATA, DIMS, AXO_ARR_STATIC)
 
 #define axo_arr_new_with_dim_count(DATA, DIMS, FLAGS, DIM_COUNT) ((arr){ \
