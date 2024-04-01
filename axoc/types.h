@@ -166,7 +166,8 @@ typedef enum axo_decl_kind{
     axo_module_info_decl_kind,
     axo_assign_decl_kind,
     axo_is_decl_kind,
-    axo_typ_def_decl_kind
+    axo_typ_def_decl_kind,
+    axo_other_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -259,7 +260,6 @@ typedef struct axo_state{
     map                    types_def;
     
     axo_compiler_config    config;
-    char*                  output_name;
 
     //Default types
     axo_typ_def*           int_def;
@@ -272,6 +272,10 @@ typedef struct axo_state{
     char*                  root_path;
     axo_source*            sources;
     int                    sources_len;
+    char*                  entry_file;
+    char*                  entry_point;
+    char*                  output_file;
+    char*                  output_c_file;
 
     //Modules
     map                    modules;

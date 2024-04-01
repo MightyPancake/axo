@@ -4572,7 +4572,7 @@ int main(int argc, char** argv) {
   // axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
   // axo_lolprintf(axo_col_sup(state), rand(), "Hello %s!\n", "world");
   size_t cfg_sz;
-  axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes("axo.config", &cfg_sz);
+  axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes(fmt_str((char[axo_max_path_len]){}, "%s"axo_dir_sep"axo.config", state->root_path), &cfg_sz);
   // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
   // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
@@ -4592,36 +4592,40 @@ int main(int argc, char** argv) {
   }else if (strcmp(cmd, "set")==0){
     prog_return = axo_set_cmd(state, argc, argv);
   }else{
-    if (argc < 1) {
-        fprintf(stderr, "Invalid arguments.\nRun \'axo help\' for help on how to use axo!\n");
-        return 1;
-    }
+    axo_handle_args(state, argc, argv, 1);
     //Scopes table
     scopes = alloc_one(axo_scopes);
     scopes->scopes = NULL;
     scopes->len = 0;
     axo_push_scope(scopes, state->global_scope);
     //Use core module
-    axo_new_source(state, argv[1]);
+    if (state->entry_file){
+      axo_new_source(state, state->entry_file);
+    }else{
+      yyerror(NULL, "Entry file wasn't provided.\nUsage: axo <file> |options|");
+    }
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
+    //Set entry point
+    axo_add_decl(state, (axo_decl){.kind=axo_other_decl_kind, .val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point)});
     //Parse
     yyparse();
-    printf("axo -> C: done!\n");
+    printf("Parsing done.\n");
     //Handle produced C code
-    char* input_file_path = argv[1];
+    char* input_file_path = state->entry_file;
     if (!prog_return){
-      if (state->output_name==NULL)
-        state->output_name = axo_swap_file_extension(input_file_path, ".c");
+      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
+      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
+      state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
       char* code = axo_get_code(state);
-      overwrite_file_with_string(state->output_name, code);
+      overwrite_file_with_string(state->output_c_file, code);
       free(code);
       //Compile program
       char* compiler_cmd;
       int res = 1;
       switch(state->config.cc){
         case axo_gcc_cc_kind:
-          compiler_cmd = fmtstr("gcc %s -o %s -g", state->output_name, axo_swap_file_extension(state->output_name, AXO_BIN_EXT));
+          compiler_cmd = fmtstr("gcc %s -o %s -g", state->output_c_file, state->output_file);
           res = system(compiler_cmd);
           break;
         default:
@@ -4632,11 +4636,12 @@ int main(int argc, char** argv) {
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
       if (!(state->config.keep_c)){
-        remove(state->output_name);
+        remove(state->output_c_file);
       }
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
+  //Time the action if the according option was and is true
   if (state->config.timer && measure_time){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;

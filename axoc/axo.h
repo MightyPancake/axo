@@ -235,7 +235,6 @@ axo_state* axo_new_state(char* root_path){
         .color_support=axo_limited_color_support_kind,
         .ascii_only=false
     };
-    st->output_name = NULL;
     //Load types
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
@@ -255,12 +254,68 @@ axo_state* axo_new_state(char* root_path){
     st->root_path = root_path;
     st->sources = NULL;
     st->sources_len = 0;
+    st->entry_file = NULL;
+    st->entry_point = NULL;
+    st->output_file = NULL;
+    st->output_c_file = NULL;
     //Modules
     st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
     st->module_names = NULL;
     st->modules_len = 0;
     return st;
 }
+
+#define skip_arg ({ \
+    arg_num++; \
+    if (arg_num>=argc){ \
+        arg = NULL; \
+    }else{ \
+        arg = argv[arg_num]; \
+    } \
+})
+#define next_arg ({ \
+    skip_arg; \
+    if (arg==NULL){ \
+        yyerror(NULL, "Expected at least one more argument after: %s", argv[arg_num-1]); \
+        return; \
+    } \
+    arg; \
+})
+
+void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
+    int arg_num = init_arg;
+    char* arg = argv[init_arg];
+    while (arg != NULL){
+        // printf("Got arg #%d: %s\n", arg_num, arg);
+        if (strcmp(arg, "-e")==0){ //Set entry point
+            next_arg;
+            if (st->entry_point == NULL)
+                st->entry_point = arg;
+            else
+                yyerror(NULL, "Cannot set entry point to '%s' after it was already set to '%s'.", arg, st->entry_point);
+        }else if (strcmp(arg, "-o")==0){ //Set output file name
+            next_arg;
+            if (st->output_file == NULL)
+                st->output_file = arg;
+            else
+                yyerror(NULL, "Cannot set output file name to '%s' after it was already set to '%s'.", arg, st->output_file);
+        }else if (strcmp(arg, "-oc")==0){ //Set output c file name
+            next_arg;
+            if (st->output_c_file == NULL)
+                st->output_c_file = arg;
+            else
+                yyerror(NULL, "Cannot set output c file name to '%s' after it was already set to '%s'.", arg, st->output_c_file);
+        }else{//Set entry file
+            if (st->entry_file == NULL)
+                st->entry_file = arg;
+            else
+                yyerror(NULL, "Cannot set entry file to '%s' after it was already set to '%s'.", arg, st->entry_file);
+        }
+        skip_arg;
+    }
+}
+#undef skip_arg
+#undef next_arg
 
 char* axo_bool_to_str(bool a, axo_color_support_kind col_sup){
     if (col_sup == axo_no_color_support_kind)
@@ -469,9 +524,9 @@ void axo_print_config(axo_state* st){
     int seed = rand() % col_count;
     printf(axo_get_color_esc(28, col_sup));
     if (col_sup == axo_no_color_support_kind)
-        system("./printmoji");
+        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
     else
-        system("./printcolmoji");
+        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printcolmoji"AXO_BIN_EXT, st->root_path));
     printf("  v.%s\n", AXO_VERSION);
     printf(axo_reset_style"cc: %s\n", axo_lolsprintf(col_sup, seed, (char[64]){}, axo_cc_to_str(cfg.cc)));
     printf("keep_c: %s\n", axo_bool_to_str(cfg.keep_c, col_sup));
@@ -535,7 +590,7 @@ int axo_set_cmd(axo_state* st, int argc, char** argv){
     }
     if (valid){
         printf("Saving new config...\n");
-        axo_bytes_to_file("axo.config", (char*)(&(st->config)), sizeof(axo_compiler_config));
+        axo_bytes_to_file(fmt_str((char[axo_max_path_len]){}, "%s"axo_dir_sep"axo.config", st->root_path), (char*)(&(st->config)), sizeof(axo_compiler_config));
         return axo_info_cmd(st, argc, argv);
     }
     return 1;
