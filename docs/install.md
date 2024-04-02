@@ -3,14 +3,14 @@ In this section, you'll learn how to correctly install axo whether you're a tota
 
 If at any point you feel lost, remember you can always reach out for some help!
 
-If you consider yourself an expert, please [skip to this part of the page](starting?id=the-diy-road).
+If you consider yourself an expert, please [skip to this part of the page](install?id=the-diy-road).
 
 Otherwise, continue with the next section.
 
 ## Installing from a release
 Head over to the release page of axo and pick the version you wish to have installed. If you can't decide. just go with the latest. Then after the download finishes, you have to unpack the downloaded archive somewhere on your drive using a tool like winRAR or 7zip.
 You'll then need to set up the environmental variable called PATH. It essentially tells your computer where to look for programs by their name. You need to add the extracted directory path (it should have a program named `axo` or `axo.exe` depending on your system in it) to the PATH variable.
-Once you've done that, you should be good to go! [Click here to learn what to do next](starting?id=it-lives).
+Once you've done that, you should be good to go! [Click here to learn what to do next](install?id=it-lives).
 
 ## The DIY road
 This is easier if you're already somewhat acquainted with the use of a terminal. To build axo you'll need the following programs:
