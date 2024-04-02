@@ -71,8 +71,13 @@
       plugins: [
         function(hook) {
           var footer = [
-            '<footer style="text-align: center;margin-top: 50px;">',
-            '<span> axo  &copy; 2024 </span>',
+            '<footer style="display: flex; justify-content: center; gap: 5%;">',
+                '<a href="https://discord.gg/y9AYGhjecU" target="_blank">',
+                    '<img src="images/discord.png" alt="Discord" width="50">',
+                '</a>',
+                '<a href="https://github.com/MightyPancake" target="_blank">',
+                    '<img src="images/gh.png" alt="GitHub" width="50" height="50">',
+                '</a>',
             '</footer>'
           ].join('');
 
