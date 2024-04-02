@@ -6,6 +6,7 @@
   #include <stdlib.h>
   #include "axoc/axo.h"
   #include <time.h>
+  //Bison extern
   extern int yylineno;
   extern FILE *yyin;
   extern YYLTYPE yylloc;
@@ -13,6 +14,8 @@
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char *, ...);
   int yyparse(void);
+  //Axo extern
+  extern int (*axo_printf)(const char* fmt, ...);
   //State
   #define top_scope axo_scopes_top(scopes)
   axo_state* state;
@@ -1862,15 +1865,14 @@ int main(int argc, char** argv) {
   // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
   // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
+  axo_handle_args(state, argc, argv, 1);
+  axo_printf = state->silenced ?  axo_no_printf : printf;
   bool measure_time = state->config.timer;
   if (measure_time){
     start = clock();
   }
   char* cmd = argv[1];
-  if (strcmp(cmd, "run")==0){
-    printf(axo_green_fg"Run!\n"axo_reset_style);
-    prog_return = 0;
-  }else if (strcmp(cmd, "test")==0){
+  if (strcmp(cmd, "test")==0){
     printf(axo_magenta_fg"Test!\n"axo_reset_style);
     prog_return = 0;
   }else if (strcmp(cmd, "info")==0){
@@ -1878,17 +1880,21 @@ int main(int argc, char** argv) {
   }else if (strcmp(cmd, "set")==0){
     prog_return = axo_set_cmd(state, argc, argv);
   }else{
-    axo_handle_args(state, argc, argv, 1);
-    //Scopes table
-    scopes = alloc_one(axo_scopes);
-    scopes->scopes = NULL;
-    scopes->len = 0;
-    axo_push_scope(scopes, state->global_scope);
-    //Use core module
     if (state->entry_file){
+      //Load default args where needed
+      char* input_file_path = state->entry_file;
+      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
+      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
+      state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
+      //Scopes table
+      scopes = alloc_one(axo_scopes);
+      scopes->scopes = NULL;
+      scopes->len = 0;
+      axo_push_scope(scopes, state->global_scope);
       axo_new_source(state, state->entry_file);
     }else{
       yyerror(NULL, "Entry file wasn't provided.\nUsage: axo <file> |options|");
+      return 1;
     }
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
@@ -1896,13 +1902,9 @@ int main(int argc, char** argv) {
     axo_add_decl(state, (axo_decl){.kind=axo_other_decl_kind, .val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point)});
     //Parse
     yyparse();
-    printf("Parsing done.\n");
+    axo_printf("Parsing done.\n");
     //Handle produced C code
-    char* input_file_path = state->entry_file;
     if (!prog_return){
-      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
-      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
-      state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
       char* code = axo_get_code(state);
       overwrite_file_with_string(state->output_c_file, code);
       free(code);
@@ -1921,14 +1923,18 @@ int main(int argc, char** argv) {
       if (res != 0)
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
-      if (!(state->config.keep_c)){
+      if (state->run){
+        system(fmt_str((char[512]){}, "./%s", state->output_file));
+        remove(state->output_file);
+        remove(state->output_c_file);
+      }else if (!(state->config.keep_c)){
         remove(state->output_c_file);
       }
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
   //Time the action if the according option was and is true
-  if (state->config.timer && measure_time){
+  if (state->config.timer && measure_time && !(state->silenced)){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     axo_lolprintf(state->config.color_support, rand(), "Took: %fs\n", cpu_time_used);

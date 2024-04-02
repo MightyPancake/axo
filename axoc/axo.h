@@ -172,6 +172,8 @@ int axo_get_struct_field_index(axo_struct* structure, char* name);
 char* axo_for_loop_to_str(axo_for_loop lp);
 
 //Misc
+int (*axo_printf)(const char* fmt, ...);
+int axo_no_printf(const char* fmt, ...){return 0;}
 char* fmtstr(const char fmt[], ...);
 char* tmpfmtstr(const char fmt[], ...);
 char* axo_file_to_str(char* path);
@@ -262,6 +264,9 @@ axo_state* axo_new_state(char* root_path){
     st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
     st->module_names = NULL;
     st->modules_len = 0;
+    //Misc
+    st->silenced = false;
+    st->run = true;
     return st;
 }
 
@@ -293,6 +298,10 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
                 st->entry_point = arg;
             else
                 yyerror(NULL, "Cannot set entry point to '%s' after it was already set to '%s'.", arg, st->entry_point);
+        }else if (strcmp(arg, "-r")==0 || strcmp(arg, "run") == 0){ //Silence compiler's printfs
+            st->run = true;
+        }else if (strcmp(arg, "-s")==0){ //Silence compiler's printfs
+            st->silenced = true;
         }else if (strcmp(arg, "-o")==0){ //Set output file name
             next_arg;
             if (st->output_file == NULL)

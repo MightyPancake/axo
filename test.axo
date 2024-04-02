@@ -1,7 +1,9 @@
 use std
+use testing
 
 fn main([][]byte args){
     printf("Hello world\n")
+    testing.run("test.axo", "test_addition")
     ret 0
 }
 
@@ -12,3 +14,7 @@ fn nice([][]byte args){
     ret 0
 }
 
+fn testing.addition([][]byte args){
+    printf("Testing addition...\n")
+    ret 1+1==2 ? 0 : 1
+}

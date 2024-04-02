@@ -76,6 +76,7 @@
   #include <stdlib.h>
   #include "axoc/axo.h"
   #include <time.h>
+  //Bison extern
   extern int yylineno;
   extern FILE *yyin;
   extern YYLTYPE yylloc;
@@ -83,6 +84,8 @@
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char *, ...);
   int yyparse(void);
+  //Axo extern
+  extern int (*axo_printf)(const char* fmt, ...);
   //State
   #define top_scope axo_scopes_top(scopes)
   axo_state* state;
@@ -109,7 +112,7 @@
     AXO_RVAL_WAS_VALID; \
   }) \
 
-#line 113 "axo_gram.tab.c"
+#line 116 "axo_gram.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -665,23 +668,23 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   164,   164,   165,   168,   180,   199,   233,   238,   263,
-     266,   269,   273,   285,   297,   307,   324,   327,   352,   353,
-     356,   364,   369,   393,   397,   404,   405,   406,   407,   415,
-     416,   417,   418,   419,   420,   421,   422,   430,   437,   438,
-     487,   501,   502,   505,   512,   519,   526,   533,   540,   547,
-     556,   565,   574,   583,   606,   633,   742,   743,   744,   775,
-     790,   805,   816,   826,   849,   864,   893,   901,   909,   915,
-     915,   917,   923,   928,   945,   948,   960,   972,   979,   986,
-     987,   988,   989,   992,   998,  1003,  1004,  1005,  1006,  1009,
-    1012,  1017,  1027,  1034,  1043,  1052,  1057,  1062,  1073,  1084,
-    1092,  1101,  1110,  1120,  1124,  1129,  1135,  1149,  1163,  1177,
-    1193,  1201,  1209,  1214,  1240,  1250,  1256,  1267,  1273,  1284,
-    1297,  1306,  1317,  1318,  1321,  1328,  1333,  1334,  1337,  1338,
-    1343,  1347,  1352,  1363,  1383,  1421,  1429,  1445,  1461,  1476,
-    1493,  1499,  1507,  1513,  1523,  1556,  1560,  1567,  1601,  1617,
-    1638,  1668,  1682,  1692,  1713,  1722,  1736,  1741,  1746,  1753,
-    1759,  1768,  1780,  1785
+       0,   167,   167,   168,   171,   183,   202,   236,   241,   266,
+     269,   272,   276,   288,   300,   310,   327,   330,   355,   356,
+     359,   367,   372,   396,   400,   407,   408,   409,   410,   418,
+     419,   420,   421,   422,   423,   424,   425,   433,   440,   441,
+     490,   504,   505,   508,   515,   522,   529,   536,   543,   550,
+     559,   568,   577,   586,   609,   636,   745,   746,   747,   778,
+     793,   808,   819,   829,   852,   867,   896,   904,   912,   918,
+     918,   920,   926,   931,   948,   951,   963,   975,   982,   989,
+     990,   991,   992,   995,  1001,  1006,  1007,  1008,  1009,  1012,
+    1015,  1020,  1030,  1037,  1046,  1055,  1060,  1065,  1076,  1087,
+    1095,  1104,  1113,  1123,  1127,  1132,  1138,  1152,  1166,  1180,
+    1196,  1204,  1212,  1217,  1243,  1253,  1259,  1270,  1276,  1287,
+    1300,  1309,  1320,  1321,  1324,  1331,  1336,  1337,  1340,  1341,
+    1346,  1350,  1355,  1366,  1386,  1424,  1432,  1448,  1464,  1479,
+    1496,  1502,  1510,  1516,  1526,  1559,  1563,  1570,  1604,  1620,
+    1641,  1671,  1685,  1695,  1716,  1725,  1739,  1744,  1749,  1756,
+    1762,  1771,  1783,  1788
 };
 #endif
 
@@ -2045,21 +2048,21 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* declarations: %empty  */
-#line 164 "axo_gram.y"
+#line 167 "axo_gram.y"
                            {}
-#line 2051 "axo_gram.tab.c"
+#line 2054 "axo_gram.tab.c"
     break;
 
   case 3: /* declarations: declarations func_def  */
-#line 165 "axo_gram.y"
+#line 168 "axo_gram.y"
                           {
     axo_add_decl(state, axo_func_def_to_decl((yyvsp[0].function)));
   }
-#line 2059 "axo_gram.tab.c"
+#line 2062 "axo_gram.tab.c"
     break;
 
   case 4: /* declarations: declarations "#include"  */
-#line 168 "axo_gram.y"
+#line 171 "axo_gram.y"
                            {
     if ((yyvsp[0].str)[0] == '<'){
       axo_add_decl(state, (axo_decl){.val = fmtstr("#include %s", (yyvsp[0].str)), .kind=axo_c_include_decl_kind});
@@ -2072,11 +2075,11 @@ yyreduce:
       free(res_path);
     }
   }
-#line 2076 "axo_gram.tab.c"
+#line 2079 "axo_gram.tab.c"
     break;
 
   case 5: /* declarations: declarations "#register" c_typ "identifier" '(' c_typ_list ')'  */
-#line 180 "axo_gram.y"
+#line 183 "axo_gram.y"
                                                           {
     // printf("Starting to register a C function\n");
     axo_func fn;
@@ -2096,11 +2099,11 @@ yyreduce:
     axo_set_func(state, fn);
     axo_add_decl(state, (axo_decl){.val=fmtstr("//registered function '%s'", fn.name), .kind=axo_c_register_decl_kind});
   }
-#line 2100 "axo_gram.tab.c"
+#line 2103 "axo_gram.tab.c"
     break;
 
   case 6: /* declarations: declarations "enum" "identifier" '(' enum_names ')'  */
-#line 199 "axo_gram.y"
+#line 202 "axo_gram.y"
                                                    {
     new_ptr_one(enm, axo_enum);
     *enm = (yyvsp[-1].enum_type);
@@ -2135,19 +2138,19 @@ yyreduce:
     axo_set_typ_def(&(yyloc), state, td);
     axo_add_decl(state, (axo_decl){.val=decl, .kind=axo_enum_decl_kind});
   }
-#line 2139 "axo_gram.tab.c"
+#line 2142 "axo_gram.tab.c"
     break;
 
   case 7: /* declarations: declarations declaration  */
-#line 233 "axo_gram.y"
+#line 236 "axo_gram.y"
                              {
     axo_add_decl(state, (yyvsp[0].declaration_type));
   }
-#line 2147 "axo_gram.tab.c"
+#line 2150 "axo_gram.tab.c"
     break;
 
   case 8: /* declaration: struct_def  */
-#line 238 "axo_gram.y"
+#line 241 "axo_gram.y"
                          { //Fix! Make this use realloc less
     new_ptr_one(strct, axo_struct);
     *strct = (yyvsp[0].struct_type);
@@ -2173,36 +2176,36 @@ yyreduce:
     axo_set_typ_def(&(yyloc), state, td);
     (yyval.declaration_type) = (axo_decl){.val=decl, .kind=axo_struct_decl_kind};
   }
-#line 2177 "axo_gram.tab.c"
+#line 2180 "axo_gram.tab.c"
     break;
 
   case 9: /* declaration: "use" "identifier"  */
-#line 263 "axo_gram.y"
+#line 266 "axo_gram.y"
                {
     (yyval.declaration_type) = axo_use_module(state, &(yylsp[0]), (yyvsp[0].str));
   }
-#line 2185 "axo_gram.tab.c"
+#line 2188 "axo_gram.tab.c"
     break;
 
   case 10: /* declaration: "include" "string literal"  */
-#line 266 "axo_gram.y"
+#line 269 "axo_gram.y"
                              {
     (yyval.declaration_type) = axo_include_file(state, &(yylsp[0]), (yyvsp[0].str), true);
   }
-#line 2193 "axo_gram.tab.c"
+#line 2196 "axo_gram.tab.c"
     break;
 
   case 11: /* declaration: "module" module_info ')'  */
-#line 269 "axo_gram.y"
+#line 272 "axo_gram.y"
                              {
     axo_load_module_defaults(state, &(yyvsp[-1].module_type));
     (yyval.declaration_type) = axo_add_module(state, (yyvsp[-1].module_type));
   }
-#line 2202 "axo_gram.tab.c"
+#line 2205 "axo_gram.tab.c"
     break;
 
   case 12: /* declaration: expr "is" val_typ  */
-#line 273 "axo_gram.y"
+#line 276 "axo_gram.y"
                       {
     if ((yyvsp[-2].expression).lval_kind == axo_var_lval_kind){
       (yyval.declaration_type) = (axo_decl){
@@ -2215,11 +2218,11 @@ yyreduce:
       yyerror(&(yylsp[-2]), "Cannot declare non-variable value '%s'.", (yyvsp[-2].expression).val);
     }
   }
-#line 2219 "axo_gram.tab.c"
+#line 2222 "axo_gram.tab.c"
     break;
 
   case 13: /* declaration: expr "is" val_typ '=' expr  */
-#line 285 "axo_gram.y"
+#line 288 "axo_gram.y"
                                {
     if ((yyvsp[-4].expression).lval_kind == axo_var_lval_kind){
       (yyval.declaration_type) = (axo_decl){
@@ -2232,11 +2235,11 @@ yyreduce:
       yyerror(&(yylsp[-4]), "Cannot declare non-variable value '%s'.", (yyvsp[-4].expression).val);
     }
   }
-#line 2236 "axo_gram.tab.c"
+#line 2239 "axo_gram.tab.c"
     break;
 
   case 14: /* declaration: "#typ" "identifier"  */
-#line 297 "axo_gram.y"
+#line 300 "axo_gram.y"
                 {
     char* name = alloc_str((yyvsp[0].str));
     axo_set_typ_def(&(yyloc), state, (axo_typ_def){.name=name, .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name=name, .cname=name}, .def="0"}});
@@ -2245,11 +2248,11 @@ yyreduce:
         .val = fmtstr("//accepting type %s", (yyvsp[0].str))
       };
   }
-#line 2249 "axo_gram.tab.c"
+#line 2252 "axo_gram.tab.c"
     break;
 
   case 15: /* struct_def: "struct" "identifier" '(' func_args ')'  */
-#line 307 "axo_gram.y"
+#line 310 "axo_gram.y"
                                                 {
     axo_struct_field* fields = (axo_struct_field*)malloc((yyvsp[-1].function).f_typ.args_len*sizeof(axo_struct_field));
     for (int i = 0; i<(yyvsp[-1].function).f_typ.args_len; i++){
@@ -2265,19 +2268,19 @@ yyreduce:
       .fields_len=(yyvsp[-1].function).f_typ.args_len
     };
   }
-#line 2269 "axo_gram.tab.c"
+#line 2272 "axo_gram.tab.c"
     break;
 
   case 16: /* module_info: '('  */
-#line 324 "axo_gram.y"
+#line 327 "axo_gram.y"
                   {
     (yyval.module_type) = axo_new_module();
   }
-#line 2277 "axo_gram.tab.c"
+#line 2280 "axo_gram.tab.c"
     break;
 
   case 17: /* module_info: module_info "identifier" ':' "string literal"  */
-#line 327 "axo_gram.y"
+#line 330 "axo_gram.y"
                                         {
     char* str_val = alloc_str(&((yyvsp[0].str)[1]));
     str_val[strlen(str_val)-1] = '\0';
@@ -2301,23 +2304,23 @@ yyreduce:
       yyerror(&(yylsp[-2]), "Not a valid module information field.");
     // printf("Setting %s to %s\n", $IDEN, $STRING_LITERAL);
   }
-#line 2305 "axo_gram.tab.c"
+#line 2308 "axo_gram.tab.c"
     break;
 
   case 18: /* statements: statement  */
-#line 352 "axo_gram.y"
+#line 355 "axo_gram.y"
                        {axo_add_statement(top_scope, (yyvsp[0].statement_type));}
-#line 2311 "axo_gram.tab.c"
+#line 2314 "axo_gram.tab.c"
     break;
 
   case 19: /* statements: statements statement  */
-#line 353 "axo_gram.y"
+#line 356 "axo_gram.y"
                          {axo_add_statement(top_scope, (yyvsp[0].statement_type));}
-#line 2317 "axo_gram.tab.c"
+#line 2320 "axo_gram.tab.c"
     break;
 
   case 20: /* index_access: '[' expr  */
-#line 356 "axo_gram.y"
+#line 359 "axo_gram.y"
                         {
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
     (yyval.index_access_type) = (axo_index_access){
@@ -2326,19 +2329,19 @@ yyreduce:
     };
     (yyval.index_access_type).indexes[0] = (yyvsp[0].expression);
   }
-#line 2330 "axo_gram.tab.c"
+#line 2333 "axo_gram.tab.c"
     break;
 
   case 21: /* index_access: index_access '|' expr  */
-#line 364 "axo_gram.y"
+#line 367 "axo_gram.y"
                           {
     (yyval.index_access_type).indexes[(yyval.index_access_type).index_count++] = (yyvsp[0].expression);
   }
-#line 2338 "axo_gram.tab.c"
+#line 2341 "axo_gram.tab.c"
     break;
 
   case 22: /* identifier: "identifier"  */
-#line 369 "axo_gram.y"
+#line 372 "axo_gram.y"
                   {
     axo_typ_def* td = axo_get_typ_def(state, (yyvsp[0].str));
     if (td != NULL) {
@@ -2361,47 +2364,47 @@ yyreduce:
       }
     }
   }
-#line 2365 "axo_gram.tab.c"
+#line 2368 "axo_gram.tab.c"
     break;
 
   case 23: /* incr_decr_op: expr "++"  */
-#line 393 "axo_gram.y"
+#line 396 "axo_gram.y"
                             {
     (yyval.expression).typ = (yyvsp[-1].expression).typ;
     (yyval.expression).val = fmtstr("%s++", (yyvsp[-1].expression).val);
   }
-#line 2374 "axo_gram.tab.c"
+#line 2377 "axo_gram.tab.c"
     break;
 
   case 24: /* incr_decr_op: expr "--"  */
-#line 397 "axo_gram.y"
+#line 400 "axo_gram.y"
                  {
     (yyval.expression).typ = (yyvsp[-1].expression).typ;
     (yyval.expression).val = fmtstr("%s--", (yyvsp[-1].expression).val);
   }
-#line 2383 "axo_gram.tab.c"
+#line 2386 "axo_gram.tab.c"
     break;
 
   case 25: /* expr: "string literal"  */
-#line 404 "axo_gram.y"
+#line 407 "axo_gram.y"
                       {set_val(&(yyval.expression), axo_str_typ(state), (yyvsp[0].str)); (yyval.expression).kind=axo_expr_normal_kind;}
-#line 2389 "axo_gram.tab.c"
+#line 2392 "axo_gram.tab.c"
     break;
 
   case 26: /* expr: "integer literal"  */
-#line 405 "axo_gram.y"
+#line 408 "axo_gram.y"
                     {set_val(&(yyval.expression), axo_int_typ(state), (yyvsp[0].str)); (yyval.expression).kind=axo_expr_normal_kind; (yyval.expression).lval_kind = axo_not_lval_kind;}
-#line 2395 "axo_gram.tab.c"
+#line 2398 "axo_gram.tab.c"
     break;
 
   case 27: /* expr: "float literal"  */
-#line 406 "axo_gram.y"
+#line 409 "axo_gram.y"
                   {set_val(&(yyval.expression), axo_float_typ(state), (yyvsp[0].str)); (yyval.expression).kind=axo_expr_normal_kind; (yyval.expression).lval_kind = axo_not_lval_kind;}
-#line 2401 "axo_gram.tab.c"
+#line 2404 "axo_gram.tab.c"
     break;
 
   case 28: /* expr: "null"  */
-#line 407 "axo_gram.y"
+#line 410 "axo_gram.y"
            {
     (yyval.expression) = (axo_expr){
       .kind=axo_expr_normal_kind,
@@ -2410,53 +2413,53 @@ yyreduce:
       .typ=axo_str_typ(state)
     };
   }
-#line 2414 "axo_gram.tab.c"
+#line 2417 "axo_gram.tab.c"
     break;
 
   case 29: /* expr: expr '+' expr  */
-#line 415 "axo_gram.y"
+#line 418 "axo_gram.y"
                   {parse_operator(&(yylsp[-1]), &(yyval.expression), (yyvsp[-2].expression), "+", (yyvsp[0].expression)); }
-#line 2420 "axo_gram.tab.c"
+#line 2423 "axo_gram.tab.c"
     break;
 
   case 30: /* expr: expr '-' expr  */
-#line 416 "axo_gram.y"
+#line 419 "axo_gram.y"
                   {parse_operator(&(yylsp[-1]), &(yyval.expression), (yyvsp[-2].expression), "-", (yyvsp[0].expression)); }
-#line 2426 "axo_gram.tab.c"
+#line 2429 "axo_gram.tab.c"
     break;
 
   case 31: /* expr: '-' expr  */
-#line 417 "axo_gram.y"
+#line 420 "axo_gram.y"
              {asprintf(&((yyval.expression).val), "-%s", (yyvsp[0].expression).val); (yyval.expression).typ = (yyvsp[0].expression).typ; (yyval.expression).kind = axo_expr_normal_kind; }
-#line 2432 "axo_gram.tab.c"
+#line 2435 "axo_gram.tab.c"
     break;
 
   case 32: /* expr: expr '*' expr  */
-#line 418 "axo_gram.y"
+#line 421 "axo_gram.y"
                   {parse_operator(&(yylsp[-1]), &(yyval.expression), (yyvsp[-2].expression), "*", (yyvsp[0].expression)); }
-#line 2438 "axo_gram.tab.c"
+#line 2441 "axo_gram.tab.c"
     break;
 
   case 33: /* expr: expr '/' expr  */
-#line 419 "axo_gram.y"
+#line 422 "axo_gram.y"
                   {parse_operator(&(yylsp[-1]), &(yyval.expression), (yyvsp[-2].expression), "/", (yyvsp[0].expression)); }
-#line 2444 "axo_gram.tab.c"
+#line 2447 "axo_gram.tab.c"
     break;
 
   case 34: /* expr: expr '%' expr  */
-#line 420 "axo_gram.y"
+#line 423 "axo_gram.y"
                   {parse_operator(&(yylsp[-1]), &(yyval.expression), (yyvsp[-2].expression), "%", (yyvsp[0].expression)); }
-#line 2450 "axo_gram.tab.c"
+#line 2453 "axo_gram.tab.c"
     break;
 
   case 35: /* expr: '(' expr ')'  */
-#line 421 "axo_gram.y"
+#line 424 "axo_gram.y"
                  {asprintf(&((yyval.expression).val), "(%s)", (yyvsp[-1].expression).val); (yyval.expression).typ = (yyvsp[-1].expression).typ; (yyval.expression).kind = axo_expr_normal_kind; }
-#line 2456 "axo_gram.tab.c"
+#line 2459 "axo_gram.tab.c"
     break;
 
   case 36: /* expr: expr '@'  */
-#line 422 "axo_gram.y"
+#line 425 "axo_gram.y"
              { //Referencing
     if ((yyvsp[-1].expression).lval_kind == axo_not_lval_kind)
       yyerror(&(yylsp[-1]), "Cannot reference a non l-value.");
@@ -2465,11 +2468,11 @@ yyreduce:
     *axo_subtyp((yyval.expression).typ) = (yyvsp[-1].expression).typ;
     asprintf(&((yyval.expression).val), "&%s", (yyvsp[-1].expression).val);
   }
-#line 2469 "axo_gram.tab.c"
+#line 2472 "axo_gram.tab.c"
     break;
 
   case 37: /* expr: expr '^'  */
-#line 430 "axo_gram.y"
+#line 433 "axo_gram.y"
              { //Dereferencing
     if ((yyvsp[-1].expression).typ.kind != axo_ptr_kind)
       yyerror(&(yylsp[-1]), "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str((yyvsp[-1].expression).typ));
@@ -2477,11 +2480,11 @@ yyreduce:
     (yyval.expression).lval_kind=(yyvsp[-1].expression).lval_kind;
     asprintf(&((yyval.expression).val), "(*(%s))", (yyvsp[-1].expression).val);
   }
-#line 2481 "axo_gram.tab.c"
+#line 2484 "axo_gram.tab.c"
     break;
 
   case 39: /* expr: identifier  */
-#line 438 "axo_gram.y"
+#line 441 "axo_gram.y"
                {
     char* var_name = "";
     axo_typ_def* td;
@@ -2531,11 +2534,11 @@ yyreduce:
         break;
     }
   }
-#line 2535 "axo_gram.tab.c"
+#line 2538 "axo_gram.tab.c"
     break;
 
   case 40: /* expr: expr '?' expr ':' expr  */
-#line 487 "axo_gram.y"
+#line 490 "axo_gram.y"
                            {
     if (axo_validate_rval(&(yylsp[-4]), (yyvsp[-4].expression)) && axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression)) && axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))){
       if (axo_typ_eq((yyvsp[-2].expression).typ, (yyvsp[0].expression).typ)){
@@ -2550,25 +2553,25 @@ yyreduce:
       }
     }
   }
-#line 2554 "axo_gram.tab.c"
+#line 2557 "axo_gram.tab.c"
     break;
 
   case 41: /* expr: func_call  */
-#line 501 "axo_gram.y"
+#line 504 "axo_gram.y"
               {(yyval.expression) = axo_call_to_expr((yyvsp[0].function_call));}
-#line 2560 "axo_gram.tab.c"
+#line 2563 "axo_gram.tab.c"
     break;
 
   case 42: /* expr: func_call '!' '?'  */
-#line 502 "axo_gram.y"
+#line 505 "axo_gram.y"
                       { //FIX: Change that. Should'nt discard return value
     //Get error instead of return value
   }
-#line 2568 "axo_gram.tab.c"
+#line 2571 "axo_gram.tab.c"
     break;
 
   case 43: /* expr: expr '<' expr  */
-#line 505 "axo_gram.y"
+#line 508 "axo_gram.y"
                   {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2576,11 +2579,11 @@ yyreduce:
       .val = fmtstr("%s<%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2580 "axo_gram.tab.c"
+#line 2583 "axo_gram.tab.c"
     break;
 
   case 44: /* expr: expr '>' expr  */
-#line 512 "axo_gram.y"
+#line 515 "axo_gram.y"
                   {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2588,11 +2591,11 @@ yyreduce:
       .val = fmtstr("%s>%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2592 "axo_gram.tab.c"
+#line 2595 "axo_gram.tab.c"
     break;
 
   case 45: /* expr: expr "==" expr  */
-#line 519 "axo_gram.y"
+#line 522 "axo_gram.y"
                    {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2600,11 +2603,11 @@ yyreduce:
       .val = fmtstr("%s==%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2604 "axo_gram.tab.c"
+#line 2607 "axo_gram.tab.c"
     break;
 
   case 46: /* expr: expr "!=" expr  */
-#line 526 "axo_gram.y"
+#line 529 "axo_gram.y"
                    {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2612,11 +2615,11 @@ yyreduce:
       .val = fmtstr("%s!=%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2616 "axo_gram.tab.c"
+#line 2619 "axo_gram.tab.c"
     break;
 
   case 47: /* expr: expr ">=" expr  */
-#line 533 "axo_gram.y"
+#line 536 "axo_gram.y"
                    {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2624,11 +2627,11 @@ yyreduce:
       .val = fmtstr("%s>=%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2628 "axo_gram.tab.c"
+#line 2631 "axo_gram.tab.c"
     break;
 
   case 48: /* expr: expr "<=" expr  */
-#line 540 "axo_gram.y"
+#line 543 "axo_gram.y"
                    {
     (yyval.expression) = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -2636,11 +2639,11 @@ yyreduce:
       .val = fmtstr("%s<=%s", (yyvsp[-2].expression).val, (yyvsp[0].expression).val)
     };
   }
-#line 2640 "axo_gram.tab.c"
+#line 2643 "axo_gram.tab.c"
     break;
 
   case 49: /* expr: expr "or" expr  */
-#line 547 "axo_gram.y"
+#line 550 "axo_gram.y"
                    {
     if (axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression)) && axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))){
       (yyval.expression) = (axo_expr){
@@ -2650,11 +2653,11 @@ yyreduce:
       };
     }
   }
-#line 2654 "axo_gram.tab.c"
+#line 2657 "axo_gram.tab.c"
     break;
 
   case 50: /* expr: expr "and" expr  */
-#line 556 "axo_gram.y"
+#line 559 "axo_gram.y"
                     {
     if (axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression)) && axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))){
       (yyval.expression) = (axo_expr){
@@ -2664,11 +2667,11 @@ yyreduce:
       };
     }
   }
-#line 2668 "axo_gram.tab.c"
+#line 2671 "axo_gram.tab.c"
     break;
 
   case 51: /* expr: expr ">>" expr  */
-#line 565 "axo_gram.y"
+#line 568 "axo_gram.y"
                    {
     if (axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression)) && axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))){
       (yyval.expression) = (axo_expr){
@@ -2678,11 +2681,11 @@ yyreduce:
       };
     }
   }
-#line 2682 "axo_gram.tab.c"
+#line 2685 "axo_gram.tab.c"
     break;
 
   case 52: /* expr: expr "<<" expr  */
-#line 574 "axo_gram.y"
+#line 577 "axo_gram.y"
                    {
     if (axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression)) && axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))){
       (yyval.expression) = (axo_expr){
@@ -2692,11 +2695,11 @@ yyreduce:
       };
     }
   }
-#line 2696 "axo_gram.tab.c"
+#line 2699 "axo_gram.tab.c"
     break;
 
   case 53: /* expr: struct_literal  */
-#line 583 "axo_gram.y"
+#line 586 "axo_gram.y"
                    {
     (yyval.expression).typ = (yyvsp[0].struct_val_type).typ;
     axo_struct* structure = (axo_struct*)((yyval.expression).typ.structure);
@@ -2720,11 +2723,11 @@ yyreduce:
     (yyval.expression).val = v;
     (yyval.expression).kind = axo_expr_normal_kind;
   }
-#line 2724 "axo_gram.tab.c"
+#line 2727 "axo_gram.tab.c"
     break;
 
   case 54: /* expr: expr index_access ']'  */
-#line 606 "axo_gram.y"
+#line 609 "axo_gram.y"
                          {
     (yylsp[-1]).last_column = (yylsp[0]).last_column;
     axo_arr_typ arr_typ;
@@ -2752,11 +2755,11 @@ yyreduce:
     }
     (yyval.expression).kind=axo_expr_normal_kind;
   }
-#line 2756 "axo_gram.tab.c"
+#line 2759 "axo_gram.tab.c"
     break;
 
   case 55: /* expr: expr ".field"  */
-#line 633 "axo_gram.y"
+#line 636 "axo_gram.y"
                    {
     axo_enum* enumerate;
     axo_struct* structure;
@@ -2866,11 +2869,11 @@ yyreduce:
         break;
     }
   }
-#line 2870 "axo_gram.tab.c"
+#line 2873 "axo_gram.tab.c"
     break;
 
   case 58: /* expr: expr '.' '(' val_typ ')'  */
-#line 744 "axo_gram.y"
+#line 747 "axo_gram.y"
                              {
     switch((yyvsp[-4].expression).typ.kind){
       case axo_simple_kind:
@@ -2900,11 +2903,11 @@ yyreduce:
         break;
     }
   }
-#line 2904 "axo_gram.tab.c"
+#line 2907 "axo_gram.tab.c"
     break;
 
   case 59: /* stat_arr_literal_start: '[' expr ',' expr  */
-#line 775 "axo_gram.y"
+#line 778 "axo_gram.y"
                                            {
     axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression));
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
@@ -2920,11 +2923,11 @@ yyreduce:
       .typ=(yyvsp[-2].expression).typ
     };
   }
-#line 2924 "axo_gram.tab.c"
+#line 2927 "axo_gram.tab.c"
     break;
 
   case 60: /* stat_arr_literal_start: empty_arr_dims ']' '[' expr ',' expr  */
-#line 790 "axo_gram.y"
+#line 793 "axo_gram.y"
                                          {
     axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression));
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
@@ -2940,11 +2943,11 @@ yyreduce:
       .typ=(yyvsp[-2].expression).typ
     };
   }
-#line 2944 "axo_gram.tab.c"
+#line 2947 "axo_gram.tab.c"
     break;
 
   case 61: /* stat_arr_literal_start: stat_arr_literal_start ',' expr  */
-#line 805 "axo_gram.y"
+#line 808 "axo_gram.y"
                                     {
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
     if (!axo_typ_eq((yyval.arr_lit_type).typ, (yyvsp[0].expression).typ)){
@@ -2954,11 +2957,11 @@ yyreduce:
     strapnd(&(yyval.arr_lit_type).val, (yyvsp[0].expression).val);
     (yyval.arr_lit_type).count++;
   }
-#line 2958 "axo_gram.tab.c"
+#line 2961 "axo_gram.tab.c"
     break;
 
   case 62: /* stat_arr_literal: '[' expr ',' ']'  */
-#line 816 "axo_gram.y"
+#line 819 "axo_gram.y"
                                     {
     (yyval.arr_lit_type) = (axo_arr_lit){
       .dynamic=false,
@@ -2969,11 +2972,11 @@ yyreduce:
       .typ=(yyvsp[-2].expression).typ
     };
   }
-#line 2973 "axo_gram.tab.c"
+#line 2976 "axo_gram.tab.c"
     break;
 
   case 63: /* stat_arr_literal: stat_arr_literal_start ']'  */
-#line 826 "axo_gram.y"
+#line 829 "axo_gram.y"
                                {
     if ((yyval.arr_lit_type).len[0] != 0){
       unsigned expected = 1;
@@ -2995,11 +2998,11 @@ yyreduce:
     strapnd(&((yyval.arr_lit_type).val), fmtstr("}, .len=%s},.flags=%s}", len_str, (yyval.arr_lit_type).dynamic ? "AXO_ARR_DYNAMIC" : "AXO_ARR_STATIC"));
     free(len_str);
   }
-#line 2999 "axo_gram.tab.c"
+#line 3002 "axo_gram.tab.c"
     break;
 
   case 64: /* arr_literal: stat_arr_literal  */
-#line 849 "axo_gram.y"
+#line 852 "axo_gram.y"
                                {
     (yyval.expression)=(axo_expr){
       .kind=axo_expr_normal_kind,
@@ -3015,11 +3018,11 @@ yyreduce:
       .def=NULL
     };
   }
-#line 3019 "axo_gram.tab.c"
+#line 3022 "axo_gram.tab.c"
     break;
 
   case 65: /* arr_literal: empty_arr_dims ']' val_typ  */
-#line 864 "axo_gram.y"
+#line 867 "axo_gram.y"
                                {
     char* dims_str = empty_str;
     unsigned total_sz = 1;
@@ -3047,11 +3050,11 @@ yyreduce:
       .typ=typ
     };
   }
-#line 3051 "axo_gram.tab.c"
+#line 3054 "axo_gram.tab.c"
     break;
 
   case 66: /* empty_arr_dims: '?' '[' "integer literal"  */
-#line 893 "axo_gram.y"
+#line 896 "axo_gram.y"
                                          {
     (yyval.empty_arr_lit_type) = (axo_empty_arr_lit){
       .dynamic=true,
@@ -3060,11 +3063,11 @@ yyreduce:
     };
     (yyval.empty_arr_lit_type).len[0] = atoi((yyvsp[0].str));
   }
-#line 3064 "axo_gram.tab.c"
+#line 3067 "axo_gram.tab.c"
     break;
 
   case 67: /* empty_arr_dims: '[' "integer literal"  */
-#line 901 "axo_gram.y"
+#line 904 "axo_gram.y"
                         {
     (yyval.empty_arr_lit_type) = (axo_empty_arr_lit){
       .dynamic=false,
@@ -3073,41 +3076,41 @@ yyreduce:
     };
     (yyval.empty_arr_lit_type).len[0] = atoi((yyvsp[0].str));
   }
-#line 3077 "axo_gram.tab.c"
+#line 3080 "axo_gram.tab.c"
     break;
 
   case 68: /* empty_arr_dims: empty_arr_dims '|' "integer literal"  */
-#line 909 "axo_gram.y"
+#line 912 "axo_gram.y"
                                        {
     (yyval.empty_arr_lit_type)=(yyvsp[-2].empty_arr_lit_type);
     (yyval.empty_arr_lit_type).len[(yyval.empty_arr_lit_type).dim_count++] = atoi((yyvsp[0].str));
   }
-#line 3086 "axo_gram.tab.c"
+#line 3089 "axo_gram.tab.c"
     break;
 
   case 71: /* matching_statement: expr  */
-#line 917 "axo_gram.y"
+#line 920 "axo_gram.y"
                           {
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
     (yyval.statement_type).val = (yyvsp[0].expression).val;
     strapnd(&((yyval.statement_type).val), ";");
     (yyval.statement_type).kind = axo_call_statement_kind;
   }
-#line 3097 "axo_gram.tab.c"
+#line 3100 "axo_gram.tab.c"
     break;
 
   case 72: /* matching_statement: '$' expr  */
-#line 923 "axo_gram.y"
+#line 926 "axo_gram.y"
              {
     (yyval.statement_type).val = (yyvsp[0].expression).val;
     strapnd(&((yyval.statement_type).val), ";");
     (yyval.statement_type).kind = axo_call_statement_kind;
   }
-#line 3107 "axo_gram.tab.c"
+#line 3110 "axo_gram.tab.c"
     break;
 
   case 73: /* matching_statement: "ret" expr  */
-#line 928 "axo_gram.y"
+#line 931 "axo_gram.y"
                   {
     (yyval.statement_type).val="return;";
     (yyval.statement_type).kind = axo_ret_statement_kind;
@@ -3125,19 +3128,19 @@ yyreduce:
       yyerror(&(yylsp[0]), "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str((yyvsp[0].expression).typ), hlpr);
     }
   }
-#line 3129 "axo_gram.tab.c"
+#line 3132 "axo_gram.tab.c"
     break;
 
   case 74: /* matching_statement: code_scope  */
-#line 945 "axo_gram.y"
+#line 948 "axo_gram.y"
                {
     (yyval.statement_type) = axo_scope_to_statement((yyvsp[0].scope));
   }
-#line 3137 "axo_gram.tab.c"
+#line 3140 "axo_gram.tab.c"
     break;
 
   case 75: /* matching_statement: expr "is" val_typ  */
-#line 948 "axo_gram.y"
+#line 951 "axo_gram.y"
                       {
     if ((yyvsp[-2].expression).lval_kind == axo_var_lval_kind){
       (yyval.statement_type) = (axo_statement){
@@ -3150,11 +3153,11 @@ yyreduce:
       yyerror(&(yylsp[-2]), "Cannot declare non-variable value '%s'.", (yyvsp[-2].expression).val);
     }
   }
-#line 3154 "axo_gram.tab.c"
+#line 3157 "axo_gram.tab.c"
     break;
 
   case 76: /* matching_statement: expr "is" val_typ '=' expr  */
-#line 960 "axo_gram.y"
+#line 963 "axo_gram.y"
                                {
     if ((yyvsp[-4].expression).lval_kind == axo_var_lval_kind){
       (yyval.statement_type) = (axo_statement){
@@ -3167,11 +3170,11 @@ yyreduce:
       yyerror(&(yylsp[-4]), "Cannot declare non-variable value '%s'.", (yyvsp[-4].expression).val);
     }
   }
-#line 3171 "axo_gram.tab.c"
+#line 3174 "axo_gram.tab.c"
     break;
 
   case 77: /* matching_statement: "continue"  */
-#line 972 "axo_gram.y"
+#line 975 "axo_gram.y"
                {
     if (in_loop_count<=0) yyerror(&(yylsp[0]), "No loop to continue.");
     (yyval.statement_type) = (axo_statement){
@@ -3179,11 +3182,11 @@ yyreduce:
       .val = "continue;"
     };
   }
-#line 3183 "axo_gram.tab.c"
+#line 3186 "axo_gram.tab.c"
     break;
 
   case 78: /* matching_statement: "break"  */
-#line 979 "axo_gram.y"
+#line 982 "axo_gram.y"
             {
     if (in_loop_count<=0) yyerror(&(yylsp[0]), "No loop to break out of.");
     (yyval.statement_type) = (axo_statement){
@@ -3191,44 +3194,44 @@ yyreduce:
       .val = "break;"
     };
   }
-#line 3195 "axo_gram.tab.c"
+#line 3198 "axo_gram.tab.c"
     break;
 
   case 83: /* if_condition: "if" expr  */
-#line 992 "axo_gram.y"
+#line 995 "axo_gram.y"
                             {
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
     (yyval.expression) = (yyvsp[0].expression);
   }
-#line 3204 "axo_gram.tab.c"
+#line 3207 "axo_gram.tab.c"
     break;
 
   case 84: /* matching_if_statement: if_condition matching_statement "else" matching_statement  */
-#line 998 "axo_gram.y"
+#line 1001 "axo_gram.y"
                                                                                      {
     (yyval.statement_type).val = fmtstr("if(%s)%s\nelse\n%s", (yyvsp[-3].expression).val, (yyvsp[-2].statement_type).val, (yyvsp[0].statement_type).val);
   }
-#line 3212 "axo_gram.tab.c"
+#line 3215 "axo_gram.tab.c"
     break;
 
   case 89: /* non_matching_if_statement: if_condition statement  */
-#line 1009 "axo_gram.y"
+#line 1012 "axo_gram.y"
                                                    {
     (yyval.statement_type).val = fmtstr("if(%s)\n%s", (yyvsp[-1].expression).val, (yyvsp[0].statement_type).val);
   }
-#line 3220 "axo_gram.tab.c"
+#line 3223 "axo_gram.tab.c"
     break;
 
   case 90: /* non_matching_if_statement: if_condition matching_statement "else" non_matching_statement  */
-#line 1012 "axo_gram.y"
+#line 1015 "axo_gram.y"
                                                                      {
     (yyval.statement_type).val = fmtstr("if(%s)\n%s\nelse\n%s", (yyvsp[-3].expression).val, (yyvsp[-2].statement_type).val, (yyvsp[0].statement_type).val);
   }
-#line 3228 "axo_gram.tab.c"
+#line 3231 "axo_gram.tab.c"
     break;
 
   case 91: /* till_loop_start: "till" '(' "identifier" '=' expr ')'  */
-#line 1017 "axo_gram.y"
+#line 1020 "axo_gram.y"
                                                    {
     (yyval.till_loop_type).iter = (yyvsp[-3].str);
     (yyval.till_loop_type).start = "0";
@@ -3237,21 +3240,21 @@ yyreduce:
     axo_push_scope(scopes, axo_new_scope(top_scope));
     axo_set_var(top_scope, (axo_var){.typ=state->int_def->typ, .name=(yyval.till_loop_type).iter, .is_const=false});
   }
-#line 3241 "axo_gram.tab.c"
+#line 3244 "axo_gram.tab.c"
     break;
 
   case 92: /* while_loop_base: "while" expr  */
-#line 1027 "axo_gram.y"
+#line 1030 "axo_gram.y"
                                {
     if (axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression)))
       (yyval.str) = alloc_str((yyvsp[0].expression).val);
     in_loop_count++;
   }
-#line 3251 "axo_gram.tab.c"
+#line 3254 "axo_gram.tab.c"
     break;
 
   case 93: /* matching_while: while_loop_base matching_statement  */
-#line 1034 "axo_gram.y"
+#line 1037 "axo_gram.y"
                                                     {
     (yyval.statement_type) = (axo_statement){
       .kind=axo_while_statement_kind,
@@ -3259,11 +3262,11 @@ yyreduce:
     };
     in_loop_count--;
   }
-#line 3263 "axo_gram.tab.c"
+#line 3266 "axo_gram.tab.c"
     break;
 
   case 94: /* non_matching_while: while_loop_base non_matching_statement  */
-#line 1043 "axo_gram.y"
+#line 1046 "axo_gram.y"
                                                             {
     (yyval.statement_type) = (axo_statement){
       .kind=axo_while_statement_kind,
@@ -3271,27 +3274,27 @@ yyreduce:
     };
     in_loop_count--;
   }
-#line 3275 "axo_gram.tab.c"
+#line 3278 "axo_gram.tab.c"
     break;
 
   case 95: /* for_loop_start: "for"  */
-#line 1052 "axo_gram.y"
+#line 1055 "axo_gram.y"
                        {
     axo_push_scope(scopes, axo_new_scope(top_scope));
   }
-#line 3283 "axo_gram.tab.c"
+#line 3286 "axo_gram.tab.c"
     break;
 
   case 96: /* for_loop_init: for_loop_start statement  */
-#line 1057 "axo_gram.y"
+#line 1060 "axo_gram.y"
                                          {
     (yyval.for_loop_type).start = (yyvsp[0].statement_type).val;
   }
-#line 3291 "axo_gram.tab.c"
+#line 3294 "axo_gram.tab.c"
     break;
 
   case 97: /* for_loop_base: for_loop_init ',' expr ',' statement  */
-#line 1062 "axo_gram.y"
+#line 1065 "axo_gram.y"
                                                      {
     axo_validate_rval(&(yylsp[-2]), (yyvsp[-2].expression));
     char* iter = (yyvsp[0].statement_type).val;
@@ -3303,11 +3306,11 @@ yyreduce:
     };
     in_loop_count++;
   }
-#line 3307 "axo_gram.tab.c"
+#line 3310 "axo_gram.tab.c"
     break;
 
   case 98: /* for_loop_base: till_loop_start  */
-#line 1073 "axo_gram.y"
+#line 1076 "axo_gram.y"
                     {
     (yyval.for_loop_type) = (axo_for_loop){
       .start = fmtstr("int %s=%s;", (yyvsp[0].till_loop_type).iter, (yyvsp[0].till_loop_type).start),
@@ -3316,11 +3319,11 @@ yyreduce:
     };
     in_loop_count++;
   }
-#line 3320 "axo_gram.tab.c"
+#line 3323 "axo_gram.tab.c"
     break;
 
   case 99: /* matching_for_loop: for_loop_base matching_statement  */
-#line 1084 "axo_gram.y"
+#line 1087 "axo_gram.y"
                                                      {
     (yyvsp[-1].for_loop_type).body = (yyvsp[0].statement_type).val;
     (yyval.statement_type).kind = axo_for_statement_kind;
@@ -3328,11 +3331,11 @@ yyreduce:
     scopes->len--;
     in_loop_count--;
   }
-#line 3332 "axo_gram.tab.c"
+#line 3335 "axo_gram.tab.c"
     break;
 
   case 100: /* non_matching_for_loop: for_loop_base non_matching_statement  */
-#line 1092 "axo_gram.y"
+#line 1095 "axo_gram.y"
                                                              {
     (yyvsp[-1].for_loop_type).body = (yyvsp[0].statement_type).val;
     (yyval.statement_type).kind = axo_for_statement_kind;
@@ -3340,11 +3343,11 @@ yyreduce:
     scopes->len--;
     in_loop_count--;
   }
-#line 3344 "axo_gram.tab.c"
+#line 3347 "axo_gram.tab.c"
     break;
 
   case 101: /* each_iter_dims: '[' expr  */
-#line 1101 "axo_gram.y"
+#line 1104 "axo_gram.y"
                           {
     (yyval.each_loop_type) = (axo_each_loop){
       .dim_count=1,
@@ -3354,11 +3357,11 @@ yyreduce:
     (yyval.each_loop_type).dim_iters[0] = (yyvsp[0].expression);
     ((YYLTYPE*)((yyval.each_loop_type).locs))[3] = (yylsp[0]);
   }
-#line 3358 "axo_gram.tab.c"
+#line 3361 "axo_gram.tab.c"
     break;
 
   case 102: /* each_iter_dims: '[' '|' expr  */
-#line 1110 "axo_gram.y"
+#line 1113 "axo_gram.y"
                  {
     (yyval.each_loop_type) = (axo_each_loop){
       .dim_count=2,
@@ -3369,37 +3372,37 @@ yyreduce:
     (yyval.each_loop_type).dim_iters[1] = (yyvsp[0].expression);
     ((YYLTYPE*)((yyval.each_loop_type).locs))[4] = (yylsp[0]);
   }
-#line 3373 "axo_gram.tab.c"
+#line 3376 "axo_gram.tab.c"
     break;
 
   case 103: /* each_iter_dims: each_iter_dims '|' expr  */
-#line 1120 "axo_gram.y"
+#line 1123 "axo_gram.y"
                             {
     (yyval.each_loop_type).dim_iters[(yyval.each_loop_type).dim_count] = (yyvsp[0].expression);
     ((YYLTYPE*)((yyval.each_loop_type).locs))[3+(yyval.each_loop_type).dim_count++] = (yylsp[0]);
   }
-#line 3382 "axo_gram.tab.c"
+#line 3385 "axo_gram.tab.c"
     break;
 
   case 104: /* each_iter_dims: each_iter_dims '|'  */
-#line 1124 "axo_gram.y"
+#line 1127 "axo_gram.y"
                        {
     (yyval.each_loop_type).dim_iters[(yyval.each_loop_type).dim_count++] = (axo_expr){.val=NULL};
   }
-#line 3390 "axo_gram.tab.c"
+#line 3393 "axo_gram.tab.c"
     break;
 
   case 105: /* each_loop_start: "for" "each"  */
-#line 1129 "axo_gram.y"
+#line 1132 "axo_gram.y"
                                {
     axo_push_scope(scopes, axo_new_scope(top_scope));
     in_loop_count++;
   }
-#line 3399 "axo_gram.tab.c"
+#line 3402 "axo_gram.tab.c"
     break;
 
   case 106: /* each_loop_base: each_loop_start identifier "in" expr  */
-#line 1135 "axo_gram.y"
+#line 1138 "axo_gram.y"
                                                      {
     (yyval.each_loop_type) = (axo_each_loop){
       .dim_count=axo_get_arr_typ((yyvsp[0].expression).typ).dim_count,
@@ -3414,11 +3417,11 @@ yyreduce:
     ((YYLTYPE*)((yyval.each_loop_type).locs))[2] = (yylsp[0]);
     axo_parse_each_loop(&(yyval.each_loop_type), state, top_scope, in_loop_count);
   }
-#line 3418 "axo_gram.tab.c"
+#line 3421 "axo_gram.tab.c"
     break;
 
   case 107: /* each_loop_base: each_loop_start identifier ',' each_iter_dims ']' "in" expr  */
-#line 1149 "axo_gram.y"
+#line 1152 "axo_gram.y"
                                                                 {
     (yylsp[-3]).last_column = (yylsp[-2]).last_column;
     (yyval.each_loop_type) = (axo_each_loop){
@@ -3433,11 +3436,11 @@ yyreduce:
     ((YYLTYPE*)((yyval.each_loop_type).locs))[2] = (yylsp[0]);
     axo_parse_each_loop(&(yyval.each_loop_type), state, top_scope, in_loop_count);
   }
-#line 3437 "axo_gram.tab.c"
+#line 3440 "axo_gram.tab.c"
     break;
 
   case 108: /* each_loop_base: each_loop_start each_iter_dims ']' ',' identifier "in" expr  */
-#line 1163 "axo_gram.y"
+#line 1166 "axo_gram.y"
                                                                 {
     (yylsp[-5]).last_column = (yylsp[-4]).last_column;
     (yyval.each_loop_type) = (axo_each_loop){
@@ -3452,11 +3455,11 @@ yyreduce:
     ((YYLTYPE*)((yyval.each_loop_type).locs))[2] = (yylsp[0]);
     axo_parse_each_loop(&(yyval.each_loop_type), state, top_scope, in_loop_count);
   }
-#line 3456 "axo_gram.tab.c"
+#line 3459 "axo_gram.tab.c"
     break;
 
   case 109: /* each_loop_base: each_loop_start each_iter_dims ']' "in" expr  */
-#line 1177 "axo_gram.y"
+#line 1180 "axo_gram.y"
                                                  {
     (yylsp[-3]).last_column = (yylsp[-2]).last_column;
     (yyval.each_loop_type) = (axo_each_loop){
@@ -3470,41 +3473,41 @@ yyreduce:
     ((YYLTYPE*)((yyval.each_loop_type).locs))[2] = (yylsp[0]);
     axo_parse_each_loop(&(yyval.each_loop_type), state, top_scope, in_loop_count);
   }
-#line 3474 "axo_gram.tab.c"
+#line 3477 "axo_gram.tab.c"
     break;
 
   case 110: /* matching_each_loop: each_loop_base matching_statement  */
-#line 1193 "axo_gram.y"
+#line 1196 "axo_gram.y"
                                                        {
     (yyvsp[-1].each_loop_type).body = (yyvsp[0].statement_type).val;
     (yyval.statement_type) = axo_each_to_statement((yyvsp[-1].each_loop_type));
     scopes->len--;
     in_loop_count--;
   }
-#line 3485 "axo_gram.tab.c"
+#line 3488 "axo_gram.tab.c"
     break;
 
   case 111: /* non_matching_each_loop: each_loop_base non_matching_statement  */
-#line 1201 "axo_gram.y"
+#line 1204 "axo_gram.y"
                                                                {
     (yyvsp[-1].each_loop_type).body = (yyvsp[0].statement_type).val;
     (yyval.statement_type) = axo_each_to_statement((yyvsp[-1].each_loop_type));
     scopes->len--;
     in_loop_count--;
   }
-#line 3496 "axo_gram.tab.c"
+#line 3499 "axo_gram.tab.c"
     break;
 
   case 112: /* assign_op: '='  */
-#line 1209 "axo_gram.y"
+#line 1212 "axo_gram.y"
                 {
     rval_now = true;
   }
-#line 3504 "axo_gram.tab.c"
+#line 3507 "axo_gram.tab.c"
     break;
 
   case 113: /* assignment: expr assign_op expr  */
-#line 1214 "axo_gram.y"
+#line 1217 "axo_gram.y"
                                  {
     (yyval.expression).kind=axo_expr_normal_kind;
     axo_typ l_typ = (yyvsp[-2].expression).typ;
@@ -3529,11 +3532,11 @@ yyreduce:
     (yyval.expression).typ = l_typ;
     rval_now=false;
   }
-#line 3533 "axo_gram.tab.c"
+#line 3536 "axo_gram.tab.c"
     break;
 
   case 114: /* arr_multidim_typ: '[' '|'  */
-#line 1240 "axo_gram.y"
+#line 1243 "axo_gram.y"
                            {
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
@@ -3544,20 +3547,20 @@ yyreduce:
       .arr=arr_typ
     };
   }
-#line 3548 "axo_gram.tab.c"
+#line 3551 "axo_gram.tab.c"
     break;
 
   case 115: /* arr_multidim_typ: arr_multidim_typ '|'  */
-#line 1250 "axo_gram.y"
+#line 1253 "axo_gram.y"
                          {
     (yyval.typ_type)=(yyvsp[-1].typ_type);
     axo_get_arr_typ((yyval.typ_type)).dim_count++;
   }
-#line 3557 "axo_gram.tab.c"
+#line 3560 "axo_gram.tab.c"
     break;
 
   case 116: /* arr_typ: '[' ']' val_typ  */
-#line 1256 "axo_gram.y"
+#line 1259 "axo_gram.y"
                           {
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
@@ -3569,20 +3572,20 @@ yyreduce:
       .arr=arr_typ
     };
   }
-#line 3573 "axo_gram.tab.c"
+#line 3576 "axo_gram.tab.c"
     break;
 
   case 117: /* arr_typ: arr_multidim_typ ']' val_typ  */
-#line 1267 "axo_gram.y"
+#line 1270 "axo_gram.y"
                                  {
     (yyval.typ_type) = (yyvsp[-2].typ_type);
     axo_get_arr_typ((yyval.typ_type)).subtyp = (yyvsp[0].typ_type);
   }
-#line 3582 "axo_gram.tab.c"
+#line 3585 "axo_gram.tab.c"
     break;
 
   case 118: /* func_typ_start: '(' val_typ "fn"  */
-#line 1273 "axo_gram.y"
+#line 1276 "axo_gram.y"
                                      {
     axo_func_typ* func_typ = alloc_one(axo_func_typ);
     func_typ->args_len=0;
@@ -3594,11 +3597,11 @@ yyreduce:
       .func_typ=func_typ
     };
   }
-#line 3598 "axo_gram.tab.c"
+#line 3601 "axo_gram.tab.c"
     break;
 
   case 119: /* func_typ_start: '(' "fn"  */
-#line 1284 "axo_gram.y"
+#line 1287 "axo_gram.y"
                 {
     axo_func_typ* func_typ = alloc_one(axo_func_typ);
     func_typ->args_len=0;
@@ -3610,11 +3613,11 @@ yyreduce:
       .func_typ=func_typ
     };
   }
-#line 3614 "axo_gram.tab.c"
+#line 3617 "axo_gram.tab.c"
     break;
 
   case 120: /* func_typ_args: func_typ_start val_typ  */
-#line 1297 "axo_gram.y"
+#line 1300 "axo_gram.y"
                                        {
     (yyval.typ_type)=(yyvsp[-1].typ_type);
     axo_func_typ* func_typ = (axo_func_typ*)((yyval.typ_type).func_typ);
@@ -3624,11 +3627,11 @@ yyreduce:
     func_typ->args_defs[0] = axo_typ_def_val((yyvsp[0].typ_type));
     func_typ->args_len++;
   }
-#line 3628 "axo_gram.tab.c"
+#line 3631 "axo_gram.tab.c"
     break;
 
   case 121: /* func_typ_args: func_typ_args ',' val_typ  */
-#line 1306 "axo_gram.y"
+#line 1309 "axo_gram.y"
                               {
     (yyval.typ_type)=(yyvsp[-2].typ_type);
     axo_func_typ* func_typ = (axo_func_typ*)((yyval.typ_type).func_typ);
@@ -3638,23 +3641,23 @@ yyreduce:
     func_typ->args_defs[func_typ->args_len] = axo_typ_def_val((yyvsp[0].typ_type));
     func_typ->args_len++;
   }
-#line 3642 "axo_gram.tab.c"
+#line 3645 "axo_gram.tab.c"
     break;
 
   case 122: /* func_typ: func_typ_start ')'  */
-#line 1317 "axo_gram.y"
+#line 1320 "axo_gram.y"
                               {(yyval.typ_type)=(yyvsp[-1].typ_type);}
-#line 3648 "axo_gram.tab.c"
+#line 3651 "axo_gram.tab.c"
     break;
 
   case 123: /* func_typ: func_typ_args ')'  */
-#line 1318 "axo_gram.y"
+#line 1321 "axo_gram.y"
                       {(yyval.typ_type)=(yyvsp[-1].typ_type);}
-#line 3654 "axo_gram.tab.c"
+#line 3657 "axo_gram.tab.c"
     break;
 
   case 124: /* val_typ: "identifier"  */
-#line 1321 "axo_gram.y"
+#line 1324 "axo_gram.y"
                {
     axo_typ_def* def = axo_get_typ_def(state, (yyvsp[0].str));
     if (def==NULL)
@@ -3662,48 +3665,48 @@ yyreduce:
     else
       (yyval.typ_type)=def->typ;
   }
-#line 3666 "axo_gram.tab.c"
+#line 3669 "axo_gram.tab.c"
     break;
 
   case 125: /* val_typ: '@' val_typ  */
-#line 1328 "axo_gram.y"
+#line 1331 "axo_gram.y"
                 {
     (yyval.typ_type).kind = axo_ptr_kind;
     (yyval.typ_type).subtyp = malloc(sizeof(axo_typ));
     *axo_subtyp((yyval.typ_type))=(yyvsp[0].typ_type);
   }
-#line 3676 "axo_gram.tab.c"
+#line 3679 "axo_gram.tab.c"
     break;
 
   case 129: /* c_typ: '.' '.' '.'  */
-#line 1338 "axo_gram.y"
+#line 1341 "axo_gram.y"
                 {
     (yyval.typ_type).kind = axo_c_arg_list_kind;
   }
-#line 3684 "axo_gram.tab.c"
+#line 3687 "axo_gram.tab.c"
     break;
 
   case 130: /* c_typ_list: %empty  */
-#line 1343 "axo_gram.y"
+#line 1346 "axo_gram.y"
                            {
     (yyval.types_list).len = 0;
     (yyval.types_list).values = NULL;
   }
-#line 3693 "axo_gram.tab.c"
+#line 3696 "axo_gram.tab.c"
     break;
 
   case 131: /* c_typ_list: c_typ  */
-#line 1347 "axo_gram.y"
+#line 1350 "axo_gram.y"
           {
     (yyval.types_list).values = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
     (yyval.types_list).values[0] = (yyvsp[0].typ_type);
     (yyval.types_list).len = 1;
   }
-#line 3703 "axo_gram.tab.c"
+#line 3706 "axo_gram.tab.c"
     break;
 
   case 132: /* c_typ_list: c_typ_list ',' c_typ  */
-#line 1352 "axo_gram.y"
+#line 1355 "axo_gram.y"
                          {
     if ((yyvsp[-2].types_list).values[(yyvsp[-2].types_list).len-1].kind == axo_c_arg_list_kind)
       yyerror(&(yylsp[-2]), "The C v_args argument has to be the last one.");
@@ -3713,11 +3716,11 @@ yyreduce:
     (yyval.types_list).values[(yyval.types_list).len] = (yyvsp[0].typ_type);
     (yyval.types_list).len++;
   }
-#line 3717 "axo_gram.tab.c"
+#line 3720 "axo_gram.tab.c"
     break;
 
   case 133: /* called_expr: expr '('  */
-#line 1363 "axo_gram.y"
+#line 1366 "axo_gram.y"
                        {
     if (axo_validate_rval(&(yylsp[-1]), (yyvsp[-1].expression))){
       switch((yyvsp[-1].expression).typ.kind){
@@ -3738,11 +3741,11 @@ yyreduce:
     }
     // printf("ret_typ: %s\n", axo_typ_to_str(((axo_func*)($$.typ.func_typ))->f_typ.ret_typ));
   }
-#line 3742 "axo_gram.tab.c"
+#line 3745 "axo_gram.tab.c"
     break;
 
   case 134: /* called_expr: expr ':' "identifier" '('  */
-#line 1383 "axo_gram.y"
+#line 1386 "axo_gram.y"
                       {
     if ((yyvsp[-3].expression).typ.kind != axo_ptr_kind){
       yyerror(&(yylsp[-3]), "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str((yyvsp[-3].expression).typ));
@@ -3779,11 +3782,11 @@ yyreduce:
       }
     }
   }
-#line 3783 "axo_gram.tab.c"
+#line 3786 "axo_gram.tab.c"
     break;
 
   case 135: /* func_call_start: called_expr  */
-#line 1421 "axo_gram.y"
+#line 1424 "axo_gram.y"
                               {
     axo_func_typ* fnt = (axo_func_typ*)((yyvsp[0].function_call).typ.func_typ);
     if ((yyval.function_call).params_len<fnt->args_len){
@@ -3792,11 +3795,11 @@ yyreduce:
       (yyval.function_call).params_len++;
     }
   }
-#line 3796 "axo_gram.tab.c"
+#line 3799 "axo_gram.tab.c"
     break;
 
   case 136: /* func_call_start: called_expr expr  */
-#line 1429 "axo_gram.y"
+#line 1432 "axo_gram.y"
                      {
     if (axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression))) {
       axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-1].function_call).typ.func_typ);
@@ -3813,11 +3816,11 @@ yyreduce:
       }
     }
   }
-#line 3817 "axo_gram.tab.c"
+#line 3820 "axo_gram.tab.c"
     break;
 
   case 137: /* func_call_start: func_call_start ',' expr  */
-#line 1445 "axo_gram.y"
+#line 1448 "axo_gram.y"
                              {
     axo_validate_rval(&(yylsp[0]), (yyvsp[0].expression));
     axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-2].function_call).typ.func_typ);
@@ -3834,11 +3837,11 @@ yyreduce:
     (yyval.function_call).params[i] = (yyvsp[0].expression);
     (yyval.function_call).params_len++;
   }
-#line 3838 "axo_gram.tab.c"
+#line 3841 "axo_gram.tab.c"
     break;
 
   case 138: /* func_call_start: func_call_start ','  */
-#line 1461 "axo_gram.y"
+#line 1464 "axo_gram.y"
                         {
     (yyval.function_call) = (yyvsp[-1].function_call);
     axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-1].function_call).typ.func_typ);
@@ -3852,11 +3855,11 @@ yyreduce:
     (yyval.function_call).params[i].val = defaults[i];
     (yyval.function_call).params_len++;
   }
-#line 3856 "axo_gram.tab.c"
+#line 3859 "axo_gram.tab.c"
     break;
 
   case 139: /* func_call: func_call_start ')'  */
-#line 1476 "axo_gram.y"
+#line 1479 "axo_gram.y"
                                 {
     (yyval.function_call)=(yyvsp[-1].function_call);
     axo_func_typ* fnt = (axo_func_typ*)((yyvsp[-1].function_call).typ.func_typ);
@@ -3872,42 +3875,42 @@ yyreduce:
       }
     }
   }
-#line 3876 "axo_gram.tab.c"
+#line 3879 "axo_gram.tab.c"
     break;
 
   case 140: /* code_scope_start: '{'  */
-#line 1493 "axo_gram.y"
+#line 1496 "axo_gram.y"
                        {
     if (!axo_code_scope_started) axo_push_scope(scopes, axo_new_scope(top_scope));
     axo_code_scope_started = false;
   }
-#line 3885 "axo_gram.tab.c"
+#line 3888 "axo_gram.tab.c"
     break;
 
   case 141: /* code_scope: code_scope_start statements '}'  */
-#line 1499 "axo_gram.y"
+#line 1502 "axo_gram.y"
                                              {
     (yyval.scope) = top_scope;
     scopes->len--;
     if ((yyval.scope)->statements_len == 0)
       yyerror(&(yyloc), "Code scopes cannot be empty.");
   }
-#line 3896 "axo_gram.tab.c"
+#line 3899 "axo_gram.tab.c"
     break;
 
   case 142: /* func_def_name: "identifier"  */
-#line 1507 "axo_gram.y"
+#line 1510 "axo_gram.y"
                      {
     (yyval.function) = (axo_func){
       .name=alloc_str((yyvsp[0].str)),
       .args_names=NULL
     };
   }
-#line 3907 "axo_gram.tab.c"
+#line 3910 "axo_gram.tab.c"
     break;
 
   case 143: /* func_def_name: "identifier" ".field"  */
-#line 1513 "axo_gram.y"
+#line 1516 "axo_gram.y"
                    {
     axo_module* mod = axo_get_module(state, (yyvsp[-1].str));
     if (!mod)
@@ -3918,11 +3921,11 @@ yyreduce:
         .args_names=NULL
       };
   }
-#line 3922 "axo_gram.tab.c"
+#line 3925 "axo_gram.tab.c"
     break;
 
   case 144: /* func_def_name: val_typ ':' "identifier"  */
-#line 1523 "axo_gram.y"
+#line 1526 "axo_gram.y"
                      {
     axo_typ* subtyp = alloc_one(axo_typ);
     *subtyp = (yyvsp[-2].typ_type);
@@ -3954,30 +3957,30 @@ yyreduce:
         break;
     }
   }
-#line 3958 "axo_gram.tab.c"
+#line 3961 "axo_gram.tab.c"
     break;
 
   case 145: /* func_def_ret_typ: "fn"  */
-#line 1556 "axo_gram.y"
+#line 1559 "axo_gram.y"
                         {
     axo_push_scope(scopes, axo_new_scope(top_scope));
     axo_code_scope_started = true;
   }
-#line 3967 "axo_gram.tab.c"
+#line 3970 "axo_gram.tab.c"
     break;
 
   case 146: /* func_def_ret_typ: val_typ "fn"  */
-#line 1560 "axo_gram.y"
+#line 1563 "axo_gram.y"
                  {
     axo_push_scope(scopes, axo_new_scope(top_scope));
     top_scope->ret_typ = (yyvsp[-1].typ_type);
     axo_code_scope_started = true;
   }
-#line 3977 "axo_gram.tab.c"
+#line 3980 "axo_gram.tab.c"
     break;
 
   case 147: /* func_def_start: func_def_ret_typ func_def_name '(' func_args ')'  */
-#line 1567 "axo_gram.y"
+#line 1570 "axo_gram.y"
                                                                   {
     int args_len = (yyvsp[-1].function).f_typ.args_len;
     (yyval.function) = (axo_func){
@@ -4010,11 +4013,11 @@ yyreduce:
     for (int i = 0; i<(yyval.function).f_typ.args_len; i++)
       axo_set_var(top_scope, (axo_var){.name=(yyval.function).args_names[i], .typ=(yyval.function).f_typ.args_types[i], .is_const=true});
   }
-#line 4014 "axo_gram.tab.c"
+#line 4017 "axo_gram.tab.c"
     break;
 
   case 148: /* struct_literal_start: "struct{"  */
-#line 1601 "axo_gram.y"
+#line 1604 "axo_gram.y"
                                             {
     axo_typ_def* td = axo_get_typ_def(state, (yyvsp[0].str));
     if (td==NULL){
@@ -4031,11 +4034,11 @@ yyreduce:
     for (int i=0;i<total_field_count;i++) (yyval.struct_val_type).fields[i]=NULL;
     }
   }
-#line 4035 "axo_gram.tab.c"
+#line 4038 "axo_gram.tab.c"
     break;
 
   case 149: /* struct_literal_start: "struct{" expr  */
-#line 1617 "axo_gram.y"
+#line 1620 "axo_gram.y"
                               {
     
     axo_typ_def* td = axo_get_typ_def(state, (yyvsp[-1].str));
@@ -4057,11 +4060,11 @@ yyreduce:
       (yyval.struct_val_type).fields[0] = (yyvsp[0].expression).val;
     }
   }
-#line 4061 "axo_gram.tab.c"
+#line 4064 "axo_gram.tab.c"
     break;
 
   case 150: /* struct_literal_start: "struct{" "identifier" '=' expr  */
-#line 1638 "axo_gram.y"
+#line 1641 "axo_gram.y"
                                        {
     axo_typ_def* td = axo_get_typ_def(state, (yyvsp[-3].str));
     axo_struct* structure = (axo_struct*)(td->typ.structure);
@@ -4092,11 +4095,11 @@ yyreduce:
       }
     }
   }
-#line 4096 "axo_gram.tab.c"
+#line 4099 "axo_gram.tab.c"
     break;
 
   case 151: /* struct_literal_start: struct_literal_start ',' expr  */
-#line 1668 "axo_gram.y"
+#line 1671 "axo_gram.y"
                                   {
     (yyval.struct_val_type)=(yyvsp[-2].struct_val_type);
     axo_struct* structure = (axo_struct*)((yyval.struct_val_type).typ.structure);
@@ -4111,11 +4114,11 @@ yyreduce:
       yyerror(&(yylsp[0]), "Structure field '%s' was arleady assigned a value.", ((axo_struct*)((yyval.struct_val_type).typ.structure))->fields[(yyval.struct_val_type).fields_count].name);    
     }
   }
-#line 4115 "axo_gram.tab.c"
+#line 4118 "axo_gram.tab.c"
     break;
 
   case 152: /* struct_literal_start: struct_literal_start ','  */
-#line 1682 "axo_gram.y"
+#line 1685 "axo_gram.y"
                              {
     (yyval.struct_val_type)=(yyvsp[-1].struct_val_type);
     axo_struct* structure = (axo_struct*)((yyval.struct_val_type).typ.structure);
@@ -4126,11 +4129,11 @@ yyreduce:
       (yyval.struct_val_type).fields_count++;
     }
   }
-#line 4130 "axo_gram.tab.c"
+#line 4133 "axo_gram.tab.c"
     break;
 
   case 153: /* struct_literal_start: struct_literal_start ',' "identifier" '=' expr  */
-#line 1692 "axo_gram.y"
+#line 1695 "axo_gram.y"
                                            {
     (yyval.struct_val_type)=(yyvsp[-4].struct_val_type);
     axo_struct* structure = (axo_struct*)((yyval.struct_val_type).typ.structure);
@@ -4150,11 +4153,11 @@ yyreduce:
       yyerror(&(yylsp[-2]), "Structure field '%s' was arleady assigned a value.", ((axo_struct*)((yyval.struct_val_type).typ.structure))->fields[index].name);    
     }
   }
-#line 4154 "axo_gram.tab.c"
+#line 4157 "axo_gram.tab.c"
     break;
 
   case 154: /* struct_literal: struct_literal_start '}'  */
-#line 1713 "axo_gram.y"
+#line 1716 "axo_gram.y"
                                           {
     (yyval.struct_val_type)=(yyvsp[-1].struct_val_type);
     axo_struct* structure = ((axo_struct*)(yyval.struct_val_type).typ.structure);
@@ -4162,11 +4165,11 @@ yyreduce:
       if((yyval.struct_val_type).fields[i] == NULL) (yyval.struct_val_type).fields[i] = structure->fields[i].def;
     }
   }
-#line 4166 "axo_gram.tab.c"
+#line 4169 "axo_gram.tab.c"
     break;
 
   case 155: /* func_def: func_def_start code_scope  */
-#line 1722 "axo_gram.y"
+#line 1725 "axo_gram.y"
                                      {
     (yyval.function).body = (yyvsp[0].scope);
     (yyval.function).f_typ.ret_typ = axo_is_no_typ((yyvsp[0].scope)->ret_typ) ? axo_none_typ : (yyvsp[0].scope)->ret_typ;
@@ -4179,52 +4182,52 @@ yyreduce:
     };
     axo_set_var(state->global_scope, (axo_var){.name=(yyval.function).name, .typ=typ, .is_const=true});
   }
-#line 4183 "axo_gram.tab.c"
+#line 4186 "axo_gram.tab.c"
     break;
 
   case 156: /* func_arg: val_typ "identifier"  */
-#line 1736 "axo_gram.y"
+#line 1739 "axo_gram.y"
                         {
     (yyval.function_argument).name = alloc_str((yyvsp[0].str));
     (yyval.function_argument).typ = (yyvsp[-1].typ_type);
     (yyval.function_argument).def = (yyvsp[-1].typ_type).def;
   }
-#line 4193 "axo_gram.tab.c"
+#line 4196 "axo_gram.tab.c"
     break;
 
   case 157: /* func_arg: "identifier" '|' expr  */
-#line 1741 "axo_gram.y"
+#line 1744 "axo_gram.y"
                   {
     (yyval.function_argument).name = alloc_str((yyvsp[-2].str));
     (yyval.function_argument).typ = (yyvsp[0].expression).typ;
     (yyval.function_argument).def = (yyvsp[0].expression).val;
   }
-#line 4203 "axo_gram.tab.c"
+#line 4206 "axo_gram.tab.c"
     break;
 
   case 158: /* func_arg: val_typ "identifier" '|' expr  */
-#line 1746 "axo_gram.y"
+#line 1749 "axo_gram.y"
                           {
     (yyval.function_argument).name = alloc_str((yyvsp[-2].str));
     (yyval.function_argument).typ = (yyvsp[-3].typ_type);
     (yyval.function_argument).def = (yyvsp[0].expression).val; //FIX! Look if types match!
   }
-#line 4213 "axo_gram.tab.c"
+#line 4216 "axo_gram.tab.c"
     break;
 
   case 159: /* func_args: %empty  */
-#line 1753 "axo_gram.y"
+#line 1756 "axo_gram.y"
                             {
     (yyval.function).args_names = NULL;
     (yyval.function).f_typ.args_defs = NULL;
     (yyval.function).f_typ.args_types = NULL;
     (yyval.function).f_typ.args_len = 0;
   }
-#line 4224 "axo_gram.tab.c"
+#line 4227 "axo_gram.tab.c"
     break;
 
   case 160: /* func_args: func_arg  */
-#line 1759 "axo_gram.y"
+#line 1762 "axo_gram.y"
              {
     (yyval.function).args_names = (char**)malloc(axo_func_args_cap*sizeof(char*));
     (yyval.function).f_typ.args_defs = (char**)malloc(axo_func_args_cap*sizeof(char*));
@@ -4234,11 +4237,11 @@ yyreduce:
     (yyval.function).f_typ.args_types[0] = (yyvsp[0].function_argument).typ;
     (yyval.function).f_typ.args_len = 1;
   }
-#line 4238 "axo_gram.tab.c"
+#line 4241 "axo_gram.tab.c"
     break;
 
   case 161: /* func_args: func_args ',' func_arg  */
-#line 1768 "axo_gram.y"
+#line 1771 "axo_gram.y"
                            {
     (yyval.function) = (yyvsp[-2].function);
     resize_dyn_arr_if_needed(char*, (yyval.function).args_names, (yyval.function).f_typ.args_len, axo_func_args_cap);
@@ -4249,21 +4252,21 @@ yyreduce:
     (yyval.function).f_typ.args_types[(yyval.function).f_typ.args_len] = (yyvsp[0].function_argument).typ;
     (yyval.function).f_typ.args_len++;
   }
-#line 4253 "axo_gram.tab.c"
+#line 4256 "axo_gram.tab.c"
     break;
 
   case 162: /* enum_names: "identifier"  */
-#line 1780 "axo_gram.y"
+#line 1783 "axo_gram.y"
                   {
     (yyval.enum_type).names = (char**)malloc(axo_enum_names_cap*sizeof(char*));
     (yyval.enum_type).names[0] = alloc_str((yyvsp[0].str));
     (yyval.enum_type).len = 1;
   }
-#line 4263 "axo_gram.tab.c"
+#line 4266 "axo_gram.tab.c"
     break;
 
   case 163: /* enum_names: enum_names ',' "identifier"  */
-#line 1785 "axo_gram.y"
+#line 1788 "axo_gram.y"
                         {
     (yyval.enum_type) = (yyvsp[-2].enum_type);
     if ((yyval.enum_type).len % axo_enum_names_cap == 0)
@@ -4271,11 +4274,11 @@ yyreduce:
     (yyval.enum_type).names[(yyval.enum_type).len] = alloc_str((yyvsp[0].str));
     (yyval.enum_type).len++;
   }
-#line 4275 "axo_gram.tab.c"
+#line 4278 "axo_gram.tab.c"
     break;
 
 
-#line 4279 "axo_gram.tab.c"
+#line 4282 "axo_gram.tab.c"
 
       default: break;
     }
@@ -4504,7 +4507,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1794 "axo_gram.y"
+#line 1797 "axo_gram.y"
 
 
 void yyerror(YYLTYPE* loc, const char * fmt, ...){
@@ -4576,15 +4579,14 @@ int main(int argc, char** argv) {
   // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
   // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
+  axo_handle_args(state, argc, argv, 1);
+  axo_printf = state->silenced ?  axo_no_printf : printf;
   bool measure_time = state->config.timer;
   if (measure_time){
     start = clock();
   }
   char* cmd = argv[1];
-  if (strcmp(cmd, "run")==0){
-    printf(axo_green_fg"Run!\n"axo_reset_style);
-    prog_return = 0;
-  }else if (strcmp(cmd, "test")==0){
+  if (strcmp(cmd, "test")==0){
     printf(axo_magenta_fg"Test!\n"axo_reset_style);
     prog_return = 0;
   }else if (strcmp(cmd, "info")==0){
@@ -4592,17 +4594,21 @@ int main(int argc, char** argv) {
   }else if (strcmp(cmd, "set")==0){
     prog_return = axo_set_cmd(state, argc, argv);
   }else{
-    axo_handle_args(state, argc, argv, 1);
-    //Scopes table
-    scopes = alloc_one(axo_scopes);
-    scopes->scopes = NULL;
-    scopes->len = 0;
-    axo_push_scope(scopes, state->global_scope);
-    //Use core module
     if (state->entry_file){
+      //Load default args where needed
+      char* input_file_path = state->entry_file;
+      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
+      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
+      state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
+      //Scopes table
+      scopes = alloc_one(axo_scopes);
+      scopes->scopes = NULL;
+      scopes->len = 0;
+      axo_push_scope(scopes, state->global_scope);
       axo_new_source(state, state->entry_file);
     }else{
       yyerror(NULL, "Entry file wasn't provided.\nUsage: axo <file> |options|");
+      return 1;
     }
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
@@ -4610,13 +4616,9 @@ int main(int argc, char** argv) {
     axo_add_decl(state, (axo_decl){.kind=axo_other_decl_kind, .val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point)});
     //Parse
     yyparse();
-    printf("Parsing done.\n");
+    axo_printf("Parsing done.\n");
     //Handle produced C code
-    char* input_file_path = state->entry_file;
     if (!prog_return){
-      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
-      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
-      state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
       char* code = axo_get_code(state);
       overwrite_file_with_string(state->output_c_file, code);
       free(code);
@@ -4635,14 +4637,18 @@ int main(int argc, char** argv) {
       if (res != 0)
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
-      if (!(state->config.keep_c)){
+      if (state->run){
+        system(fmt_str((char[512]){}, "./%s", state->output_file));
+        remove(state->output_file);
+        remove(state->output_c_file);
+      }else if (!(state->config.keep_c)){
         remove(state->output_c_file);
       }
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
   //Time the action if the according option was and is true
-  if (state->config.timer && measure_time){
+  if (state->config.timer && measure_time && !(state->silenced)){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     axo_lolprintf(state->config.color_support, rand(), "Took: %fs\n", cpu_time_used);

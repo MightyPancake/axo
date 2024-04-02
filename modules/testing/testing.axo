@@ -1,0 +1,29 @@
+module(
+	name: "testing"
+	prefix: "test_"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "A module used for writing tests in axo"
+)
+
+struct unit_test (
+	// @byte 					name,
+	(bool fn @byte)	func
+)
+
+fn testing.run(@byte file, @byte name){
+	cmd = mem.alc((128).(u32))
+	printf("Running '%s'...\n", name)
+	sprintf(cmd, "axo %s -e %s -o AXO_TEST_RUN -s -r", file, name)
+	ret_val = system(cmd)
+	if ret_val ret ret_val
+	mem.free(cmd)
+	ret ret_val
+}
+
+fn testing.new([](bool fn @byte) tests){
+	ret 0
+}

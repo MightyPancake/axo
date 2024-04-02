@@ -283,6 +283,9 @@ typedef struct axo_state{
     int                    modules_len;
     int                    modules_decl;
     bool                   in_core;
+    //Misc
+    bool                   silenced;
+    bool                   run;
 }axo_state;
     
 

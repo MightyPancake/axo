@@ -10,11 +10,15 @@ module(
 )
 
 #include <stdio.h>
+
 #register int printf(@byte, ...)
 #register int scanf(@byte, ...)
 
 #register int srand(int)
 #register int rand()
+
+#register int system(@byte)
+#register int remove(@byte)
 
 fn std.seed_rand(int seed){
 	srand(seed)
@@ -30,3 +34,6 @@ fn print_module(axo_module mod){
 	mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description)
 }
 
+//Include common modules
+use mem
+use strings
