@@ -54,7 +54,7 @@ Thus, it's extremely simple to use existing C code in your axo projects!
 Currently, the project is in its very early stages. There are a ton of bugs and things are not checked or guaranteed to work! The syntax might *(and most likely will)* change. Most things should work though. If you encounter any issues, please let me know either on GitHub (which is preferred) or Discord!
 
 ## What axo *isn't*
-Keep in mind that axo doesn't claim to be faster or even on pair of speed of C. Altough most of the code should be really as fast as C **axo doesn't and will never claim to be faster/better.**
+Keep in mind that axo doesn't claim to be faster or even on pair with C in terms of runtime speed. Altough most of the code should be really as fast as C. **Axo doesn't and will never claim to be faster/better.**
 
 ## Credits
 Axo language is almost enitrely made by Filip Król. I wouldn't be able to make it so far without some of my best buddies though, here's just some of them:
