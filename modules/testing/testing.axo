@@ -6,24 +6,53 @@ module(
 	website: "https://axolang.com"
 	license_name: "Apache 2.0"
 	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
-	description: "A module used for writing tests in axo"
+	description: "A module for writing tests."
 )
 
-struct unit_test (
-	// @byte 					name,
-	(bool fn @byte)	func
+struct test_batch (
+	@byte 					file,
+	[]@byte					tests,
+	u32							success_count
 )
 
 fn testing.run(@byte file, @byte name){
 	cmd = mem.alc((128).(u32))
-	printf("Running '%s'...\n", name)
+	// printf("%sRunning '%s'...%s\n", aesc.green, name, aesc.reset)
 	sprintf(cmd, "axo %s -e %s -o AXO_TEST_RUN -s -r", file, name)
-	ret_val = system(cmd)
-	if ret_val ret ret_val
+	ret_val = system(cmd) >> 8
 	mem.free(cmd)
 	ret ret_val
 }
 
-fn testing.new([](bool fn @byte) tests){
+fn testing.new(@byte filename){
+	r = test_batch{
+		file="",
+		tests=[?0]@byte,
+		success_count=(0).(u32)
+	}
+	r.file=mem.alc((filename:strlen()+1).(u32))
+	sprintf(r.file, "%s", filename)
+	r.success_count=(0).(u32)
+	ret r
+}
+
+fn test_batch:add(@byte entry){
+	huh = mem.alc((entry:strlen()+1).(u32))
+	sprintf(huh, "%s", entry)
+	self^.tests@:push(huh)
 	ret 0
+}
+
+fn test_batch:run(){
+	for each [i], test in self^.tests {
+		res = testing.run(self^.file, test)
+		if res == 0 {
+			self^.success_count++
+			printf("%s%s passed.%s\n", aesc.green, test, aesc.reset)
+		} else {
+			printf("%s%s failed.%s\n", aesc.red, test, aesc.reset)
+		}
+	}
+	printf("%sTest results: %d/%d%s\n", aesc.cyan, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
+	ret self^.success_count.(int) == self^.tests.len[0] ? 0 : 1
 }

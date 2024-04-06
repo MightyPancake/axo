@@ -263,6 +263,7 @@ typedef struct axo_state{
 
     //Default types
     axo_typ_def*           int_def;
+    axo_typ_def*           u32_def;
     axo_typ_def*           bool_def;
     axo_typ_def*           float_def;
     axo_typ_def*           byte_def;
@@ -298,6 +299,7 @@ typedef struct axo_state{
 #define axo_src_path(ST) (axo_source(ST)->path)
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)
+#define axo_u32_typ(STATE) (STATE->u32_def->typ)
 #define axo_float_typ(STATE) (STATE->float_def->typ)
 #define axo_byte_typ(STATE) (STATE->byte_def->typ)
 #define axo_bool_typ(STATE) (STATE->bool_def->typ)

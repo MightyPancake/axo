@@ -11,4 +11,4 @@ struct axo_module (
 	@byte description
 )
 
-modules is []axo_module
+modules|[]axo_module

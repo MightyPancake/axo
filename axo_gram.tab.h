@@ -98,13 +98,12 @@ extern int yydebug;
     DOT_FIELD = 299,               /* ".field"  */
     MODULE_KWRD = 300,             /* "module"  */
     ARROW_OP = 301,                /* "->"  */
-    IS_KWRD = 302,                 /* "is"  */
-    IDENTIFIER_PREC = 303,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 304,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 305,               /* LOOP_PREC  */
-    UMINUS = 306,                  /* UMINUS  */
-    CALL_PREC = 307,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 308   /* STRUCT_LIT_NAMED_FIELD  */
+    IDENTIFIER_PREC = 302,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 303,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 304,               /* LOOP_PREC  */
+    UMINUS = 305,                  /* UMINUS  */
+    CALL_PREC = 306,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 307   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -137,6 +136,7 @@ union YYSTYPE
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
   axo_module module_type;
+  bool bool_type;
 
 #line 142 "axo_gram.tab.h"
 

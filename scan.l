@@ -78,7 +78,6 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "till" {ret_null; return TILL_KWRD; }
 "else" {ret_null; return ELSE_KWRD; }
 "struct" {ret_null; return STRUCT_KWRD; }
-"is" {ret_null; return IS_KWRD; }
 "in" {ret_null; return IN_KWRD; }
 "or" {ret_null; return LOGICAL_OR_OP; }
 "and" {ret_null; return LOGICAL_AND_OP; }
@@ -125,7 +124,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     return STRUCT_LITERAL_START;
   }
 }
-(\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\|) {ret_def; return yytext[0]; }
+(\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\||\;) {ret_def; return yytext[0]; }
 \n {axo_line(state)++; axo_col(state)=1;}
 \r ;
 [ \t]+ {axo_col(state)+=yyleng;}

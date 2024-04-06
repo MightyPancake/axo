@@ -2,19 +2,66 @@ use std
 use testing
 
 fn main([][]byte args){
-    printf("Hello world\n")
-    testing.run("test.axo", "test_addition")
-    ret 0
-}
+    printf("Hello world!\n")
+    //1. Uninitialized literal
+    s_arr1 = [16]int
+    d_arr1 = [?16]int
+    
+    //2. Direct literals
+    s_arr2a = [42,]
+    d_arr2a = [?11,]
+    d_arr2a@:push(12)
+    // printf("s_arr[0]: %d\n", s_arr2[0])
+    // for each [i], val in d_arr2
+    //     printf("d_arr[%d]: %d\n", i, val)
+    s_arr2b = [1,2,3,4]
+    d_arr2b = [?1,2,3,4]
+    // //2.5 Directed multidimensional
+    s_arr2c = [2|2][1,2,3,4]
+    d_arr2c = [?2|2][1,2,3,4]
+    //Useless? Should they be supported at all?
+    // s_arr2d = [1|1][42,]
+    // d_arr2d = [?1|1][42,]
 
-fn nice([][]byte args){
-    for each [i], arg in args {
-        printf("arg #%d: %s\n", i, arg.data)
+    // printf("d_arr2c.cap = %u\n", d_arr2c.cap)
+    // printf("s_arr2c.cap = %u\n", s_arr2c.cap)
+    // d_arr2c@:cap((8).(byte))
+    arr = [?1,]
+    printf("arr:cap = %u\n\n", arr.cap)
+    for i=0, i<32, i++ {
+        arr@:cap((i).(byte))
+        printf("cap #%d: %u\n", i, arr.cap)
     }
+    // printf("d_arr2c.cap = %u\n", d_arr2c.cap)
+    // map = #["hello" = "world"]
+
+    // //3. Iterated literals
+    // s_arr3 = [i=3|j=3]{
+    //     s_arr3[i|j] = i*j
+    // }
+    // d_arr3 = [i=3|j=3?]{
+    //     s_arr3[i|j] = i*j
+    // }
+    
     ret 0
 }
 
-fn testing.addition([][]byte args){
-    printf("Testing addition...\n")
+fn another_entry([][]byte args){
+    printf("Hello from the other side!\n")
+    ret 0
+}
+
+fn do_tests([][]byte args){
+    batch = testing.new("test.axo")
+    batch@:add("addition_test")
+    batch@:add("substraction_test")
+    ret batch@:run()
+}
+
+fn addition_test([][]byte args){
     ret 1+1==2 ? 0 : 1
+}
+
+fn substraction_test([][]byte args){
+    ret 1-1==2 ? 0 : 1
 }

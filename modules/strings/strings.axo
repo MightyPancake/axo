@@ -9,4 +9,9 @@ module(
 )
 
 #register int sprintf(@byte, @byte, ...)
+#register int strlen(@byte)
+
+fn byte:strlen(){
+	ret strlen(self)
+}
 

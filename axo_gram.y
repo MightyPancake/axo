@@ -91,7 +91,6 @@
 %token<str> DOT_FIELD ".field"
 %token<str> MODULE_KWRD "module"
 %token<str> ARROW_OP "->"
-%token<str> IS_KWRD "is"
 %type<scope> code_scope code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -113,6 +112,7 @@
 %type<arr_lit_type> stat_arr_literal stat_arr_literal_start
 %type<each_loop_type> each_iter_dims each_loop_base
 %type<module_type> module_info
+%type<bool_type> arr_lit_start
 
 //Prec
 %left IDENTIFIER_PREC
@@ -160,6 +160,7 @@
   axo_index_access index_access_type;
   axo_each_loop each_loop_type;
   axo_module module_type;
+  bool bool_type;
 }
 
 %%
@@ -273,7 +274,7 @@ declaration : struct_def { //Fix! Make this use realloc less
     axo_load_module_defaults(state, &$module_info);
     $$ = axo_add_module(state, $module_info);
   }
-  | expr "is" val_typ {
+  | expr '|' val_typ {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_decl){
         .kind=axo_is_decl_kind,
@@ -285,7 +286,7 @@ declaration : struct_def { //Fix! Make this use realloc less
       yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
     }
   }
-  | expr "is" val_typ '=' expr {
+  | expr '|' val_typ '=' expr {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_decl){
         .kind=axo_is_decl_kind,
@@ -710,12 +711,33 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
                 .val=fmtstr("%d", axo_get_arr_typ($1.typ).dim_count),
                 .lval_kind = axo_not_lval_kind
               };
+            }else if (strcmp("cap", $2)==0){
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .typ=axo_u32_typ(state),
+                .val=fmtstr("axo_arr_get_cap(%s)", $1.val),
+                .lval_kind = axo_not_lval_kind
+              };
             }else if (strcmp("data", $2)==0){
               $$ = (axo_expr){
                 .kind=axo_expr_normal_kind,
                 .typ=state->int_def->typ,
                 .val=fmtstr("%s.data", $1.val),
                 .lval_kind = axo_other_lval_kind
+              };
+            }else if (strcmp("dynamic", $2)==0){
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .typ=axo_bool_typ(state),
+                .val=fmtstr("axo_arr_is_dynamic(%s)", $1.val),
+                .lval_kind = axo_not_lval_kind
+              };
+            }else if (strcmp("static", $2)==0){
+              $$ = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .typ=axo_bool_typ(state),
+                .val=fmtstr("axo_arr_is_static(%s)", $1.val),
+                .lval_kind = axo_not_lval_kind
               };
             }else if (strcmp("first", $2)==0){
               axo_typ typ = (axo_typ){
@@ -775,18 +797,18 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   }
   ;
 
-stat_arr_literal_start : '[' expr ',' expr {
+stat_arr_literal_start : arr_lit_start expr ',' expr {
     axo_validate_rval(&@2, $2);
     axo_validate_rval(&@4, $4);
     if (!axo_typ_eq($2.typ, $4.typ)){
             yyerror(&@4, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($4.typ), axo_typ_to_str($2.typ));
     }
     $$ = (axo_arr_lit){
-      .dynamic=false,
+      .dynamic=$arr_lit_start,
       .len=(int[]){0},
       .dim_count=1,
       .count=2,
-      .val=fmtstr("(axo__arr){.data=(%s){%s,%s", axo_c_arr_of_typ($2.typ, ""), $2.val, $4.val),
+      .val=fmtstr("%s,%s", $2.val, $4.val),
       .typ=$2.typ
     };
   }
@@ -801,7 +823,7 @@ stat_arr_literal_start : '[' expr ',' expr {
       .len=$1.len,
       .dim_count=$1.dim_count,
       .count=2,
-      .val=fmtstr("(axo__arr){.data=(%s){%s,%s", axo_c_arr_of_typ($4.typ, ""), $4.val, $6.val),
+      .val= fmtstr("%s, %s", $4.val, $6.val),
       .typ=$4.typ
     };
   }
@@ -816,17 +838,45 @@ stat_arr_literal_start : '[' expr ',' expr {
   }
   ;
 
-stat_arr_literal : '[' expr ',' ']' {
+arr_lit_start : '[' {
+    $$ = false;
+  }
+  | '[' '?' {
+    $$ = true;
+  }
+  ;
+
+empty_arr_dims : arr_lit_start INTEGER_LITERAL {
+    $$ = (axo_empty_arr_lit){
+      .dynamic=$arr_lit_start,
+      .len=malloc(axo_empty_arr_lit_cap),
+      .dim_count=1
+    };
+    $$.len[0] = atoi($2);
+  }
+  | empty_arr_dims '|' INTEGER_LITERAL {
+    $$.len[$$.dim_count++] = atoi($3);
+  }
+  ;
+
+stat_arr_literal : arr_lit_start expr ',' ']' {
+    axo_typ subtyp[1] = {$expr.typ};
     $$ = (axo_arr_lit){
-      .dynamic=false,
+      .dynamic=$arr_lit_start,
       .len=(int[]){1},
       .dim_count=1,
       .count=1,
-      .val=fmtstr("(axo__arr){.data=(%s){%s},.len=(axo_arr_dim_t[]){1},.flags=AXO_ARR_STATIC}", axo_c_arr_of_typ($2.typ, ""), $2.val),
+      .val= $arr_lit_start ?
+          fmtstr("axo_arr_new_dyn(axo_dyn_bytes_cpy(%s, (%s){%s}, sizeof(%s)), axo_dyn_bytes_cpy(axo_arr_dim_t*, (axo_arr_dim_t[]){1}, sizeof(axo_arr_dim_t)))",
+          axo_typ_to_c_str((axo_typ){.kind=axo_ptr_kind, .subtyp=subtyp}), axo_c_arr_of_typ($expr.typ, "1"), $expr.val, axo_typ_to_c_str($expr.typ))
+          : fmtstr("axo_arr_new_stat((%s){%s}, ((axo_arr_dim_t[]){1}))",
+          axo_c_arr_of_typ($expr.typ, "1"), $expr.val),
       .typ=$2.typ
     };
   }
   | stat_arr_literal_start ']' {
+    char* data_str = $$.val;
+    $$.val = NULL;
     if ($$.len[0] != 0){
       unsigned expected = 1;
       for (int i=0; i<$$.dim_count; i++)
@@ -837,14 +887,21 @@ stat_arr_literal : '[' expr ',' ']' {
       $$.len = (int[]){$$.count};
       $$.dim_count = 1;
     }
-    char* len_str = alloc_str("(axo_arr_dim_t[]){");
+    char* len_str = alloc_str("{");
     char hlpr[128];
     for (int i=0; i<$$.dim_count; i++){
       if (i>0) strapnd(&len_str, ",");
       sprintf(hlpr, "%d", $$.len[i]);
       strapnd(&len_str, hlpr);
     }
-    strapnd(&($$.val), fmtstr("}, .len=%s},.flags=%s}", len_str, $$.dynamic ? "AXO_ARR_DYNAMIC" : "AXO_ARR_STATIC"));
+    axo_typ subtyp[1] = {$$.typ};
+    char count_str[16] = "";
+    sprintf(count_str, "%d", $$.count);
+    $$.val= $$.dynamic ?
+      fmtstr("axo_arr_new_dyn(axo_dyn_bytes_cpy(%s, ((%s){%s}), %u*sizeof(%s)), axo_dyn_bytes_cpy(axo_arr_dim_t*, ((axo_arr_dim_t[])%s}), %d*sizeof(axo_arr_dim_t)))",
+      axo_typ_to_c_str((axo_typ){.kind=axo_ptr_kind, .subtyp=subtyp}), axo_c_arr_of_typ($$.typ, count_str), data_str, $$.count, axo_typ_to_c_str($$.typ), len_str, $$.dim_count)
+      : fmtstr("axo_arr_new_stat(((%s){%s}), ((axo_arr_dim_t[])%s}))",
+      axo_c_arr_of_typ($$.typ, ""), data_str, len_str);
     free(len_str);
   }
   ;
@@ -886,32 +943,10 @@ arr_literal : stat_arr_literal {
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
       .val= $1.dynamic ?
-          fmtstr("axo_arr_new_dyn(malloc((%u)*sizeof(%s)), axo_dyn_bytes_cpy(axo_arr_dim_t*, (axo_arr_dim_t[]){%s}, (%u)*sizeof(axo_arr_dim_t)))", total_sz, axo_typ_to_c_str(axo_get_arr_typ(typ).subtyp), dims_str, total_sz)
+          fmtstr("axo_arr_new_dyn(malloc((%u)*sizeof(%s)), axo_dyn_bytes_cpy(axo_arr_dim_t*, (axo_arr_dim_t[]){%s}, (%d)*sizeof(axo_arr_dim_t)))", total_sz, axo_typ_to_c_str(axo_get_arr_typ(typ).subtyp), dims_str, $empty_arr_dims.dim_count)
           : fmtstr("axo_arr_new_stat((%s){}, ((axo_arr_dim_t[]){%s}))", axo_c_arr_of_typ($val_typ, sz_str), dims_str),
       .typ=typ
     };
-  }
-  ;
-
-empty_arr_dims : '?' '[' INTEGER_LITERAL {
-    $$ = (axo_empty_arr_lit){
-      .dynamic=true,
-      .len=malloc(axo_empty_arr_lit_cap),
-      .dim_count=1
-    };
-    $$.len[0] = atoi($3);
-  }
-  | '[' INTEGER_LITERAL {
-    $$ = (axo_empty_arr_lit){
-      .dynamic=false,
-      .len=malloc(axo_empty_arr_lit_cap),
-      .dim_count=1
-    };
-    $$.len[0] = atoi($2);
-  }
-  | empty_arr_dims '|' INTEGER_LITERAL {
-    $$=$1;
-    $$.len[$$.dim_count++] = atoi($3);
   }
   ;
 
@@ -948,7 +983,7 @@ matching_statement : expr {
   | code_scope {
     $$ = axo_scope_to_statement($1);
   }
-  | expr "is" val_typ {
+  | expr '|' val_typ {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
@@ -960,7 +995,7 @@ matching_statement : expr {
       yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
     }
   }
-  | expr "is" val_typ '=' expr {
+  | expr '|' val_typ '=' expr {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_statement){
         .kind=axo_assignment_statement_kind,
@@ -1411,7 +1446,7 @@ called_expr : expr '(' {
           }
           break;
         case axo_arr_kind:
-          $$ = axo_get_array_method(&@expr, &@IDEN, $expr, $IDEN);
+          $$ = axo_get_array_method(state, &@expr, &@IDEN, $expr, $IDEN);
           break;
         default:
           yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
@@ -1738,18 +1773,20 @@ func_def : func_def_start code_scope {
 
 func_arg : val_typ IDEN {
     $$.name = alloc_str($2);
-    $$.typ = $1;
-    $$.def = $1.def;
+    $$.typ = $val_typ;
+    $$.def = $val_typ.def;
   }
   | IDEN '|' expr {
     $$.name = alloc_str($1);
-    $$.typ = $3.typ;
-    $$.def = $3.val;
+    $$.typ = $expr.typ;
+    $$.typ.def = $expr.val;
   }
   | val_typ IDEN '|' expr {
+    if (axo_typ_eq($val_typ, $expr.typ))
+      yyerror(&@expr, "Default value doesn't match type.");
     $$.name = alloc_str($2);
     $$.typ = $1;
-    $$.def = $4.val; //FIX! Look if types match!
+    $$.typ.def = $expr.val;
   }
   ;
 
@@ -1764,7 +1801,7 @@ func_args : /*  NO TOKEN */ {
     $$.f_typ.args_defs = (char**)malloc(axo_func_args_cap*sizeof(char*));
     $$.f_typ.args_types = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
     $$.args_names[0] = $1.name;
-    $$.f_typ.args_defs[0] = $1.def;
+    $$.f_typ.args_defs[0] = axo_get_typ_default($1.typ);
     $$.f_typ.args_types[0] = $1.typ;
     $$.f_typ.args_len = 1;
   }
@@ -1774,7 +1811,7 @@ func_args : /*  NO TOKEN */ {
     resize_dyn_arr_if_needed(char*, $$.f_typ.args_defs, $$.f_typ.args_len, axo_func_args_cap);
     resize_dyn_arr_if_needed(axo_typ, $$.f_typ.args_types, $$.f_typ.args_len, axo_func_args_cap);
     $$.args_names[$$.f_typ.args_len] = $3.name;
-    $$.f_typ.args_defs[$$.f_typ.args_len] = $3.def;
+    $$.f_typ.args_defs[$$.f_typ.args_len] = axo_get_typ_default($3.typ);
     $$.f_typ.args_types[$$.f_typ.args_len] = $3.typ;
     $$.f_typ.args_len++;
   }
@@ -1865,21 +1902,18 @@ int main(int argc, char** argv) {
   // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
   // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
-  axo_handle_args(state, argc, argv, 1);
-  axo_printf = state->silenced ?  axo_no_printf : printf;
   bool measure_time = state->config.timer;
   if (measure_time){
     start = clock();
   }
   char* cmd = argv[1];
-  if (strcmp(cmd, "test")==0){
-    printf(axo_magenta_fg"Test!\n"axo_reset_style);
-    prog_return = 0;
-  }else if (strcmp(cmd, "info")==0){
+  if (strcmp(cmd, "info")==0){
       prog_return = axo_info_cmd(state, argc, argv);
   }else if (strcmp(cmd, "set")==0){
     prog_return = axo_set_cmd(state, argc, argv);
   }else{
+    axo_handle_args(state, argc, argv, 1);
+    axo_printf = state->silenced ?  axo_no_printf : printf;
     if (state->entry_file){
       //Load default args where needed
       char* input_file_path = state->entry_file;
@@ -1902,7 +1936,7 @@ int main(int argc, char** argv) {
     axo_add_decl(state, (axo_decl){.kind=axo_other_decl_kind, .val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point)});
     //Parse
     yyparse();
-    axo_printf("Parsing done.\n");
+    // axo_printf("Parsing done.\n");
     //Handle produced C code
     if (!prog_return){
       char* code = axo_get_code(state);
@@ -1924,7 +1958,7 @@ int main(int argc, char** argv) {
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
       if (state->run){
-        system(fmt_str((char[512]){}, "./%s", state->output_file));
+        prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
         remove(state->output_file);
         remove(state->output_c_file);
       }else if (!(state->config.keep_c)){
