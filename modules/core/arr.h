@@ -51,25 +51,11 @@ typedef struct axo__arr{
 #define axo_arr_is_dynamic(AXO_ARR) axo_arr_cap(AXO_ARR)
 #define axo_arr_is_static(AXO_ARR) (!axo_arr_is_dynamic(AXO_ARR))
 
-#define axo_global_arr_cap ((axo_arr_dim_t)(16))
-
-#define axo_arr_1d_cap_0(ARR) axo_global_arr_cap
+#define axo_arr_at(TYP, AXO_ARR, A) (((TYP)(AXO_ARR.data))[A])
 
 #define axo_arr_1d_at(TYP, AXO_ARR, A) (((TYP)(AXO_ARR.data))[A])
 #define axo_arr_2d_at(TYP, AXO_ARR, A, B) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]) + (B)])
 #define axo_arr_3d_at(TYP, AXO_ARR, A, B, C) (((TYP)(AXO_ARR.data))[(A)*(AXO_ARR.len[1]*(AXO_ARR.len[2])) + (B)*(AXO_ARR.len[1]) + (C)])   
-
-//FIX: Error handling
-#define axo_arr_1d_rsz(TYP, AXO_ARR, SZ1){ \
-    (AXO_ARR).data = realloc((AXO_ARR).data, (SZ1)*sizeof(TYP*)); \
-}
-
-#define axo_arr_1d_append(TYP, ELEM_TYP, AXO_ARR, ELEM) ({ \
-    if ((AXO_ARR)->len[0] % axo_arr_1d_cap_0(AXO_ARR) == 0) \
-        axo_arr_1d_rsz(TYP, *(AXO_ARR), ((AXO_ARR)->len[0]+axo_arr_1d_cap_0((AXO_ARR)))*sizeof(ELEM_TYP)) \
-    axo_arr_1d_at(TYP, (*(AXO_ARR)), (AXO_ARR)->len[0]++) = ELEM; \
-    ELEM; \
-})
 
 #define axo_dyn_bytes_cpy(RES_TYP, SRC, SZ) ({ \
     RES_TYP TMP = malloc(SZ); \
@@ -86,16 +72,39 @@ typedef struct axo__arr{
 #define axo_arr_new_stat(DATA, DIMS) axo_arr_new(DATA, DIMS, AXO_ARR_STATIC)
 #define axo_arr_new_dyn(DATA, DIMS) axo_arr_new(DATA, DIMS, axo_default_arr_cap)
 
-#define axo_arr_new_with_dim_count(DATA, DIMS, FLAGS, DIM_COUNT) ((arr){ \
-    .flags = (FLAGS) | (DIM_COUNT), \
-    .len=DIMS, \
-    .data=DATA \
-})
-
 //Array methods
-//FIX: This should bit or the flags byte?
+//FIX: This should | the flags byte?
 #define axo_arr_set_cap(AXO_ARR, CAP) ({ \
-    (AXO_ARR)->flags = ((char)((CAP)&AXO_ARR_CAP_FLAG)); \    
+    (AXO_ARR)->flags = ((char)((CAP)&AXO_ARR_CAP_FLAG)); \
     (AXO_ARR); \
 })
 
+//Get the length of the underlying data
+#define axo_arr_data_len_1d(AXO_ARR) ((AXO_ARR).len[0])
+#define axo_arr_data_len_2d(AXO_ARR) ((AXO_ARR).len[0]*(AXO_ARR).len[1])
+#define axo_arr_data_len_3d(AXO_ARR) ((AXO_ARR).len[0]*(AXO_ARR).len[1]*(AXO_ARR).len[2])
+
+//Shrink the array (len=sz)
+#define axo_arr_shrink_1d(TYP, AXO_ARR) axo_arr_rsz(TYP, (AXO_ARR), axo_arr_data_len_1d((AXO_ARR)))
+
+#define axo_arr_shrink_2d(TYP, AXO_ARR) axo_arr_rsz(TYP, (AXO_ARR), axo_arr_data_len_2d((AXO_ARR)))
+#define axo_arr_shrink_3d(TYP, AXO_ARR) axo_arr_rsz(TYP, (AXO_ARR), axo_arr_data_len_3d((AXO_ARR)))
+
+#define axo_arr_pop_1d(PTYP, AXO_ARR) (((PTYP)((AXO_ARR)->data))[--((AXO_ARR)->len[0])])
+#define axo_arr_pop_2d(PTYP, AXO_ARR) (((PTYP)((AXO_ARR)->data))[--((AXO_ARR)->len[1])])
+
+//FIX: Error handling
+//Resize the underlying ptr
+#define axo_arr_rsz(TYP, AXO_ARR, SZ){ \
+    (AXO_ARR).data = realloc((AXO_ARR).data, (SZ)*sizeof(TYP*)); \
+    ((unsigned)(SZ)); \
+}
+
+#define axo_arr_1d_append(TYP, ELEM_TYP, AXO_ARR, ELEM) ({ \
+    if (axo_arr_data_len_1d((*(AXO_ARR))) % axo_arr_get_cap((*(AXO_ARR))) == 0) \
+        axo_arr_rsz(TYP, *(AXO_ARR), ((AXO_ARR)->len[0]+axo_arr_get_cap((*(AXO_ARR))))*sizeof(ELEM_TYP)) \
+    axo_arr_1d_at(TYP, (*(AXO_ARR)), (AXO_ARR)->len[0]++) = ELEM; \
+    ELEM; \
+})
+
+#define axo_arr_free(AXO_ARR) free((AXO_ARR)->data)

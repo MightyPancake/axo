@@ -76,10 +76,10 @@ extern int yydebug;
     INEQ_OP = 277,                 /* "!="  */
     EQ_SMLR_OP = 278,              /* ">="  */
     EQ_GRTR_OP = 279,              /* "<="  */
-    BIT_OR_OP = 280,               /* "||"  */
-    BIT_AND_OP = 281,              /* "&&"  */
-    LOGICAL_OR_OP = 282,           /* "or"  */
-    LOGICAL_AND_OP = 283,          /* "and"  */
+    BIT_OR_OP = 280,               /* "or"  */
+    BIT_AND_OP = 281,              /* "and"  */
+    LOGICAL_OR_OP = 282,           /* "||"  */
+    LOGICAL_AND_OP = 283,          /* "&&"  */
     LEFT_SHIFT_OP = 284,           /* "<<"  */
     RIGHT_SHIFT_OP = 285,          /* ">>"  */
     TILL_KWRD = 286,               /* "till"  */
@@ -112,7 +112,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 140 "axo_gram.y"
+#line 141 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;

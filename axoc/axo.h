@@ -418,9 +418,116 @@ char* axo_get_color_esc(int index, axo_color_support_kind col_sup){
     return "";
 }
 
+axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_loc, axo_expr expr, char* field){
+    axo_arr_typ arr_typ = axo_get_arr_typ(expr.typ);
+    if (strcmp("len", field)==0){
+      axo_typ typ = (axo_typ){
+        .kind = axo_ptr_kind,
+        .subtyp=malloc(sizeof(axo_typ))
+      };
+      *axo_subtyp(typ) = axo_int_typ(st);
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ = typ,
+        .val=fmtstr("(%s).len", expr.val),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("empty", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ = axo_bool_typ(st),
+        .val=fmtstr("((%s).len == 0)", expr.val),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("dims", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ=axo_int_typ(st),
+        .val=fmtstr("%d", axo_get_arr_typ(expr.typ).dim_count),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("data_len", field)==0){
+        switch(arr_typ.dim_count){
+            case 1:
+            case 2:
+            case 3:
+                return (axo_expr){
+                    .kind=axo_expr_normal_kind,
+                    .typ=axo_u32_typ(st),
+                    .val=fmtstr("axo_arr_data_len_%dd(%s)", arr_typ.dim_count, expr.val),
+                    .lval_kind = axo_not_lval_kind
+                };
+                break;
+            default:
+                yyerror(expr_loc, "Field not supported for %dd arays yet.");
+                break;
+        }
+    }else if (strcmp("cap", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ=axo_u32_typ(st),
+        .val=fmtstr("axo_arr_get_cap(%s)", expr.val),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("data", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ=st->int_def->typ,
+        .val=fmtstr("%s.data", expr.val),
+        .lval_kind = axo_other_lval_kind
+      };
+    }else if (strcmp("dynamic", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ=axo_bool_typ(st),
+        .val=fmtstr("axo_arr_is_dynamic(%s)", expr.val),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("static", field)==0){
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ=axo_bool_typ(st),
+        .val=fmtstr("axo_arr_is_static(%s)", expr.val),
+        .lval_kind = axo_not_lval_kind
+      };
+    }else if (strcmp("first", field)==0){
+      axo_typ typ = (axo_typ){
+        .kind = axo_ptr_kind,
+        .subtyp=malloc(sizeof(axo_typ))
+      };
+      *axo_subtyp(typ) = axo_get_arr_typ(expr.typ).subtyp;
+      return (axo_expr){
+        .kind=axo_expr_normal_kind,
+        .typ = axo_get_arr_typ(expr.typ).subtyp,
+        .val=fmtstr("axo_arr_1d_at(%s, %s, 0)", axo_typ_to_c_str(typ), expr.val),
+        .lval_kind = axo_other_lval_kind
+      };
+      free(typ.subtyp);
+    }else if (strcmp("last", field)==0){
+        axo_typ typ = (axo_typ){
+            .kind = axo_ptr_kind,
+            .subtyp=malloc(sizeof(axo_typ))
+        };
+        *axo_subtyp(typ) = axo_get_arr_typ(expr.typ).subtyp;
+        return (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .typ = arr_typ.subtyp,
+            .val=fmtstr("axo_arr_at(%s, %s, axo_arr_data_len_%dd(%s)-1)", axo_typ_to_c_str(typ), expr.val, arr_typ.dim_count, expr.val),
+            .lval_kind = axo_other_lval_kind
+        };
+        free(typ.subtyp);
+        if (arr_typ.dim_count>3)
+            yyerror(field_loc, "Field not yet supported for %dd arrays!");
+    }else{
+        yyerror(field_loc, "Invalid array field.");
+    }
+    return (axo_expr){};
+}
+
 axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* name_loc, axo_expr expr, char* name){
     //FIX! This is huge
     axo_typ deref_typ = *axo_subtyp(expr.typ);
+    axo_arr_typ arr_typ = axo_get_arr_typ(deref_typ);
     axo_func_call ret;
     axo_func_typ* f_typ = alloc_one(axo_func_typ);
     if (strcmp("push", name) == 0){
@@ -456,6 +563,28 @@ axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* na
         };
         free(t);
         return ret;
+    }else if (strcmp("pop", name) == 0){
+        *f_typ = (axo_func_typ){
+            .args_len = 1,
+            .args_types = malloc(sizeof(axo_typ)),
+            .args_defs=malloc(sizeof(axo_typ)),
+            .ret_typ=expr.typ
+        };
+        f_typ->args_types[0] = expr.typ;
+        ret = (axo_func_call){
+            .called_val = fmtstr("axo_arr_pop_%dd", arr_typ.dim_count),
+            .typ = (axo_typ){
+                .kind=axo_func_kind,
+                .func_typ=f_typ
+            },
+            .params_len=1,
+            .params=(axo_expr*)malloc(sizeof(axo_expr))
+        };
+        ret.params[0] = expr;
+        ret.params[0].val = fmtstr("%s, %s", axo_typ_to_c_str((axo_typ){.kind=axo_ptr_kind, .subtyp=&(arr_typ.subtyp)}), expr.val);
+        if (arr_typ.dim_count>1)
+            yyerror(name_loc, "Method not yet supported for %dd arrays!", arr_typ.dim_count);
+        return ret;
     }else if (strcmp("cap", name) == 0){
         *f_typ = (axo_func_typ){
             .args_len = 2,
@@ -475,6 +604,47 @@ axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* na
             .params=(axo_expr*)malloc(2*sizeof(axo_expr))
         };
         ret.params[0] = expr;
+        return ret;
+    }else if (strcmp("free", name) == 0){
+        *f_typ = (axo_func_typ){
+            .args_len = 1,
+            .args_types = malloc(sizeof(axo_typ)),
+            .args_defs=malloc(sizeof(axo_typ)),
+            .ret_typ=expr.typ
+        };
+        f_typ->args_types[0] = expr.typ;
+        ret = (axo_func_call){
+            .called_val = alloc_str("axo_arr_free"),
+            .typ = (axo_typ){
+                .kind=axo_func_kind,
+                .func_typ=f_typ
+            },
+            .params_len=1,
+            .params=(axo_expr*)malloc(sizeof(axo_expr))
+        };
+        ret.params[0] = expr;
+        return ret;
+    }else if (strcmp("shrink", name) == 0){
+        *f_typ = (axo_func_typ){
+            .args_len = 1,
+            .args_types = malloc(sizeof(axo_typ)),
+            .args_defs=malloc(sizeof(axo_typ)),
+            .ret_typ=axo_u32_typ(st)
+        };
+        f_typ->args_types[0] = expr.typ;
+        ret = (axo_func_call){
+            .called_val = fmtstr("axo_arr_shrink_%dd", arr_typ.dim_count),
+            .typ = (axo_typ){
+                .kind=axo_func_kind,
+                .func_typ=f_typ
+            },
+            .params_len=1,
+            .params=(axo_expr*)malloc(1*sizeof(axo_expr))
+        };
+        ret.params[0] = expr;
+        ret.params[0].val = fmtstr("%s, (*%s)", axo_typ_to_c_str(arr_typ.subtyp), expr.val);
+        if (arr_typ.dim_count>3)
+            yyerror(expr_loc, "Method unsupported for %dd arrays yet!", arr_typ.dim_count);
         return ret;
     }else{
         yyerror(name_loc, "Undefined array method.");

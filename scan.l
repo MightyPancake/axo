@@ -79,12 +79,13 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "else" {ret_null; return ELSE_KWRD; }
 "struct" {ret_null; return STRUCT_KWRD; }
 "in" {ret_null; return IN_KWRD; }
-"or" {ret_null; return LOGICAL_OR_OP; }
-"and" {ret_null; return LOGICAL_AND_OP; }
 "null" {ret_null; return NULL_KWRD; }
 "use" {ret_null; return USE_KWRD; }
 "include" {ret_null; return INCLUDE_KWRD; }
 "module" {ret_null; return MODULE_KWRD; }
+
+"or" {ret_null; return BIT_OR_OP; }
+"and" {ret_null; return BIT_AND_OP; }
 
 "--" {ret_null; return DECR_OP; }
 "++" {ret_null; return INCR_OP; }
@@ -92,8 +93,8 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "!=" {ret_null; return INEQ_OP; }
 "<=" {ret_null; return EQ_GRTR_OP; }
 ">=" {ret_null; return EQ_SMLR_OP; }
-"||" {ret_null; return BIT_OR_OP; }
-"&&" {ret_null; return BIT_AND_OP; }
+"||" {ret_null; return LOGICAL_OR_OP; }
+"&&" {ret_null; return LOGICAL_AND_OP; }
 "<<" {ret_null; return LEFT_SHIFT_OP; }
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
@@ -124,7 +125,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     return STRUCT_LITERAL_START;
   }
 }
-(\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\||\;) {ret_def; return yytext[0]; }
+(\!|\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\||\;) {ret_def; return yytext[0]; }
 \n {axo_line(state)++; axo_col(state)=1;}
 \r ;
 [ \t]+ {axo_col(state)+=yyleng;}

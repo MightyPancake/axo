@@ -69,10 +69,10 @@
 %token<str> INEQ_OP "!="
 %token<str> EQ_SMLR_OP ">="
 %token<str> EQ_GRTR_OP "<="
-%token<str> BIT_OR_OP "||"
-%token<str> BIT_AND_OP "&&"
-%token<str> LOGICAL_OR_OP "or"
-%token<str> LOGICAL_AND_OP "and"
+%token<str> BIT_OR_OP "or"
+%token<str> BIT_AND_OP "and"
+%token<str> LOGICAL_OR_OP "||"
+%token<str> LOGICAL_AND_OP "&&"
 %token<str> LEFT_SHIFT_OP "<<"
 %token<str> RIGHT_SHIFT_OP ">>"
 %token<str> TILL_KWRD "till"
@@ -121,8 +121,8 @@
 %left RET_KWRD
 %right '='
 %left '?'
-%left "or"
-%left "and"
+%left "||"
+%left "&&"
 %left '<' '>' "<=" ">="
 %left "==" "!="
 %left "<<" ">>"
@@ -132,6 +132,7 @@
 %left '.'
 %left '(' ':'
 %left UMINUS '@' '^'
+%left '!'
 %left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
 %left IF_KWRD
@@ -503,9 +504,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     }
   }
   | func_call {$$ = axo_call_to_expr($1);}
-  | func_call '!' '?' { //FIX: Change that. Should'nt discard return value
-    //Get error instead of return value
-  }
   | expr '<' expr {
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
@@ -548,7 +546,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .val = fmtstr("%s<=%s", $1.val, $3.val)
     };
   }
-  | expr "or" expr {
+  | expr "||" expr {
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
       $$ = (axo_expr){
         .kind = axo_expr_normal_kind,
@@ -557,7 +555,19 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       };
     }
   }
-  | expr "and" expr {
+  | '!' expr {
+    if (axo_validate_rval(&@2, $2)) {
+      $$ = (axo_expr){
+        .kind = axo_expr_normal_kind,
+        .typ = axo_bool_typ(state),
+        .val = fmtstr("!(%s)", $2.val),
+        .lval_kind = axo_not_lval_kind
+      };
+      if ($2.typ.kind != axo_simple_kind)
+        yyerror(&@2, "Negation can only be used on primitive types (byte, int etc.)");
+    }
+  }
+  | expr "&&" expr {
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
       $$ = (axo_expr){
         .kind = axo_expr_normal_kind,
@@ -692,70 +702,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
             }
             break;
           case axo_arr_kind: //.len, .data, .dims
-            if (strcmp("len", $2)==0){
-              axo_typ typ = (axo_typ){
-                .kind = axo_ptr_kind,
-                .subtyp=malloc(sizeof(axo_typ))
-              };
-              *axo_subtyp(typ) = state->int_def->typ;
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ = typ,
-                .val=fmtstr("%s.len", $1.val),
-                .lval_kind = axo_not_lval_kind
-              };
-            }else if (strcmp("dims", $2)==0){
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ=state->int_def->typ,
-                .val=fmtstr("%d", axo_get_arr_typ($1.typ).dim_count),
-                .lval_kind = axo_not_lval_kind
-              };
-            }else if (strcmp("cap", $2)==0){
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ=axo_u32_typ(state),
-                .val=fmtstr("axo_arr_get_cap(%s)", $1.val),
-                .lval_kind = axo_not_lval_kind
-              };
-            }else if (strcmp("data", $2)==0){
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ=state->int_def->typ,
-                .val=fmtstr("%s.data", $1.val),
-                .lval_kind = axo_other_lval_kind
-              };
-            }else if (strcmp("dynamic", $2)==0){
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ=axo_bool_typ(state),
-                .val=fmtstr("axo_arr_is_dynamic(%s)", $1.val),
-                .lval_kind = axo_not_lval_kind
-              };
-            }else if (strcmp("static", $2)==0){
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ=axo_bool_typ(state),
-                .val=fmtstr("axo_arr_is_static(%s)", $1.val),
-                .lval_kind = axo_not_lval_kind
-              };
-            }else if (strcmp("first", $2)==0){
-              axo_typ typ = (axo_typ){
-                .kind = axo_ptr_kind,
-                .subtyp=malloc(sizeof(axo_typ))
-              };
-              *axo_subtyp(typ) = axo_get_arr_typ($1.typ).subtyp;
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .typ = axo_get_arr_typ($1.typ).subtyp,
-                .val=fmtstr("axo_arr_1d_at(%s, %s, 0)", axo_typ_to_c_str(typ), $1.val),
-                .lval_kind = axo_not_lval_kind
-              };
-              free(typ.subtyp);
-            }else{
-              
-            yyerror(&@1, "Invalid array field.");
-            }
+            $$ = axo_get_array_field(state, &@1, &@2, $1, $2);
             break;
           default:
             yyerror(&@1, "Cannot get field of type '%s'", axo_typ_to_str($1.typ));
@@ -1261,6 +1208,9 @@ assignment : expr assign_op expr {
         }else{
           $$.val = fmtstr("%s=%s",$1.val, $3.val);
         }
+        break;
+      case axo_not_lval_kind:
+        yyerror(&@1, "Cannot assign to a non-lvalue");
         break;
       default:
         if (!axo_typ_eq(l_typ, $3.typ))
