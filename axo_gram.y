@@ -1908,7 +1908,11 @@ int main(int argc, char** argv) {
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
       if (state->run){
-        prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
+        #ifdef _WIN32
+          prog_return = system(fmt_str((char[512]){}, "%s", state->output_file)) >> 8;
+        #elif
+          prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
+        #endif
         remove(state->output_file);
         remove(state->output_c_file);
       }else if (!(state->config.keep_c)){
