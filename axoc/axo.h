@@ -436,7 +436,7 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
       return (axo_expr){
         .kind=axo_expr_normal_kind,
         .typ = axo_bool_typ(st),
-        .val=fmtstr("((%s).len == 0)", expr.val),
+        .val=fmtstr("((%s).len[0] == 0)", expr.val),
         .lval_kind = axo_not_lval_kind
       };
     }else if (strcmp("dims", field)==0){

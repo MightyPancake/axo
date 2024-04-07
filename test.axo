@@ -1,53 +1,15 @@
 use std
-use testing
 
 fn main([][]byte args){
     arr = [?0]int
-    arr@:push(0)
-    arr@:push(1)
-    arr@:push(4)
-    arr@:push(9)
-    
-    while !arr.empty
-        printf("%d\n", arr@:pop())
-    arr@:free()
-    
-    // s_arr2d = [1|1][42,]
-    // d_arr2d = [?1|1][42,]
-
-    // printf("d_arr2c.cap = %u\n", d_arr2c.cap)
-    // printf("s_arr2c.cap = %u\n", s_arr2c.cap)
-    // d_arr2c@:cap((8).(byte))
-    // printf("d_arr2c.cap = %u\n", d_arr2c.cap)
-    // map = #["hello" = "world"]
-
-    // //3. Iterated literals
-    // s_arr3 = [i=3|j=3]{
-    //     s_arr3[i|j] = i*j
-    // }
-    // d_arr3 = [i=3|j=3?]{
-    //     s_arr3[i|j] = i*j
-    // }
-    
+    arr:push(1)
+    arr:push(2)
+    arr:push(3)
+    arr:push(4)
+    while !arr.empty {
+        printf("popped: %d\n", arr:pop())
+    }
+    printf("Done!\n")
     ret 0
 }
 
-fn another_entry([][]byte args){
-    printf("Hello from the other side!\n")
-    ret 0
-}
-
-fn do_tests([][]byte args){
-    batch = testing.new("test.axo")
-    batch@:add("addition_test")
-    batch@:add("substraction_test")
-    ret batch@:run()
-}
-
-fn addition_test([][]byte args){
-    ret 1+1==2 ? 0 : 1
-}
-
-fn substraction_test([][]byte args){
-    ret 1-1==2 ? 0 : 1
-}

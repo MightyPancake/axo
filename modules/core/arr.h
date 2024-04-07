@@ -27,7 +27,7 @@ typedef struct axo__arr{
 #define AXO_ARR_STATIC 0x00
 //Default cap set to 6 (2^5=32)
 // #define axo_default_arr_cap (char) 0x06
-#define axo_default_arr_cap ((char)(6))
+#define axo_default_arr_cap ((char)(1))
 
 #define axo_arr_cap_tab(CAP) ( \
     (unsigned[32]){ \

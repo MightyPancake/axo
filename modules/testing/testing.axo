@@ -30,16 +30,16 @@ fn testing.new(@byte filename){
 		tests=[?0]@byte,
 		success_count=(0).(u32)
 	}
-	r.file=mem.alc((filename:strlen()+1).(u32))
+	r.file=mem.alc((filename$strlen()+1).(u32))
 	sprintf(r.file, "%s", filename)
 	r.success_count=(0).(u32)
 	ret r
 }
 
 fn test_batch:add(@byte entry){
-	huh = mem.alc((entry:strlen()+1).(u32))
+	huh = mem.alc((entry$strlen()+1).(u32))
 	sprintf(huh, "%s", entry)
-	self^.tests@:push(huh)
+	self^.tests:push(huh)
 	ret 0
 }
 

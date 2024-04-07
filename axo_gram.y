@@ -1369,6 +1369,63 @@ called_expr : expr '(' {
     // printf("ret_typ: %s\n", axo_typ_to_str(((axo_func*)($$.typ.func_typ))->f_typ.ret_typ));
   } %prec CALL_PREC
   | expr ':' IDEN '(' {
+    axo_expr passed_expr;
+    switch($expr.typ.kind){
+      case axo_enum_kind:
+      case axo_simple_kind:
+      case axo_struct_kind:
+        if ($expr.lval_kind == axo_not_lval_kind){
+          yyerror(&@1, "Cannot reference a non-lvalue expression to call a method.");
+        }else{
+          char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str($expr.typ), $IDEN);
+          axo_var* var = axo_get_var(top_scope, fn_name);
+          if (var == NULL && rval_now)
+            yyerror(&@1, "Method '%s' undefined before usage.", $IDEN);
+          else{
+            if (var->typ.kind != axo_func_kind){
+              yyerror(&@3, "Attempted to call a non-function method. (Naming clash?)");  
+            }else{
+              passed_expr = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .lval_kind=axo_not_lval_kind,
+                .val=fmtstr("(&(%s))", $expr.val),
+                .typ=(axo_typ){
+                  .kind=axo_ptr_kind,
+                  .subtyp=alloc_one(axo_typ)
+                }
+              };
+              *axo_subtyp(passed_expr.typ) = $expr.typ;
+              $$ = (axo_func_call){
+                .typ = var->typ,
+                .called_val = fn_name,
+                .params_len=1,
+                .params=(axo_expr*)malloc(axo_func_args_cap*sizeof(axo_expr))
+              };
+              $$.params[0] = passed_expr;
+            }
+          }
+        }        
+        break;
+        case axo_arr_kind:
+          passed_expr = (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .lval_kind=axo_not_lval_kind,
+            .val=fmtstr("(&(%s))", $expr.val),
+            .typ=(axo_typ){
+              .kind=axo_ptr_kind,
+              .subtyp=alloc_one(axo_typ)
+            }
+          };
+          *axo_subtyp(passed_expr.typ) = $expr.typ;
+          $$ = axo_get_array_method(state, &@expr, &@IDEN, passed_expr, $IDEN);
+          break;
+      default:
+        yyerror(&@1, "Methods can only operate on simple types (primitives, enums or structures), not '%s'.", axo_typ_to_str($expr.typ));
+        break;
+    }
+  
+  }
+  | expr '$' IDEN '(' {
     if ($expr.typ.kind != axo_ptr_kind){
       yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
     }else{
@@ -1910,7 +1967,7 @@ int main(int argc, char** argv) {
       if (state->run){
         #ifdef _WIN32
           prog_return = system(fmt_str((char[512]){}, "%s", state->output_file)) >> 8;
-        #elif
+        #else
           prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
         #endif
         remove(state->output_file);
