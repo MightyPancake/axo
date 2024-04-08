@@ -1,7 +1,6 @@
 #ifndef AXO_H
 #define AXO_H
 
-
 #define AXO_VERSION "0.0.0"
 
 #ifdef _WIN32

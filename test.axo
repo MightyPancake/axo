@@ -2,12 +2,12 @@ use std
 
 fn main([][]byte args){
     arr = [?0]int
-    arr:push(1)
-    arr:push(2)
-    arr:push(3)
-    arr:push(4)
+    arr:push(0b01)
+    arr:push(0b111)
+    arr:push(0b1010)
+    arr:push(0b11110000)
     while !arr.empty {
-        printf("popped: %d\n", arr:pop())
+        printf("popped: %X\n", arr:pop())
     }
     printf("Done!\n")
     ret 0
