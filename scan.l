@@ -4,6 +4,7 @@
   #include "axoc/types.h"
   #include <stdio.h>
   #include "axo_gram.tab.h"
+  
   extern int prog_return;
   extern axo_state* state;
   void axo_pop_source(axo_state* st);
@@ -11,6 +12,23 @@
   int yywrap(void);
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char * fmt, ...);
+
+  void bin_to_hex_lit(char *bin, int len) {
+    char hex_char[17] = "0123456789ABCDEF";
+    int i = 0;
+    int j = 0;
+    while (i<len){
+      int hex = 0;
+      int mult = 8;
+      while (i<len){
+        if (bin[i++] == '1') hex+=mult;
+        if (mult == 1) break;
+        mult /= 2;
+      }
+      bin[j++] = hex_char[hex];
+    }
+    bin[j] = '\0';
+  }
 
   #define axo_adv_loc(ST) ({ \
     yylloc->first_line=yylloc->last_line=axo_line(ST); \
@@ -104,7 +122,20 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "/=" {ret_null; return ASSIGN_DIV; }
 
 \"([^"\\]|\\.|\\\n)*\" {ret_def; return(STRING_LITERAL); }
-[0-9]+ {ret_def; return(INTEGER_LITERAL); }
+([0-9]+|0x[0-9a-fA-F]+|0b(0|1)+) {
+  ret_def;
+  //Return the literal directly if it's not binary
+  if (yyleng<=3 || yytext[1] != 'b'){
+    return(INTEGER_LITERAL);
+  }
+  //Here, I assume that every
+  ret_null;
+  bin_to_hex_lit(&(yytext[2]), yyleng-2);
+  yytext[1] = 'x';
+  yylval->str=alloc_str(yytext);
+  return(INTEGER_LITERAL);
+
+}
 ([0-9]+\.[0-9]*|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z][0-9a-zA-Z_]* {ret_def; return IDEN; }
 \.[a-zA-Z][0-9a-zA-Z_]* {
