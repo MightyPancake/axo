@@ -4667,10 +4667,42 @@ int main(int argc, char** argv) {
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
     //Set entry point
-    axo_add_decl(state, (axo_decl){.kind=axo_other_decl_kind, .val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point)});
+    axo_add_decl(state, (axo_decl){
+      .kind=axo_other_decl_kind,
+      .val=empty_str
+    });
     //Parse
     yyparse();
     // axo_printf("Parsing done.\n");
+    //Check if the entry point is present
+    axo_var* var = axo_get_var(top_scope, (strcmp("axo__main", state->entry_point) == 0) ? "main" : state->entry_point);
+    if (var == NULL){
+      yyerror(NULL, "Entry point function '%s' doesn't exist.", state->entry_point);
+    }else{
+      axo_func_typ f_typ = *((axo_func_typ*)(var->typ.func_typ));
+      if (f_typ.args_len == 0){
+        state->decls[1].val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s();\n#define AXO_MAIN_ENTRY_POINT %s\n#define AXO_MAIN_ENTRY_NO_ARGS 1\n", state->entry_point, state->entry_point);
+      }else{
+        axo_typ expected_typ = (axo_typ){
+          .kind=axo_arr_kind,
+          .arr=&(axo_arr_typ){
+            .dim_count=1,
+            .subtyp=(axo_typ){
+              .kind=axo_arr_kind,
+              .arr=&(axo_arr_typ){
+                .dim_count=1,
+                .subtyp=(axo_byte_typ(state))
+              }
+            }
+          }
+        };
+        if (f_typ.args_len > 1 || !axo_typ_eq(f_typ.args_types[0], expected_typ)) {
+          yyerror(NULL, "Entry point has to be of type (int fn) or (int fn [][]byte), but is of type '%s'.", axo_typ_to_str(var->typ));
+        }else{
+          state->decls[1].val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point);
+        }
+      }
+    }
     //Handle produced C code
     if (!prog_return){
       char* code = axo_get_code(state);

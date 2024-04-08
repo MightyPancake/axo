@@ -14,6 +14,11 @@ int main(int argc, char** argv){
     };
     for (int i=0; i<argc; i++)
         axo_arr_1d_at(axo__arr*, args, i) = axo_arr_from_stat_str(argv[i]);
-    return AXO_MAIN_ENTRY_POINT(args);
+
+    #ifdef AXO_ENTRY_POINT_NO_ARGS
+        return AXO_MAIN_ENTRY_POINT();
+    #else
+        return AXO_MAIN_ENTRY_POINT(args);
+    #endif
 }
 

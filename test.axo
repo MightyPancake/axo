@@ -13,3 +13,15 @@ fn main([][]byte args){
     ret 0
 }
 
+fn valid(){
+    printf("Hello from valid!\n")
+    ret 0
+}
+
+fn invalid(int a){
+    ret 1
+}
+
+fn invalid2(int a, int b){
+    ret 1
+}
