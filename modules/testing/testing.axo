@@ -9,50 +9,43 @@ module(
 	description: "A module for writing tests."
 )
 
+struct tested_func (
+	@byte				name,
+	(int fn)		func
+)
+
 struct test_batch (
-	@byte 					file,
-	[]@byte					tests,
+	@byte						name,
+	[]tested_func		tests,
 	u32							success_count
 )
 
-fn testing.run(@byte file, @byte name){
-	cmd = mem.alc((128).(u32))
-	// printf("%sRunning '%s'...%s\n", aesc.green, name, aesc.reset)
-	sprintf(cmd, "axo %s -e %s -o AXO_TEST_RUN -s -r", file, name)
-	ret_val = system(cmd) >> 8
-	mem.free(cmd)
-	ret ret_val
-}
-
-fn testing.new(@byte filename){
+fn testing.new(@byte name){
 	r = test_batch{
-		file="",
-		tests=[?0]@byte,
+		name=name,
+		tests=[?0]tested_func,
 		success_count=(0).(u32)
 	}
-	r.file=mem.alc((filename$strlen()+1).(u32))
-	sprintf(r.file, "%s", filename)
-	r.success_count=(0).(u32)
 	ret r
 }
 
-fn test_batch:add(@byte entry){
-	huh = mem.alc((entry$strlen()+1).(u32))
-	sprintf(huh, "%s", entry)
-	self^.tests:push(huh)
+fn test_batch:add((int fn) func, @byte name){
+	self^.tests:push(tested_func{func=func, name=name})
 	ret 0
 }
 
 fn test_batch:run(){
+	printf("%sTesting '%s':%s\n", aesc.blue, self^.name, aesc.reset)
 	for each [i], test in self^.tests {
-		res = testing.run(self^.file, test)
+		res = test.func()
 		if res == 0 {
 			self^.success_count++
-			printf("%s%s passed.%s\n", aesc.green, test, aesc.reset)
+			printf("%s%s passed.%s\n", aesc.green, test.name, aesc.reset)
 		} else {
-			printf("%s%s failed.%s\n", aesc.red, test, aesc.reset)
+			printf("%s%s failed, returned %d%s\n", aesc.red, test.name, res, aesc.reset)
 		}
 	}
-	printf("%sTest results: %d/%d%s\n", aesc.cyan, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
+	printf("%sTest results: %d/%d%s\n", aesc.blue, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
 	ret self^.success_count.(int) == self^.tests.len[0] ? 0 : 1
 }
+

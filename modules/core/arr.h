@@ -95,14 +95,14 @@ typedef struct axo__arr{
 
 //FIX: Error handling
 //Resize the underlying ptr
-#define axo_arr_rsz(TYP, AXO_ARR, SZ){ \
-    (AXO_ARR).data = realloc((AXO_ARR).data, (SZ)*sizeof(TYP*)); \
+#define axo_arr_rsz(ELEM_TYP, AXO_ARR, SZ){ \
+    (AXO_ARR).data = realloc((AXO_ARR).data, (SZ)*sizeof(ELEM_TYP)); \
     ((unsigned)(SZ)); \
 }
 
 #define axo_arr_1d_append(TYP, ELEM_TYP, AXO_ARR, ELEM) ({ \
     if (axo_arr_data_len_1d((*(AXO_ARR))) % axo_arr_get_cap((*(AXO_ARR))) == 0) \
-        axo_arr_rsz(TYP, *(AXO_ARR), ((AXO_ARR)->len[0]+axo_arr_get_cap((*(AXO_ARR))))*sizeof(ELEM_TYP)) \
+        axo_arr_rsz(ELEM_TYP, *(AXO_ARR), ((AXO_ARR)->len[0]+axo_arr_get_cap((*(AXO_ARR))))*sizeof(ELEM_TYP)) \
     axo_arr_1d_at(TYP, (*(AXO_ARR)), (AXO_ARR)->len[0]++) = ELEM; \
     ELEM; \
 })

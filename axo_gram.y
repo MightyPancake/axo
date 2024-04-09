@@ -291,7 +291,7 @@ declaration : struct_def { //Fix! Make this use realloc less
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_decl){
         .kind=axo_is_decl_kind,
-        .val = axo_get_var_decl_assign($1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
+        .val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
       };
       strapnd(&($$.val), ";");
       axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
@@ -433,6 +433,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     asprintf(&($$.val), "&%s", $1.val);
   }
   | expr '^' { //Dereferencing
+    axo_validate_rval(&@1, $1);
     if ($1.typ.kind != axo_ptr_kind)
       yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
     $$.typ = *axo_subtyp($1.typ);
@@ -598,12 +599,12 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     $$.typ = $1.typ;
     axo_struct* structure = (axo_struct*)($$.typ.structure);
     //size of the string to avoid reallocing: (name){.field1=value1, }
-    int v_len = strlen(structure->name) + 5;
+    int v_len = strlen(structure->name) + 5 + 2;
     for (int i=0; i<structure->fields_len; i++){
       v_len+=strlen(structure->fields[i].name)+4+strlen($1.fields[i]);  //name of a field + 3 cause of .=
     }
     char* v = (char*)malloc(v_len*sizeof(char));
-    strcpy(v, "(");
+    strcpy(v, "((");
     strcat(v, structure->name);
     strcat(v, "){");
     for (int i=0; i<structure->fields_len; i++){
@@ -613,7 +614,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       strcat(v, "=");
       strcat(v, $1.fields[i]);
     }
-    strcat(v,"}");
+    strcat(v,"})");
     $$.val = v;
     $$.kind = axo_expr_normal_kind;
   }
@@ -946,7 +947,7 @@ matching_statement : expr {
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_statement){
         .kind=axo_assignment_statement_kind,
-        .val = axo_get_var_decl_assign($1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
+        .val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
       };
       strapnd(&($$.val), ";");
       axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
@@ -1203,7 +1204,7 @@ assignment : expr assign_op expr {
       case axo_var_lval_kind:
         if ($1.typ.kind == axo_no_kind){
           l_typ = axo_clean_typ($3.typ);
-          $$.val = axo_get_var_decl_assign($1.val, (axo_expr){.typ=l_typ, .val=$3.val});
+          $$.val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=l_typ, .val=$3.val});
           axo_set_var(top_scope, (axo_var){.typ = l_typ, .name = $1.val, .is_const=false});
         }else{
           $$.val = fmtstr("%s=%s",$1.val, $3.val);
@@ -1843,6 +1844,7 @@ enum_names : IDEN {
 void yyerror(YYLTYPE* loc, const char * fmt, ...){
   if (prog_return==0)
     printf(axo_cyan_bg axo_magenta_fg "\aClick an error to learn more."axo_reset_style"\n");
+  prog_return = 1;
   axo_raise_error;
   va_list args;
   if (loc==NULL){
@@ -1897,17 +1899,21 @@ int main(int argc, char** argv) {
   clock_t start, end;
   double cpu_time_used;
   if (test_playground) return playground();
+  
+  //Get the root path (the path where the axo compiler lays)
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
   // printf("Root: %s\n", root_p);
+  
   //Initialize state
   state = axo_new_state(root_p);
+  //Save the original working dir
+  char* orig_cwd = axo_cwd((char[axo_max_path_len]){}, axo_max_path_len);
+  // printf("orig_cwd: %s\n", orig_cwd);
+  
   //Load config from axo.config
   // axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
-  // axo_lolprintf(axo_col_sup(state), rand(), "Hello %s!\n", "world");
   size_t cfg_sz;
   axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes(fmt_str((char[axo_max_path_len]){}, "%s"axo_dir_sep"axo.config", state->root_path), &cfg_sz);
-  // printf("%lu\n%lu\n", sizeof(axo_compiler_config), cfg_sz);
-  // printf("%d\n", (int)(cfg->timer));
   state->config = *cfg;
   bool measure_time = state->config.timer;
   if (measure_time){
@@ -1977,6 +1983,8 @@ int main(int argc, char** argv) {
       }
     }
     //Handle produced C code
+    //change the working dir back to original
+    axo_chdir(orig_cwd);
     if (!prog_return){
       char* code = axo_get_code(state);
       overwrite_file_with_string(state->output_c_file, code);
@@ -1987,7 +1995,7 @@ int main(int argc, char** argv) {
       switch(state->config.cc){
         case axo_gcc_cc_kind:
           compiler_cmd = fmtstr("gcc %s -o %s -g", state->output_c_file, state->output_file);
-          res = system(compiler_cmd);
+          res = system(compiler_cmd) >> 8;
           break;
         default:
           fprintf(stderr, "This C compiler is not yet supported!\n");
@@ -1996,6 +2004,7 @@ int main(int argc, char** argv) {
       if (res != 0)
         printf("Error while compiling the output C file! D:\n");
       prog_return = prog_return||res;
+      if (prog_return) return prog_return;
       if (state->run){
         #ifdef _WIN32
           prog_return = system(fmt_str((char[512]){}, "%s", state->output_file)) >> 8;
@@ -2016,5 +2025,6 @@ int main(int argc, char** argv) {
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     axo_lolprintf(state->config.color_support, rand(), "Took: %fs\n", cpu_time_used);
   }
+  // printf("Returning: %d\n", prog_return);
   return prog_return;
 }

@@ -155,7 +155,7 @@ char* axo_typ_to_str(axo_typ typ);
 char* axo_typ_to_ctyp_str(axo_typ typ);
 char* axo_name_typ_decl(char* name, axo_typ typ);
 char* axo_get_arr_name_typ_decl(axo_typ typ, char* name, int sz);
-char* axo_get_var_decl_assign(char* name, axo_expr expr);
+char* axo_get_var_decl_assign(YYLTYPE* loc, char* name, axo_expr expr);
 char* axo_typ_to_c_str(axo_typ t);
 char* axo_typ_def_val(axo_typ typ);
 char* axo_c_arr_of_typ(axo_typ typ, char* inside);
@@ -471,7 +471,10 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
     }else if (strcmp("data", field)==0){
       return (axo_expr){
         .kind=axo_expr_normal_kind,
-        .typ=st->int_def->typ,
+        .typ=(axo_typ){
+            .kind = axo_ptr_kind,
+            .subtyp = &(axo_get_arr_typ(expr.typ).subtyp),
+        },
         .val=fmtstr("%s.data", expr.val),
         .lval_kind = axo_other_lval_kind
       };
@@ -1226,9 +1229,12 @@ char* axo_name_typ_decl(char* name, axo_typ typ){ //Fix arr, ptr, func
             switch(axo_subtyp(typ)->kind){
                 case axo_ptr_kind:
                 case axo_simple_kind:
+                case axo_enum_kind:
+                case axo_struct_kind:
                     return fmtstr("%s %s", axo_typ_to_c_str(typ), name);
                     break;
                 default:
+                    yyerror(NULL, "Unsupported pointer type in axo_name_typ_decl (%s).", axo_typ_kind_to_str(typ.kind));
                     return fmtstr("Unsupported pointer type (pointing to %s)", axo_typ_to_str(*axo_subtyp(typ)));
                     break;
             }
@@ -1246,14 +1252,15 @@ axo_decl axo_func_def_to_decl(axo_func func){
     // char* str = (char*)malloc(sz*sizeof(char));
     char* str = alloc_str(axo_typ_to_c_str(func.f_typ.ret_typ));
     // strcpy(str, axo_typ_to_c_str(func.f_typ.ret_typ));
+    char* arg_str = NULL;
     strapnd(&str, " ");
     strapnd(&str, name);
     strapnd(&str, "(");
     for (int i = 0; i<func.f_typ.args_len; i++){
         if (i!=0) strapnd(&str, ",");
-        strapnd(&str, axo_typ_to_c_str(func.f_typ.args_types[i]));
-        strapnd(&str, " ");
-        strapnd(&str, func.args_names[i]);
+        arg_str = axo_name_typ_decl(func.args_names[i], func.f_typ.args_types[i]);
+        strapnd(&str, arg_str);
+        free(arg_str);
     }
     strapnd(&str, ")");
     for (int i = 0; i<func.f_typ.args_len; i++)
@@ -1481,7 +1488,7 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
             strapnd(&val, "{");
             if (lp.value_iter.data != NULL){
                 char* arr_at_str = axo_arr_access_to_str(&(((YYLTYPE*)(lp.locs))[2]), lp.collection, &(((YYLTYPE*)(lp.locs))[1]), (axo_index_access){.indexes=lp.dim_iters, .index_count=lp.dim_count});
-                strapnd(&val, axo_get_var_decl_assign(lp.value_iter.data, (axo_expr){.typ=arr_typ.subtyp, .val=arr_at_str}));
+                strapnd(&val, axo_get_var_decl_assign(NULL, lp.value_iter.data, (axo_expr){.typ=arr_typ.subtyp, .val=arr_at_str}));
                 strapnd(&val, ";");
                 free(arr_at_str);
             }
@@ -1498,8 +1505,10 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
     };
 }
 
-char* axo_get_var_decl_assign(char* name, axo_expr expr){
+char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr){
     axo_typ typ = expr.typ;
+    axo_func_typ f_typ;
+    char* ret = NULL;
     switch(typ.kind){
         case axo_enum_kind:
             return fmtstr("%s %s=%s", ((axo_enum*)(typ.enumerate))->name, name, expr.val); break;
@@ -1512,8 +1521,22 @@ char* axo_get_var_decl_assign(char* name, axo_expr expr){
         case axo_ptr_kind:
             //FIX: This doesn't always work. Example: function pointers
             return fmtstr("%s %s = %s", axo_typ_to_c_str(typ), name, expr.val); break;
+        case axo_func_kind:
+            f_typ = *((axo_func_typ*)(typ.func_typ));
+            ret = alloc_str(axo_typ_to_c_str(f_typ.ret_typ));
+            strapnd(&ret, "(*");
+            strapnd(&ret, name);
+            strapnd(&ret, ")(");
+            for (int i=0; i<f_typ.args_len; i++){
+                if (i>0) strapnd(&ret, ",");
+                strapnd(&ret, axo_typ_to_c_str(f_typ.args_types[i]));
+            }
+            strapnd(&ret, ")=");
+            strapnd(&ret, expr.val);
+            return ret;
+            break;
         default:
-            yyerror(NULL, "Type assign declaration not yet supported for this (%d) kind!", typ.kind);
+            yyerror(pos, "Type assign declaration not yet supported for this (%s) kind!", axo_typ_kind_to_str(typ.kind));
             return fmtstr("typ %s = %s", name, expr.val);
             break;
     }
@@ -1851,6 +1874,17 @@ char* axo_decode_easter(long long int* data){
     }
 #endif
 
+#ifdef _WIN32
+
+#elif __linux
+    char* axo_cwd(char* dest, size_t sz){
+        if (getcwd(dest, sz) == NULL)
+            perror("axo_cwd() error");
+        return dest;
+    }
+
+#elif __APPLE__
+
 #endif
 
 char* axo_get_parent_dir(char* path) {
@@ -1870,3 +1904,5 @@ char* axo_get_parent_dir(char* path) {
     }
     return path;
 }
+
+#endif
