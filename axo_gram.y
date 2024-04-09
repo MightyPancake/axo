@@ -1370,6 +1370,7 @@ called_expr : expr '(' {
     // printf("ret_typ: %s\n", axo_typ_to_str(((axo_func*)($$.typ.func_typ))->f_typ.ret_typ));
   } %prec CALL_PREC
   | expr ':' IDEN '(' {
+    axo_validate_rval(&@expr, $expr);
     axo_expr passed_expr;
     switch($expr.typ.kind){
       case axo_enum_kind:
