@@ -10,13 +10,16 @@ use std
 fn fib(int n){
     if n<=1
         ret n
-    elsea
+    else
         ret fib(n-1) + fib(n-2)
 }
 
 fn main([][]byte args) {
     a = 12
     printf("fib #%d: %d\n", a, fib(a))
+    if a {
+        ret 1
+    }
     ret 0
 }
 

@@ -999,7 +999,7 @@ axo_scope* axo_new_scope(axo_scope* parent){
     sc->parent = parent;
     sc->variables = new_map(axo_var, map_hash_vars, map_cmp_vars);
     sc->def_iter = (parent==NULL ? 0 : parent->def_iter);
-    sc->parent_func = NULL;
+    sc->parent_func = parent ? parent->parent_func : NULL;
     return sc;
 }
 
