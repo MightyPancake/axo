@@ -129,17 +129,12 @@ axo_decl axo_func_def_to_decl(axo_func func);
 //Scope
 axo_scope* axo_new_scope();
 void axo_add_statement(axo_scope* sc, axo_statement s);
-void axo_set_var(axo_scope* sc, axo_var var);
+axo_var* axo_set_var(axo_scope* sc, axo_var var);
 axo_var* axo_get_var(axo_scope* sc, char* name);
+axo_var* axo_del_var(axo_scope* sc, char* name);
 char* axo_typ_to_str(axo_typ typ);
 char* axo_typ_to_c_str(axo_typ t);
 axo_statement axo_scope_to_statement(axo_scope* sc);
-char* axo_get_ret_assign(axo_scope* sc);
-
-//Variables
-void axo_set_var(axo_scope* sc, axo_var var);
-axo_var* axo_get_var(axo_scope* sc, char* name);
-axo_var* axo_del_var(axo_scope* sc, char* name);
 
 //Types
 bool axo_typ_eq(axo_typ t1, axo_typ t2);
@@ -251,7 +246,7 @@ axo_state* axo_new_state(char* root_path){
         .bug_hunter=false,
         .keep_c=false,
         .color_support=axo_limited_color_support_kind,
-        .ascii_only=false
+        .extended_ascii=false
     };
     //Load types
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
@@ -748,7 +743,7 @@ void axo_print_config(axo_state* st){
     printf("keep_c: %s\n", axo_bool_to_str(cfg.keep_c, col_sup));
     printf("timer: %s\n", axo_bool_to_str(cfg.timer, col_sup));
     printf("color_support: %s\n", axo_lolsprintf(col_sup, (seed+10)%col_count, (char[64]){}, axo_color_support_to_str(col_sup)));
-    printf("ascii_only: %s\n", axo_bool_to_str(cfg.ascii_only, col_sup));
+    printf("extended_ascii: %s\n", axo_bool_to_str(cfg.extended_ascii, col_sup));
 }
 
 int axo_info_cmd(axo_state* st, int argc, char** argv){
@@ -798,6 +793,15 @@ int axo_set_cmd(axo_state* st, int argc, char** argv){
             st->config.timer = false;
         }else{
             printf("Setting 'timer' can only be set to false/true.\n");
+            valid = false;
+        }
+    }else if (strcmp(setting, "extended_ascii") == 0){
+        if (strcmp(val, "true")==0){
+            st->config.extended_ascii = true;
+        }else if (strcmp(val, "false")==0) {
+            st->config.extended_ascii = false;
+        }else{
+            printf("Setting 'extended_ascii' can only be set to false/true.\n");
             valid = false;
         }
     }else{
@@ -994,9 +998,8 @@ axo_scope* axo_new_scope(axo_scope* parent){
     sc->statements_len = 0;
     sc->parent = parent;
     sc->variables = new_map(axo_var, map_hash_vars, map_cmp_vars);
-    sc->ret_typ = axo_no_typ;
     sc->def_iter = (parent==NULL ? 0 : parent->def_iter);
-    sc->ret_assign = NULL;
+    sc->parent_func = NULL;
     return sc;
 }
 
@@ -1019,11 +1022,12 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
     sc->statements[sc->statements_len++] = s;
 }
 
-void axo_set_var(axo_scope* sc, axo_var var){
+axo_var* axo_set_var(axo_scope* sc, axo_var var){
     // printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
     new_ptr_one(ptr, axo_var);
     *ptr = var;
     hashmap_set(sc->variables, ptr);
+    return ptr;
 }
 
 axo_var* axo_get_var(axo_scope* sc, char* name){
@@ -1074,7 +1078,7 @@ char* axo_func_to_typ_str(axo_func* fn){
 
 char* axo_typ_to_str(axo_typ typ){
     char* ret = (char[1024]){};
-    axo_func_typ fnt = *((axo_func_typ*)(typ.func_typ));
+    axo_func_typ fnt;
     int i;
     char dim_stars[128];
     switch (typ.kind){
@@ -1082,6 +1086,7 @@ char* axo_typ_to_str(axo_typ typ){
             return typ.simple.name;
             break;
         case axo_func_kind:
+            fnt = *((axo_func_typ*)(typ.func_typ));
             ret = fmt_str(ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
                 if (i>0) strcat(ret, ",");
@@ -1199,6 +1204,9 @@ char* axo_typ_to_c_str(axo_typ t){
             break;
         case axo_struct_kind:
             return ((axo_struct*)t.structure)->name;
+            break;
+        case axo_no_kind:
+            return alloc_str("no_kind_typ");
             break;
         default: 
             return alloc_str("unhandled_typ");
@@ -1344,13 +1352,6 @@ void* axo_safe_malloc(size_t n){
         abort();
     }
     return p;
-}
-
-char* axo_get_ret_assign(axo_scope* sc){
-    if (sc==NULL) return NULL;
-    if (sc->ret_assign==NULL) return axo_get_ret_assign(sc->parent);
-    if (sc->parent==NULL) return NULL;
-    return sc->ret_assign;
 }
 
 int axo_get_struct_field_index(axo_struct* structure, char* name){
@@ -1640,7 +1641,18 @@ char* itoa_spaced(int a){
     return ret;
 }
 
+unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii){
+    switch(s){
+        case axo_arrow_symbol:
+            return e_ascii ? 175 : '>'; break;
+        case axo_vertical_line_symbol:
+            return e_ascii ? (unsigned char)179 : '|'; break;
+    }
+    return ' ';
+}
+
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
+    bool e_ascii = st->config.extended_ascii;
     //Produce the error string from fmt and args
     char* line_num;
     //Add position and context to the error message
@@ -1663,14 +1675,14 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     char* ret;
     char website[] = "https://github.com/MightyPancake/axl/blob/main/errors/error_1.md";
     char* full_filepath = axo_resolve_path(axo_source(st)->path);
-    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, 175, loc->first_line, loc->first_column, website, msg);
+    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
     while (line<=loc->last_line+down_lines){
       if (code[i] == '\0') break;
       else if (col == loc->first_column && line == loc->first_line){
         char c = code[i];
         code[i] = '\0';
         line_num = itoa_spaced(line);
-        asprintf(&ret, "%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, 179, &(code[last_i]));
+        asprintf(&ret, "%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
         last_i = i;
         code[i] = c;
         while (!(col==loc->last_column && line==loc->last_line)){
@@ -1694,7 +1706,7 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
             asprintf(&ret, "%s" "%s\n", ret, &(code[last_i]));
         else{
             line_num=itoa_spaced(line);
-            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, 179, &(code[last_i]));   
+            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));   
             free(line_num);
         }
         last_i = i+1;

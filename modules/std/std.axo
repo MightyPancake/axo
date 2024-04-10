@@ -32,6 +32,7 @@ fn std.rand(){
 fn print_module(axo_module mod){
 	printf("name: %s\nprefix: %s\nversion: %s\nauthor: %s\nwebsite: %s\nlicense_name: %s\nlicense: %s\ndescription: %s\n",
 	mod.name, mod.prefix, mod.version, mod.author, mod.website, mod.license_name, mod.license, mod.description)
+	ret 0
 }
 
 //Include common modules

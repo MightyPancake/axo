@@ -183,8 +183,7 @@ typedef struct axo_scope{
     
     int            def_iter;
     
-    axo_typ        ret_typ;
-    char*          ret_assign;
+    void*          parent_func;
 }axo_scope;
 
 typedef struct axo_scopes{
@@ -226,7 +225,7 @@ typedef struct axo_compiler_config{
     bool                      timer;
     bool                      bug_hunter;
     axo_color_support_kind    color_support;
-    bool                      ascii_only;
+    bool                      extended_ascii;
 }axo_compiler_config;
 
 typedef struct axo_source{
@@ -288,7 +287,6 @@ typedef struct axo_state{
     bool                   silenced;
     bool                   run;
 }axo_state;
-    
 
 #define axo_col_sup(ST) (ST->config.color_support)
 
@@ -409,5 +407,10 @@ typedef struct axo_each_loop{
     //2 -> collection_loc
     //3+ -> iter_locs (individuals)
 }axo_each_loop;
+
+typedef enum axo_symbol_kind{
+    axo_arrow_symbol,
+    axo_vertical_line_symbol
+}axo_symbol_kind;
 
 #endif
