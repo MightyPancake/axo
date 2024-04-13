@@ -1,25 +1,11 @@
 use std
 
-#typ size_t
-#typ FILE
-#register @FILE fopen(@byte, @byte)
-#register int fclose(@FILE)
-#register int fread(@FILE)
-
-
-fn fib(int n){
-    if n<=1
-        ret n
-    else
-        ret fib(n-1) + fib(n-2)
-}
-
-fn main([][]byte args) {
-    a = 12
-    printf("fib #%d: %d\n", a, fib(a))
-    if a {
-        ret 1
-    }
+fn main() {
+    a|int
+    b|@@byte
+    b2|(@byte fn int)
+    c|(int fn byte, byte)
+    d|((int fn) fn (int fn @@int), int)
     ret 0
 }
 
