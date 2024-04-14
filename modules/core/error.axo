@@ -1,0 +1,9 @@
+struct error (
+	int			code,
+	@byte		msg
+)
+
+fn error:exit(){
+	//Print the error and exit the program
+	ret 1
+}
