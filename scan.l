@@ -1,9 +1,7 @@
 %{
   #define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc)
-  #include "util/mem.h"
-  #include "axoc/types.h"
-  #include <stdio.h>
-  #include "axo_gram.tab.h"
+  #include "src/utils/utils.h"
+  #include "src/axo.h"
   
   extern int prog_return;
   extern axo_state* state;

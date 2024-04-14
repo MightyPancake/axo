@@ -1,11 +1,9 @@
 %{
   #define test_playground 0
   #define YY_DECL int yylex (YYSTYPE* yylval, struct YYLTYPE* yylloc)
-  #include "util/utils.h"
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include "axoc/axo.h"
-  #include <time.h>
+  #include "src/utils/utils.h"
+  #include <stdint.h>
+  #include "src/axo.h"
   //Bison extern
   extern int yylineno;
   extern FILE *yyin;
@@ -16,6 +14,9 @@
   int yyparse(void);
   //Axo extern
   extern int (*axo_printf)(const char* fmt, ...);
+  int axo_no_printf(const char* fmt, ...){
+    return 0;
+  }
   //State
   #define top_scope axo_scopes_top(scopes)
   axo_state* state;
@@ -396,11 +397,11 @@ index_access : '[' expr {
   ;
 
 identifier : IDEN {
-    axo_typ_def* td = axo_get_typ_def(state, $1);
+    const axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td != NULL) {
          $$ = (axo_identifier){
         .kind = axo_identifier_typ_kind,
-        .data = td
+        .typ_def = *td
       };
     }else{
       axo_module* mod = axo_get_module(state, $IDEN);
@@ -469,7 +470,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   | assignment
   | identifier {
     char* var_name = "";
-    axo_typ_def* td;
+    axo_typ_def td;
     switch($1.kind){
       case axo_identifier_module_kind:
         $$ = (axo_expr){
@@ -497,17 +498,17 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         }
         break;
       case axo_identifier_typ_kind:
-        td = (axo_typ_def*)($1.data);
-        switch (td->typ.kind){
+        td = $1.typ_def;
+        switch (td.typ.kind){
           case axo_enum_kind:
             $$ = (axo_expr){
               .kind=axo_expr_enum_typ_kind,
-              .typ=td->typ,
-              .val=fmtstr("%s$%s", td->name, ((axo_enum*)(td->typ.enumerate))->names[0])
+              .typ=td.typ,
+              .val=fmtstr("%s$%s", td.name, ((axo_enum*)(td.typ.enumerate))->names[0])
             };
             break;
           default:
-            yyerror(&@1, "Non-enum type '%s' is not an expression.", td->name);
+            yyerror(&@1, "Non-enum type '%s' is not an expression.", td.name);
             break;
         }
         break;
@@ -1352,7 +1353,7 @@ func_typ_args : func_typ_start val_typ {
     func_typ->args_types = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
     func_typ->args_defs = (char**)malloc(axo_func_args_cap*sizeof(char*));
     func_typ->args_types[0] = $2;
-    func_typ->args_defs[0] = axo_typ_def_val($2);
+    func_typ->args_defs[0] = axo_get_typ_default($2);
     func_typ->args_len++;
   }
   | func_typ_args ',' val_typ {
@@ -1361,7 +1362,7 @@ func_typ_args : func_typ_start val_typ {
     resize_dyn_arr_if_needed(axo_typ, func_typ->args_types, func_typ->args_len, axo_func_args_cap);
     resize_dyn_arr_if_needed(char*, func_typ->args_defs, func_typ->args_len, axo_func_args_cap);
     func_typ->args_types[func_typ->args_len] = $3;
-    func_typ->args_defs[func_typ->args_len] = axo_typ_def_val($3);
+    func_typ->args_defs[func_typ->args_len] = axo_get_typ_default($3);
     func_typ->args_len++;
   }
   ;
@@ -1371,7 +1372,7 @@ func_typ : func_typ_start ')' {$$=$1;}
   ;
 
 val_typ : IDEN {
-    axo_typ_def* def = axo_get_typ_def(state, $1);
+    const axo_typ_def* def = axo_get_typ_def(state, $1);
     if (def==NULL)
       yyerror(&@1, "Type '%s' isn't defined.", $1);
     else
@@ -1722,7 +1723,7 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
   ;
 
 struct_literal_start : STRUCT_LITERAL_START {
-    axo_typ_def* td = axo_get_typ_def(state, $1);
+    const axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td==NULL){
       yyerror(&@1, "Structure '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
@@ -1739,7 +1740,7 @@ struct_literal_start : STRUCT_LITERAL_START {
   }
   | STRUCT_LITERAL_START expr {
     axo_validate_rval(&@expr, $expr);
-    axo_typ_def* td = axo_get_typ_def(state, $1);
+    const axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td==NULL){
       yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
@@ -1760,7 +1761,7 @@ struct_literal_start : STRUCT_LITERAL_START {
   }
   | STRUCT_LITERAL_START IDEN '=' expr {
     axo_validate_rval(&@expr, $expr);
-    axo_typ_def* td = axo_get_typ_def(state, $1);
+    const axo_typ_def* td = axo_get_typ_def(state, $1);
     axo_struct* structure = (axo_struct*)(td->typ.structure);
     if (td==NULL){
       yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
@@ -1930,29 +1931,6 @@ enum_names : IDEN {
 
 %%
 
-void yyerror(YYLTYPE* loc, const char * fmt, ...){
-  if (prog_return==0)
-    printf(axo_cyan_bg axo_magenta_fg "\aClick an error to learn more."axo_reset_style"\n");
-  prog_return = 1;
-  axo_raise_error;
-  va_list args;
-  if (loc==NULL){
-    printf(axo_red_fg "Error: ");
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-    printf(axo_reset_style"\n");
-  }else{
-    va_start(args, fmt);
-    char* msg;
-    vasprintf(&msg, fmt, args);
-    char* err_msg = axo_error_with_loc(state, loc, msg);
-    va_end(args);
-    printf("%s\n", err_msg);
-    free(err_msg);
-  }
-}
-
 void overwrite_file_with_string(char *filepath, char *string) {
   FILE *fp = fopen(filepath, "w");
   if (fp != NULL){
@@ -1979,6 +1957,29 @@ int playground(){
     printf(axo_red_fg"Not matched!"axo_reset_style"\n");
   
   return 0;
+}
+
+void yyerror(YYLTYPE* loc, const char * fmt, ...){
+  if (prog_return==0)
+    printf(axo_cyan_bg axo_magenta_fg "\aClick an error to learn more."axo_reset_style"\n");
+  prog_return = 1;
+  axo_raise_error;
+  va_list args;
+  if (loc==NULL){
+    printf(axo_red_fg "Error: ");
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    printf(axo_reset_style"\n");
+  }else{
+    va_start(args, fmt);
+    char* msg = NULL;
+    vasprintf(&msg, fmt, args);
+    char* err_msg = axo_error_with_loc(state, loc, msg);
+    va_end(args);
+    printf("%s\n", err_msg);
+    free(err_msg);
+  }
 }
 
 int main(int argc, char** argv) {

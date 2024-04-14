@@ -665,10 +665,8 @@ char *yytext_ptr;
 #line 1 "scan.l"
 #line 2 "scan.l"
   #define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc)
-  #include "util/mem.h"
-  #include "axoc/types.h"
-  #include <stdio.h>
-  #include "axo_gram.tab.h"
+  #include "src/utils/utils.h"
+  #include "src/axo.h"
   
   extern int prog_return;
   extern axo_state* state;
@@ -720,9 +718,9 @@ char *yytext_ptr;
   #define YY_NO_INPUT
   #define YY_USER_ACTION axo_pos(state)+=yyleng;
   
-#line 723 "lex.yy.c"
+#line 721 "lex.yy.c"
 
-#line 725 "lex.yy.c"
+#line 723 "lex.yy.c"
 
 #define INITIAL 0
 #define SINGLE_LINE_COMMENT 1
@@ -949,11 +947,11 @@ YY_DECL
 		}
 
 	{
-#line 67 "scan.l"
+#line 65 "scan.l"
 
-#line 69 "scan.l"
+#line 67 "scan.l"
   
-#line 956 "lex.yy.c"
+#line 954 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1045,70 +1043,70 @@ do_action:	/* This label is used only to access EOF actions. */
 	{ /* beginning of action switch */
 case 1:
 YY_RULE_SETUP
-#line 70 "scan.l"
+#line 68 "scan.l"
 {BEGIN(MULTI_LINE_COMMENT);}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 71 "scan.l"
+#line 69 "scan.l"
 {BEGIN(SINGLE_LINE_COMMENT);}
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 72 "scan.l"
+#line 70 "scan.l"
 {axo_line(state)++; axo_col(state)=1; BEGIN(INITIAL);}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 73 "scan.l"
+#line 71 "scan.l"
 {BEGIN(INITIAL);}
 	YY_BREAK
 case 5:
 /* rule 5 can match eol */
 YY_RULE_SETUP
-#line 74 "scan.l"
+#line 72 "scan.l"
 {axo_line(state)++; axo_col(state)=1;};
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 75 "scan.l"
+#line 73 "scan.l"
 axo_col(state)++;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 76 "scan.l"
+#line 74 "scan.l"
 {ret_null; return(C_REGISTER); }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 77 "scan.l"
+#line 75 "scan.l"
 {adv_loc; BEGIN(INCLUDE_ST); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 78 "scan.l"
+#line 76 "scan.l"
 {ret_def; BEGIN(INCLUDE_MORE_ST); return C_INCLUDE;}
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 79 "scan.l"
+#line 77 "scan.l"
 {ret_def; BEGIN(INITIAL); return C_INCLUDE;}
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 80 "scan.l"
+#line 78 "scan.l"
 {adv_loc; BEGIN(INCLUDE_ST);}
 	YY_BREAK
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 81 "scan.l"
+#line 79 "scan.l"
 {adv_loc;}
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 82 "scan.l"
+#line 80 "scan.l"
 {
     adv_loc;
     yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
@@ -1116,193 +1114,193 @@ YY_RULE_SETUP
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 87 "scan.l"
+#line 85 "scan.l"
 {ret_null; return TAG_TYP; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 88 "scan.l"
+#line 86 "scan.l"
 {ret_null; return WHILE_KWRD; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 89 "scan.l"
+#line 87 "scan.l"
 {ret_null; return ENUM_KWRD; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 90 "scan.l"
+#line 88 "scan.l"
 {ret_null; return RET_KWRD; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 91 "scan.l"
+#line 89 "scan.l"
 {ret_null; return BREAK_KWRD; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 92 "scan.l"
+#line 90 "scan.l"
 {ret_null; return CONTINUE_KWRD; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 93 "scan.l"
+#line 91 "scan.l"
 {ret_null; return FN_KWRD; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 94 "scan.l"
+#line 92 "scan.l"
 {ret_null; return IF_KWRD; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 95 "scan.l"
+#line 93 "scan.l"
 {ret_null; return FOR_KWRD; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 96 "scan.l"
+#line 94 "scan.l"
 {ret_null; return EACH_KWRD; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 97 "scan.l"
+#line 95 "scan.l"
 {ret_null; return TILL_KWRD; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 98 "scan.l"
+#line 96 "scan.l"
 {ret_null; return ELSE_KWRD; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 99 "scan.l"
+#line 97 "scan.l"
 {ret_null; return STRUCT_KWRD; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 100 "scan.l"
+#line 98 "scan.l"
 {ret_null; return IN_KWRD; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 101 "scan.l"
+#line 99 "scan.l"
 {ret_null; return NULL_KWRD; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 102 "scan.l"
+#line 100 "scan.l"
 {ret_null; return USE_KWRD; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 103 "scan.l"
+#line 101 "scan.l"
 {ret_null; return INCLUDE_KWRD; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 104 "scan.l"
+#line 102 "scan.l"
 {ret_null; return MODULE_KWRD; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 105 "scan.l"
+#line 103 "scan.l"
 {ret_null; return NONE_KWRD; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 107 "scan.l"
+#line 105 "scan.l"
 {ret_null; return BIT_OR_OP; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 108 "scan.l"
+#line 106 "scan.l"
 {ret_null; return BIT_AND_OP; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 110 "scan.l"
+#line 108 "scan.l"
 {ret_null; return DECR_OP; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 111 "scan.l"
+#line 109 "scan.l"
 {ret_null; return INCR_OP; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 112 "scan.l"
+#line 110 "scan.l"
 {ret_null; return EQ_OP; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 113 "scan.l"
+#line 111 "scan.l"
 {ret_null; return INEQ_OP; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 114 "scan.l"
+#line 112 "scan.l"
 {ret_null; return EQ_GRTR_OP; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 115 "scan.l"
+#line 113 "scan.l"
 {ret_null; return EQ_SMLR_OP; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 116 "scan.l"
+#line 114 "scan.l"
 {ret_null; return LOGICAL_OR_OP; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 117 "scan.l"
+#line 115 "scan.l"
 {ret_null; return LOGICAL_AND_OP; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 118 "scan.l"
+#line 116 "scan.l"
 {ret_null; return LEFT_SHIFT_OP; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 119 "scan.l"
+#line 117 "scan.l"
 {ret_null; return RIGHT_SHIFT_OP; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 120 "scan.l"
+#line 118 "scan.l"
 {ret_null; return ARROW_OP; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 121 "scan.l"
+#line 119 "scan.l"
 {ret_null; return ASSIGN_ADD; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 122 "scan.l"
+#line 120 "scan.l"
 {ret_null; return ASSIGN_SUB; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 123 "scan.l"
+#line 121 "scan.l"
 {ret_null; return ASSIGN_MUL; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 124 "scan.l"
+#line 122 "scan.l"
 {ret_null; return ASSIGN_DIV; }
 	YY_BREAK
 case 50:
 /* rule 50 can match eol */
 YY_RULE_SETUP
-#line 126 "scan.l"
+#line 124 "scan.l"
 {ret_def; return(STRING_LITERAL); }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 127 "scan.l"
+#line 125 "scan.l"
 {
   ret_def;
   //Return the literal directly if it's not binary
@@ -1320,17 +1318,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 141 "scan.l"
+#line 139 "scan.l"
 {ret_def; return FLOAT_LITERAL;}
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 142 "scan.l"
+#line 140 "scan.l"
 {ret_def; return IDEN; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 143 "scan.l"
+#line 141 "scan.l"
 {
     yylloc->first_line=yylloc->last_line=axo_line(state);
     yylloc->first_column=axo_col(state);
@@ -1341,7 +1339,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 150 "scan.l"
+#line 148 "scan.l"
 {
   ret_def;
   yylval->str[yyleng-1] = '\0';
@@ -1356,28 +1354,28 @@ YY_RULE_SETUP
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 161 "scan.l"
+#line 159 "scan.l"
 {ret_def; return yytext[0]; }
 	YY_BREAK
 case 57:
 /* rule 57 can match eol */
 YY_RULE_SETUP
-#line 162 "scan.l"
+#line 160 "scan.l"
 {axo_line(state)++; axo_col(state)=1;}
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 163 "scan.l"
+#line 161 "scan.l"
 ;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 164 "scan.l"
+#line 162 "scan.l"
 {axo_col(state)+=yyleng;}
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 165 "scan.l"
+#line 163 "scan.l"
 { 
     ret_null;
     yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
@@ -1385,10 +1383,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 170 "scan.l"
+#line 168 "scan.l"
 ECHO;
 	YY_BREAK
-#line 1391 "lex.yy.c"
+#line 1389 "lex.yy.c"
 			case YY_STATE_EOF(INITIAL):
 			case YY_STATE_EOF(SINGLE_LINE_COMMENT):
 			case YY_STATE_EOF(MULTI_LINE_COMMENT):
@@ -2382,7 +2380,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 170 "scan.l"
+#line 168 "scan.l"
 
 int yywrap(void) {
   if (state->in_core){

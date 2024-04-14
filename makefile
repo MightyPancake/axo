@@ -15,7 +15,7 @@ endif
 default: build
 
 compile:
-	$(CC) axo_gram.tab.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
+	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
 	@echo [92mCompiler built![0m
 
 build:
