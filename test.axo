@@ -1,11 +1,17 @@
 use std
 
+fn some_fn(){
+    a = 2
+    if a == 2
+        ret;
+    printf("heyo!\n")
+}
+
 fn main() {
-    a|int
-    b|@@byte
-    b2|(@byte fn int)
-    c|(int fn byte, byte)
-    d|((int fn) fn (int fn @@int), int)
+    some_fn()
+    //Both produce the same type
+    my_fn1|(none fn int)
+    my_fn2|(fn int)
     ret 0
 }
 

@@ -3,6 +3,7 @@
 
 typedef struct hashmap* map;
 #define axo_no_typ ((axo_typ){.kind=axo_no_kind})
+#define axo_none_typ ((axo_typ){.kind=axo_none_kind})
 
 #include <stdbool.h>
 
@@ -40,6 +41,7 @@ typedef enum axo_typ_kind{
     axo_no_kind,
     axo_c_arg_list_kind,
     axo_map_kind,
+    axo_none_kind,
     axo_module_kind
 }axo_typ_kind;
 

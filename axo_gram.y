@@ -40,7 +40,9 @@
         yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
     } \
     AXO_RVAL_WAS_VALID; \
-  }) \
+  })
+  
+  #define axo_none_check(T) ((T).kind == axo_none_kind)
 %}
 
 %define parse.error verbose
@@ -91,6 +93,7 @@
 %token<str> DOT_FIELD ".field"
 %token<str> MODULE_KWRD "module"
 %token<str> ARROW_OP "->"
+%token<str> NONE_KWRD "none"
 %type<scope> code_scope code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -276,6 +279,8 @@ declaration : struct_def { //Fix! Make this use realloc less
     $$ = axo_add_module(state, $module_info);
   }
   | expr '|' val_typ {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "Cannot declare a none variable.");
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_decl){
         .kind=axo_is_decl_kind,
@@ -288,6 +293,10 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
   }
   | expr '|' val_typ '=' expr {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "Cannot declare a none value.");
+    if (!axo_typ_eq($val_typ, $5.typ))
+      yyerror(&@5, "Expected an expression of type '%s'.", axo_typ_to_str($5.typ));
     axo_validate_rval(&@5, $5);
     if ($1.lval_kind == axo_var_lval_kind){
       $$ = (axo_decl){
@@ -959,6 +968,23 @@ matching_statement : expr {
       yyerror(&@1, "Couldn't return outside of a function body.");
     }
   }
+  | "ret" ';' {
+    $$.val=fmtstr("return;");
+    $$.kind = axo_ret_statement_kind;
+    axo_var* parent_func = (axo_var*)(top_scope->parent_func);
+    if (parent_func){
+      axo_typ* ret_typ = &(((axo_func_typ*)(parent_func->typ.func_typ))->ret_typ);
+      if (axo_is_no_typ(*ret_typ)){
+        *ret_typ = axo_none_typ;
+      }else if(!axo_typ_eq(*ret_typ, axo_none_typ)){
+        char hlpr[64] = "";
+        strcpy(hlpr, axo_typ_to_str(*ret_typ));
+        yyerror(&@2, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str(axo_none_typ), hlpr);
+      }
+    }else{
+      yyerror(&@1, "Couldn't return outside of a function body.");
+    }
+  }
   | code_scope {
     $$ = axo_scope_to_statement($1);
   }
@@ -1276,6 +1302,8 @@ arr_multidim_typ : '[' '|' {
   ;
 
 arr_typ : '[' ']' val_typ {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "None arrays are not a type.");
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
       .subtyp=$val_typ,
@@ -1287,6 +1315,8 @@ arr_typ : '[' ']' val_typ {
     };
   }
   | arr_multidim_typ ']' val_typ {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "None arrays are not a type.");
     $$ = $arr_multidim_typ;
     axo_get_arr_typ($$).subtyp = $val_typ;
   }
@@ -1308,7 +1338,7 @@ func_typ_start : '(' val_typ FN_KWRD {
     func_typ->args_len=0;
     func_typ->args_types=NULL;
     func_typ->args_defs=NULL;
-    func_typ->ret_typ=axo_no_typ;
+    func_typ->ret_typ=axo_none_typ;
     $$ = (axo_typ){
       .kind = axo_func_kind,
       .func_typ=func_typ
@@ -1351,6 +1381,9 @@ val_typ : IDEN {
     $$.kind = axo_ptr_kind;
     $$.subtyp = malloc(sizeof(axo_typ));
     *axo_subtyp($$)=$2;
+  }
+  | "none" {
+    $$ = (axo_typ){.kind=axo_none_kind};
   }
   | func_typ
   | arr_typ
@@ -1814,10 +1847,13 @@ struct_literal : struct_literal_start '}' {
 func_def : func_def_start code_scope {
     axo_var* fn_var = axo_get_var(state->global_scope, $func_def_start.name);
     if (fn_var){
+      axo_func_typ* fnt = (axo_func_typ*)(fn_var->typ.func_typ);
+      if (fnt->ret_typ.kind == axo_no_kind)
+        fnt->ret_typ = axo_none_typ;
       $$ = (axo_func){
         .name = $func_def_start.name,
         .args_names = $func_def_start.args_names,
-        .f_typ = *((axo_func_typ*)(fn_var->typ.func_typ)),
+        .f_typ = *fnt,
         .body = $2
       };
     }else{
@@ -1827,16 +1863,22 @@ func_def : func_def_start code_scope {
   ;
 
 func_arg : val_typ IDEN {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "Cannot declare a none value.");
     $$.name = alloc_str($2);
     $$.typ = $val_typ;
     $$.def = $val_typ.def;
   }
   | IDEN '|' expr {
+    if (axo_none_check($expr.typ))
+      yyerror(&@expr, "Cannot declare a none variable.");
     $$.name = alloc_str($1);
     $$.typ = $expr.typ;
     $$.typ.def = $expr.val;
   }
   | val_typ IDEN '|' expr {
+    if (axo_none_check($val_typ))
+      yyerror(&@val_typ, "Cannot declare a none variable.");
     if (axo_typ_eq($val_typ, $expr.typ))
       yyerror(&@expr, "Default value doesn't match type.");
     $$.name = alloc_str($2);

@@ -55,7 +55,6 @@ int map_cmp_typ_def(const void* a, const void* b, void *udata){return strcmp(((a
 uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_typ_def*)item)->name, strlen(((axo_typ_def*)item)->name), seed0, seed1);}
 
 #define axo_mk_simple_typ(NAME, CNAME) ((axo_typ){.kind = axo_simple_kind, .simple = (axo_simple_t){.name=NAME, .cname=CNAME}})
-#define axo_none_typ axo_mk_simple_typ("none", "void")
 //Styles
 #define axo_reset_style     "\x1B[0m"
 #define axo_bold_style      "\x1B[1m"
@@ -1093,6 +1092,9 @@ char* axo_typ_to_str(axo_typ typ){
         case axo_c_arg_list_kind:
             return "...";
             break;
+        case axo_none_kind:
+            return "none";
+            break;
         case axo_no_kind:
             return "no_type";
             break;
@@ -1146,6 +1148,7 @@ bool axo_is_typ_prim(axo_typ t){
         case axo_struct_kind:
         case axo_enum_kind:
         case axo_arr_kind:
+        case axo_none_kind:
             return true;
             break;
         default:
@@ -1164,6 +1167,8 @@ char* axo_prim_typ_to_c_str(axo_typ t){
             return ((axo_enum*)(t.enumerate))->name; break;
         case axo_arr_kind:
             return "axo__arr"; break;
+        case axo_none_kind:
+            return "void"; break;
         default:
             return "unknown";
     }
@@ -1525,6 +1530,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     axo_func_typ* fnt1;
     axo_func_typ* fnt2;
     switch(t1.kind){
+        case axo_none_kind: return true; break;
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return t1.structure == t2.structure; break;
