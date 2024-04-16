@@ -3,6 +3,7 @@
     AXO_ARRAY
 
 */
+#include <string.h>
 
 typedef char axo_arr_flags;
 #define axo_arr_dim_t unsigned

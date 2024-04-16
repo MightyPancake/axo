@@ -81,6 +81,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
   }
 
+"#provided" {ret_null; return PROVIDED_TAG; }
 "#typ" {ret_null; return TAG_TYP; }
 "while" {ret_null; return WHILE_KWRD; }
 "enum" {ret_null; return ENUM_KWRD; }
@@ -115,10 +116,13 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "<<" {ret_null; return LEFT_SHIFT_OP; }
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
+
 "+=" {ret_null; return ASSIGN_ADD; }
 "-=" {ret_null; return ASSIGN_SUB; }
 "*=" {ret_null; return ASSIGN_MUL; }
 "/=" {ret_null; return ASSIGN_DIV; }
+"/=" {ret_null; return ASSIGN_MOD; }
+"?=" {ret_null; return ASSIGN_AND_CALL_ERROR; }
 
 \"([^"\\]|\\.|\\\n)*\" {ret_def; return(STRING_LITERAL); }
 ([0-9]+|0x[0-9a-fA-F]+|0b(0|1)+) {

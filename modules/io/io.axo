@@ -1,0 +1,73 @@
+module(
+  name: "io"
+  author: "mightypancake"
+  description: "I/O module"
+)
+
+#include <stdio.h>
+
+#typ FILE
+#typ fpos_t
+
+#register int fclose(@FILE)
+#register none clearerr(@FILE)
+#register int feof(@FILE)
+#register int ferror(@FILE)
+#register int fflush(@FILE)
+#register int fgetpos(@FILE, @fpos_t)
+#register @FILE fopen(@byte, @byte)
+#register size_t fread(@byte, size_t, size_t, @FILE)
+#register @FILE freopen(@FILE, @byte, @FILE)
+#register int fseek(@FILE, i64, int)
+#register int fsetpos(@FILE, @fpos_t)
+#register i64 ftell(@FILE)
+#register size_t fwrite(@byte, size_t, size_t, @FILE)
+#register int remove(@byte)
+#register int rename(@byte, @byte)
+#register none rewind(@FILE)
+#register none setbuf(@FILE, @byte)
+#register int setvbuf(@FILE, @byte, int, size_t)
+#register @FILE tmpfile()
+#register @byte tmpnam(@byte)
+#register int fprintf(@FILE, @byte, ...)
+#register int printf(@byte, ...)
+#register int sprintf(@byte, @byte, ...)
+#register int vfprintf(@FILE, @byte, va_list)
+#register int vprintf(@FILE, va_list)
+#register int vsprintf(@FILE, @byte, va_list)
+#register int fscanf(@FILE, @byte, ...)
+#register int scanf(@byte, ...)
+#register int sscanf(@byte, @byte, ...)
+#register int fgetc(@FILE)
+#register @byte fgets(@byte, int, @FILE)
+#register int fputc(int, @FILE)
+#register int fputs(@byte, @FILE)
+#register int getc(@FILE)
+#register int getchar()
+#register @byte gets(@byte)
+#register int putc(int, @FILE)
+#register int putchar(int)
+#register int puts(@byte)
+#register int ungetc(int, @FILE)
+#register none perror(@byte)
+
+#provided @FILE stderr
+#provided @FILE stdin
+#provided @FILE stdout
+
+struct file (
+  @FILE    file
+)
+
+file fn io.open(@byte filename, @byte mode|"r", @error errptr){
+  f = file{file=fopen(filename, mode)}
+  errptr$get_c()
+  ret f
+}
+
+fn error:oops(){
+  if !(self^.code) ret;
+	printf("%sError: %s%s\n", aesc.red, self^.msg, aesc.reset)
+	exit(self^.code)
+}
+

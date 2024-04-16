@@ -1,0 +1,26 @@
+//Basic string functionalities
+#include <string.h>
+
+// // #provided (@byte fn @byte, int, size_t) memchr
+// // #provided (int fn @byte, @byte, size_t) memcmp
+// // #provided (@byte fn @byte, @byte, size_t) memcpy
+// // #provided (@byte fn @byte, @byte, size_y) memmove
+// // #provided (@byte fn @byte, int, size_t) memset
+// // #provided (@byte fn @byte, @byte) strcat
+// // #provided (@byte fn @byte, @byte, size_t) strncat
+// // #provided (@byte fn @byte, int) strchr
+// // #provided (int fn @byte, @byte) strcmp
+// // #provided (int fn @byte, @byte, size_t) strncmp
+// // #provided (int fn @byte, @byte) strcoll
+// // #provided (@byte fn @byte, @byte) strcpy
+// // #provided (@byte fn @byte, @byte, size_t) strncpy
+// // #provided (size_t fn @byte, @byte) strcspn
+#provided (@byte fn int) strerror
+// // #provided (size_t fn @byte) strlen
+// // #provided (@byte fn @byte, @byte) strpbrk
+// // #provided (@byte fn @byte, int) strrchr
+// // #provided (size_t fn @byte, @byte) strspn
+// // #provided (@byte fn @byte, @byte) strstr
+// // #provided (@byte fn @byte, @byte) strtok
+// #provided (size_t fn @byte, @byte, size_t) strxfrm
+

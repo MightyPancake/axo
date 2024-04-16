@@ -43,7 +43,7 @@ char* fmt_str(char* dest, const char fmt[], ...){
 }
 
 char* fmtstr(const char fmt[], ...){
-    char* ret;
+    char* ret = NULL;
     va_list args;
     va_start(args, fmt);
     int r = vasprintf(&ret, fmt, args);
@@ -60,8 +60,11 @@ char* axo_get_typ_default(axo_typ typ){
             return "AXO_NULL_ARR";
             break;
         case axo_func_kind:
-        case axo_ptr_kind:
             return "NULL";
+            break;
+        case axo_ptr_kind:
+            axo_typ err_t = (axo_typ){.kind=axo_struct_kind, .structure=&(axo_struct){.name="error"}};
+            return (axo_typ_eq(err_t, *axo_subtyp(typ))) ? "errptr" : "NULL";
             break;
         default:
             yyerror(NULL, "Couldn't get default type for kind %s.", axo_typ_kind_to_str(typ.kind));
@@ -162,7 +165,7 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
         if (strcmp(arg, "-e")==0){ //Set entry point
             next_arg;
             if (st->entry_point == NULL)
-                st->entry_point = arg;
+                st->entry_point = alloc_str(arg);
             else
                 yyerror(NULL, "Cannot set entry point to '%s' after it was already set to '%s'.", arg, st->entry_point);
         }else if (strcmp(arg, "-r")==0 || strcmp(arg, "run") == 0){ //Silence compiler's printfs
@@ -172,18 +175,18 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
         }else if (strcmp(arg, "-o")==0){ //Set output file name
             next_arg;
             if (st->output_file == NULL)
-                st->output_file = arg;
+                st->output_file = alloc_str(arg);
             else
                 yyerror(NULL, "Cannot set output file name to '%s' after it was already set to '%s'.", arg, st->output_file);
         }else if (strcmp(arg, "-oc")==0){ //Set output c file name
             next_arg;
             if (st->output_c_file == NULL)
-                st->output_c_file = arg;
+                st->output_c_file = alloc_str(arg);
             else
                 yyerror(NULL, "Cannot set output c file name to '%s' after it was already set to '%s'.", arg, st->output_c_file);
         }else{//Set entry file
             if (st->entry_file == NULL)
-                st->entry_file = arg;
+                st->entry_file = alloc_str(arg);
             else
                 yyerror(NULL, "Cannot set entry file to '%s' after it was already set to '%s'.", arg, st->entry_file);
         }
@@ -578,7 +581,7 @@ void axo_color_printf(int index, axo_color_support_kind col_sup, const char* fmt
         va_end(args);
         return;
     }
-    printf(axo_get_color_esc(index, col_sup));
+    printf("%s", axo_get_color_esc(index, col_sup));
     vprintf(fmt, args);
     printf(axo_reset_style);
     va_end(args);
@@ -589,7 +592,7 @@ void axo_print_config(axo_state* st){
     axo_color_support_kind col_sup = axo_col_sup(st);
     int col_count = axo_color_count(col_sup);
     int seed = rand() % col_count;
-    printf(axo_get_color_esc(28, col_sup));
+    printf("%s", axo_get_color_esc(28, col_sup));
     if (col_sup == axo_no_color_support_kind)
         system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
     else
@@ -676,6 +679,7 @@ void axo_new_source(axo_state* st, char* path){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
     src->path = alloc_str(path);
+    //ERROR
     src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
     src->file = fopen(src->path, "rb");
     src->pos = 0;
@@ -686,15 +690,10 @@ void axo_new_source(axo_state* st, char* path){
         perror("fopen");
     yyrestart(src->file);
     st->sources_len++;
-    // printf("Switched to file: '%s'\n", src->path);
 }
 
 void axo_pop_source(axo_state* st){
     st->sources_len--;
-    // printf("INPUT LEN: %d\n", st->sources_len);
-    // printf("Input '%s' ended, ", st->sources[st->sources_len].path);
-    // free(st->sources[st->sources_len].path);
-    // fclose(st->sources[st->sources_len].file);
     if (st->sources_len>0){
         axo_source* src = &(st->sources[st->sources_len-1]);
         fseek(src->file, src->pos, SEEK_SET);
@@ -931,12 +930,14 @@ char* axo_err_msg(axo_err_code err_code){
   switch(err_code){
     case axo_undeclared_var_err_code: return "Variable used before declaration."; break;
     case axo_invalid_rval_err_code: return "Invalid r-value."; break;
+    case axo_undeclared_assignment_expr_err_code: return "Assignment as rvalue is only valid for already declared lvalues."; break;
   }
   return "Invalid error code!";
 }
 
 char* axo_typ_to_str(axo_typ typ){
     char* ret = (char[1024]){};
+    char* func_ret = (char[1024]){};
     axo_func_typ fnt;
     int i;
     char dim_stars[128];
@@ -946,13 +947,13 @@ char* axo_typ_to_str(axo_typ typ){
             break;
         case axo_func_kind:
             fnt = *((axo_func_typ*)(typ.func_typ));
-            ret = fmt_str(ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
+            func_ret = fmt_str(func_ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
-                if (i>0) strcat(ret, ",");
-                strcat(ret, axo_typ_to_str(fnt.args_types[i]));
+                if (i>0) strcat(func_ret, ",");
+                strcat(func_ret, axo_typ_to_str(fnt.args_types[i]));
             }
-            strcat(ret, ")");
-            return ret;
+            strcat(func_ret, ")");
+            return func_ret;
             break;
         case axo_c_arg_list_kind:
             return "...";
@@ -1086,6 +1087,7 @@ char** axo_typ_to_strings(axo_typ typ, char** dest){
                 break;
             default:
                 yyerror(NULL, "Wrong type in declaration! (%s)", axo_typ_kind_to_str(cur_typ.kind));
+                return dest;
                 break;
         }
     }
@@ -1111,14 +1113,9 @@ char* axo_name_typ_decl(char* name, axo_typ typ){
     return ret;
 }
 
-axo_decl axo_func_def_to_decl(axo_func func){
+axo_decl axo_func_decl_to_decl(axo_func func){
     char* name = strcmp(func.name, "main") == 0 ? "axo__main" : func.name;
-    // int sz = strlen(axo_typ_to_str(func.f_typ.ret_typ))+strlen(name)-(func.f_typ.args_len>0?1:0) + 4;    
-    // for (int i = 0; i<func.f_typ.args_len; i++)
-    //     sz = sz + strlen(axo_typ_to_str(func.f_typ.args_types[i])) + strlen(func.args_names[i]) + 2;
-    // char* str = (char*)malloc(sz*sizeof(char));
     char* str = alloc_str(axo_typ_to_c_str(func.f_typ.ret_typ));
-    // strcpy(str, axo_typ_to_c_str(func.f_typ.ret_typ));
     char* arg_str = NULL;
     strapnd(&str, " ");
     strapnd(&str, name);
@@ -1130,10 +1127,16 @@ axo_decl axo_func_def_to_decl(axo_func func){
         free(arg_str);
     }
     strapnd(&str, ")");
+    return (axo_decl){.kind=axo_func_decl_decl_kind, .val=str};
+}
+
+axo_decl axo_func_def_to_decl(axo_func func){
+    axo_decl ret = axo_func_decl_to_decl(func);
+    strapnd(&(ret.val), axo_scope_to_statement(func.body).val);
+    ret.kind = axo_func_def_decl_kind;
     for (int i = 0; i<func.f_typ.args_len; i++)
         axo_del_var(func.body, func.args_names[i]);
-    strapnd(&str, axo_scope_to_statement(func.body).val);
-    return (axo_decl){.kind=axo_func_decl_kind, .val=str};
+    return ret;
 }
 
 char* axo_arr_access_to_str(YYLTYPE* arr_loc, axo_expr arr, YYLTYPE* index_loc, axo_index_access index){
@@ -1365,7 +1368,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
         case axo_none_kind: return true; break;
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
-        case axo_struct_kind: return t1.structure == t2.structure; break;
+        case axo_struct_kind: return !(strcmp(((axo_struct*)(t1.structure))->name, ((axo_struct*)(t2.structure))->name)); break;
         case axo_ptr_kind:
             return axo_typ_eq(*((axo_typ*)(t1.subtyp)), *((axo_typ*)(t2.subtyp)));
         case axo_arr_kind:
@@ -1394,6 +1397,77 @@ bool axo_is_no_typ(axo_typ typ){
 
 bool is_simple_typ_eq(axo_typ t1, char* t2){
     return (t1.kind == axo_simple_kind) && (strcmp(t1.simple.cname, t2) == 0);
+}
+
+axo_expr axo_parse_special_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, const char* assign_op, axo_expr val){
+    switch(lval.lval_kind){
+        case axo_not_lval_kind:
+            yyerror(lval_loc, "Special assignments need the lval to be declared before.");
+            break;
+        case axo_var_lval_kind:
+            if (lval.typ.kind == axo_no_kind){
+                yyerror(lval_loc, "Special assignments need the lval to be declared before.");
+                break;
+            }
+        default:
+        if (!axo_typ_eq(lval.typ, val.typ)){
+            yyerror(val_loc, "Type missmatch, expected type '%s' for the special assignment.", axo_typ_to_str(lval.typ));
+        }else{
+            return (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .lval_kind=axo_not_lval_kind,
+                .val=fmtstr("%s%s%s", lval.val, assign_op, val.val),
+                .typ=lval.typ
+            };
+        }
+        break;
+    }
+    return (axo_expr){};
+}
+
+axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, axo_func_call fcall){
+    axo_expr val = axo_call_to_expr(fcall);
+    switch(lval.lval_kind){
+        case axo_not_lval_kind:
+            yyerror(lval_loc, "Error assignments need the lval to be declared before.");
+            break;
+        case axo_var_lval_kind:
+            if (lval.typ.kind == axo_no_kind){
+                yyerror(lval_loc, "Error assignments need the lval to be declared before.");
+                break;
+            }
+        default:
+        if (!axo_typ_eq(lval.typ, ((axo_func_typ*)(fcall.typ.func_typ))->ret_typ)){
+            yyerror(val_loc, "Type missmatch, expected type '%s' for the error assignment, but the call returns a different type.", axo_typ_to_str(lval.typ));
+        }else{
+            axo_typ t = (axo_typ){
+                .kind=axo_ptr_kind,
+                .subtyp=&(axo_typ){
+                    .kind=axo_struct_kind,
+                    .structure=&(axo_struct){
+                        .name="error"
+                    }
+                }
+            };
+            axo_expr err_ptr = (axo_expr){.typ=axo_no_typ};
+            for (int i = fcall.params_len-1; i>=0; i--){
+                if (axo_typ_eq(t, fcall.params[i].typ)){
+                    err_ptr = fcall.params[i];
+                }
+            }
+            if (err_ptr.typ.kind == axo_no_kind)
+                yyerror(val_loc, "The called function doesn't take an error pointer as any of its parameters.");
+            return (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .lval_kind=err_ptr.lval_kind,
+                .val=fmtstr("({%s=%s; %s;})", lval.val, val.val, err_ptr.val),
+                .typ=err_ptr.typ
+            };
+            // printf("Resulting typ: %s\n", axo_typ_to_str(err_ptr.typ));
+        }
+        break;
+    }
+    return (axo_expr){};
 }
 
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2){
@@ -1555,7 +1629,7 @@ char* axo_file_to_bytes(const char *filename, size_t *size) {
 
 char* axo_strip_file_extension(char* filename){
     int len = strlen(filename);
-    int i;
+    int i=0;
     bool dot_found = false;
     for (i=len; i>0; i--){
         if (filename[i] == '.'){
@@ -1564,7 +1638,7 @@ char* axo_strip_file_extension(char* filename){
         }
     }
     if (!dot_found) return alloc_str(filename);
-    char* res = (char*)malloc(i*sizeof(char));
+    char* res = (char*)malloc((i+1)*sizeof(char));
     for (int j=0; j<i; j++){
         res[j] = filename[j];
     }
@@ -1633,8 +1707,24 @@ char* axo_decode_easter(long long int* data){
     }
 #elif __linux__
     char* axo_resolve_path(char* filename){
-        char ret[axo_max_path_len];
-        return alloc_str(realpath(filename, ret));
+    if (filename == NULL) {
+        printf("ERROR: filename is NULL\n");
+        return NULL;
+    }
+    char* ret = (char*)malloc(PATH_MAX);
+    if (ret == NULL) {
+        printf("ERROR: malloc failed\n");
+        return NULL;
+    }
+    // printf("realpath: %s\n", filename);
+    char* res = realpath(filename, ret);
+    if (res == NULL) {
+        printf("ERROR IN REALPATH\n");
+        free(ret);
+        return NULL;
+    }
+
+    return ret;
     }
 #elif __APPLE__ 
     char* axo_resolve_path(char* filename){

@@ -30,10 +30,25 @@
   int prog_return = 0;                    //Return value of the compiler - 0 if ok, 1 otherwise
   bool axo_code_scope_started = false;    //This indicates that a new codescope is already on top and doesn't need to be added
   #define axo_raise_error prog_return = 1;
-  #define axo_is_valid_rval(EXPR) (EXPR.typ.kind!=axo_no_kind)
+  #define axo_is_valid_rval(EXPR) (((EXPR).typ.kind!=axo_no_kind) && ((EXPR).kind!=axo_expr_assigned_declaration_kind))
   #define axo_validate_rval(LOC, EXPR) ({ \
     AXO_RVAL_WAS_VALID=true; \
     if (!axo_is_valid_rval(EXPR)){ \
+      AXO_RVAL_WAS_VALID=false; \
+      if ((EXPR).kind == axo_expr_assigned_declaration_kind) \
+        yyerror(LOC, axo_err_msg(axo_undeclared_assignment_expr_err_code)); \
+      else if (EXPR.lval_kind==axo_var_lval_kind) \
+        yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
+      else \
+        yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
+    } \
+    AXO_RVAL_WAS_VALID; \
+  })
+
+  #define axo_is_valid_expr_as_statement(EXPR) (((EXPR).typ.kind!=axo_no_kind))
+  #define axo_validate_expr_as_statement(LOC, EXPR) ({ \
+    AXO_RVAL_WAS_VALID=true; \
+    if (!axo_is_valid_expr_as_statement(EXPR)){ \
       AXO_RVAL_WAS_VALID=false; \
       if (EXPR.lval_kind==axo_var_lval_kind) \
         yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
@@ -61,6 +76,7 @@
 %token<str> C_INCLUDE "#include"
 %token<str> C_REGISTER "#register"
 %token<str> TAG_TYP "#typ"
+%token<str> PROVIDED_TAG "#provided"
 %token<str> FN_KWRD "fn"
 %token<str> WHILE_KWRD "while"
 %token<str> FOR_KWRD "for"
@@ -86,6 +102,8 @@
 %token<str> ASSIGN_SUB "-="
 %token<str> ASSIGN_MUL "*="
 %token<str> ASSIGN_DIV "/="
+%token<str> ASSIGN_MOD "%="
+%token<str> ASSIGN_AND_CALL_ERROR "?="
 %token<str> ENUM_KWRD "enum"
 %token<str> STRUCT_KWRD "struct"
 %token<str> USE_KWRD "use"
@@ -98,7 +116,7 @@
 %type<scope> code_scope code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
-%type<expression> expr incr_decr_op if_condition assignment arr_literal
+%type<expression> expr incr_decr_op if_condition assignment special_assignment call_error_assignment arr_literal
 %type<declaration_type> declaration
 %type<str> statements declarations while_loop_base
 %type<typ_type> func_def_ret_typ val_typ c_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
@@ -123,7 +141,7 @@
 %left '$'
 %left EXPR_AS_STATEMENT
 %left RET_KWRD
-%right '='
+%right '=' "+=" "-=" "*=" "/=" "%=" "?="
 %left '?'
 %left "||"
 %left "&&"
@@ -269,6 +287,43 @@ declaration : struct_def { //Fix! Make this use realloc less
     axo_set_typ_def(&@$, state, td);
     $$ = (axo_decl){.val=decl, .kind=axo_struct_decl_kind};
   }
+  | func_def_ret_typ func_def_name '(' func_args ')' ';' {
+    axo_func fn = (axo_func){
+      .name=$func_def_name.name
+    };
+    int args_len = $func_args.f_typ.args_len;
+    if ($func_def_name.args_names){
+      args_len += $func_def_name.f_typ.args_len;
+      fn.args_names = (char**)malloc(args_len*sizeof(char*));
+      fn.f_typ = (axo_func_typ){
+        .args_len = 0,
+        .args_types=(axo_typ*)malloc(args_len*sizeof(axo_typ)),
+        .args_defs=(char**)malloc(args_len*sizeof(char*)),
+      };
+      for (int i=0; i<$func_def_name.f_typ.args_len; i++){
+        fn.args_names[fn.f_typ.args_len] = $func_def_name.args_names[i];
+        fn.f_typ.args_types[fn.f_typ.args_len] = $func_def_name.f_typ.args_types[i];
+        fn.f_typ.args_defs[fn.f_typ.args_len++] = $func_def_name.f_typ.args_defs[i];
+      }
+      for (int i=0; i<$func_args.f_typ.args_len; i++){
+        fn.args_names[fn.f_typ.args_len] = $func_args.args_names[i];
+        fn.f_typ.args_types[fn.f_typ.args_len] = $func_args.f_typ.args_types[i];
+        fn.f_typ.args_defs[fn.f_typ.args_len++] = $func_args.f_typ.args_defs[i];
+      }
+    }else{
+      fn.args_names = $func_args.args_names;
+      fn.f_typ.args_defs = $func_args.f_typ.args_defs;
+      fn.f_typ.args_types = $func_args.f_typ.args_types;
+      fn.f_typ.args_len = args_len;
+    }
+    fn.f_typ.ret_typ = ($func_def_ret_typ.kind==axo_no_kind) ? axo_none_typ : $func_def_ret_typ;
+    $$ = axo_func_decl_to_decl(fn);
+    strapnd(&($$.val), ";");
+  }
+  | "#provided" val_typ IDEN {
+    axo_set_var(state->global_scope, (axo_var){.typ = $val_typ, .name = alloc_str($IDEN), .is_const=true});
+    $$ = (axo_decl){.val=fmtstr("//provided %s", axo_name_typ_decl($IDEN, $val_typ))};
+  }
   | "use" IDEN {
     $$ = axo_use_module(state, &@2, $IDEN);
   }
@@ -378,7 +433,7 @@ module_info : '(' {
   }
   ;
 
-statements : statement {axo_add_statement(top_scope, $statement);}
+statements : /* EMPTY */ { }
   | statements statement {axo_add_statement(top_scope, $statement);}
   ;
 
@@ -468,6 +523,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     asprintf(&($$.val), "(*(%s))", $1.val);
   }
   | assignment
+  | special_assignment
+  | call_error_assignment
   | identifier {
     char* var_name = "";
     axo_typ_def td;
@@ -946,7 +1003,7 @@ arr_literal : stat_arr_literal {
 statement : matching_statement | non_matching_statement ;
 
 matching_statement : expr {
-    axo_validate_rval(&@expr, $expr);
+    axo_validate_expr_as_statement(&@expr, $expr);
     $$.val = $1.val;
     strapnd(&($$.val), ";");
     $$.kind = axo_call_statement_kind;
@@ -1266,6 +1323,7 @@ assignment : expr assign_op expr {
           l_typ = axo_clean_typ($3.typ);
           $$.val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=l_typ, .val=$3.val});
           axo_set_var(top_scope, (axo_var){.typ = l_typ, .name = $1.val, .is_const=false});
+          $$.kind = axo_expr_assigned_declaration_kind;
         }else{
           $$.val = fmtstr("%s=%s",$1.val, $3.val);
         }
@@ -1284,6 +1342,28 @@ assignment : expr assign_op expr {
     $$.typ = l_typ;
     rval_now=false;
   } %prec '='
+  ;
+
+special_assignment : expr "+=" expr {
+    $$ = axo_parse_special_assignment(&@1, &@2, &@3, $1, "+=", $3);
+  }
+  | expr "-=" expr {
+    $$ = axo_parse_special_assignment(&@1, &@2, &@3, $1, "-=", $3);
+  }
+  | expr "*=" expr {
+    $$ = axo_parse_special_assignment(&@1, &@2, &@3, $1, "*=", $3);
+  }
+  | expr "/=" expr {
+    $$ = axo_parse_special_assignment(&@1, &@2, &@3, $1, "/=", $3);
+  }
+  | expr "%=" expr {
+    $$ = axo_parse_special_assignment(&@1, &@2, &@3, $1, "%=", $3);
+  }
+  ;
+
+call_error_assignment : expr "?=" func_call '!' {
+    $$ = axo_parse_error_assignment(&@1, &@2, &@3, $1, $func_call);
+  }
   ;
 
 arr_multidim_typ : '[' '|' {
@@ -1353,7 +1433,7 @@ func_typ_args : func_typ_start val_typ {
     func_typ->args_types = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
     func_typ->args_defs = (char**)malloc(axo_func_args_cap*sizeof(char*));
     func_typ->args_types[0] = $2;
-    func_typ->args_defs[0] = axo_get_typ_default($2);
+    func_typ->args_defs[0] = alloc_str(axo_get_typ_default($2));
     func_typ->args_len++;
   }
   | func_typ_args ',' val_typ {
@@ -1362,7 +1442,7 @@ func_typ_args : func_typ_start val_typ {
     resize_dyn_arr_if_needed(axo_typ, func_typ->args_types, func_typ->args_len, axo_func_args_cap);
     resize_dyn_arr_if_needed(char*, func_typ->args_defs, func_typ->args_len, axo_func_args_cap);
     func_typ->args_types[func_typ->args_len] = $3;
-    func_typ->args_defs[func_typ->args_len] = axo_get_typ_default($3);
+    func_typ->args_defs[func_typ->args_len] = alloc_str(axo_get_typ_default($3));
     func_typ->args_len++;
   }
   ;
@@ -1381,10 +1461,11 @@ val_typ : IDEN {
   | '@' val_typ {
     $$.kind = axo_ptr_kind;
     $$.subtyp = malloc(sizeof(axo_typ));
+    $$.def = NULL;
     *axo_subtyp($$)=$2;
   }
   | "none" {
-    $$ = (axo_typ){.kind=axo_none_kind};
+    $$ = axo_none_typ;
   }
   | func_typ
   | arr_typ
@@ -1393,6 +1474,7 @@ val_typ : IDEN {
 c_typ : val_typ
   | '.' '.' '.' {
     $$.kind = axo_c_arg_list_kind;
+    $$.def = NULL;
   }
   ;
 
@@ -1592,13 +1674,19 @@ func_call : func_call_start ')' {
     $$=$1;
     axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
     if (fnt->args_len>$$.params_len){
+      // printf("Filling params with args defaults in call '%s'\n", $$.called_val);
       $$.params=(axo_expr*)realloc($$.params, fnt->args_len*sizeof(axo_expr));
-      for (int i=$1.params_len; i<fnt->args_len-1; i++){ //Fill with defaults up until pre-last arg!
+      for (int i=$func_call_start.params_len; i<fnt->args_len-1; i++){ //Fill with defaults up until pre-last arg!
+        // printf("arg #%d\n", i);
+        // printf("%s\n", fnt->args_defs[i]);
         $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
       }
       $$.params_len=fnt->args_len-1;
-      if (fnt->args_types[fnt->args_len-1].kind != axo_c_arg_list_kind){
-        $$.params[fnt->args_len-1] = (axo_expr){.typ=fnt->args_types[fnt->args_len-1], .val=fnt->args_defs[fnt->args_len-1]};
+      int i = fnt->args_len-1;
+      if (fnt->args_types[i].kind != axo_c_arg_list_kind){
+        // printf("arg #%d\n", i);
+        // printf("%s\n", fnt->args_defs[i]);
+        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
         $$.params_len++;
       }
     }
@@ -1614,8 +1702,6 @@ code_scope_start : '{' {
 code_scope : code_scope_start statements '}' {
     $$ = top_scope;
     scopes->len--;
-    if ($$->statements_len == 0)
-      yyerror(&@$, "Code scopes cannot be empty.");
   }
   ;
 
@@ -1866,25 +1952,25 @@ func_def : func_def_start code_scope {
 func_arg : val_typ IDEN {
     if (axo_none_check($val_typ))
       yyerror(&@val_typ, "Cannot declare a none value.");
-    $$.name = alloc_str($2);
+    $$.name = alloc_str($IDEN);
     $$.typ = $val_typ;
-    $$.def = $val_typ.def;
+    $$.def = alloc_str(axo_get_typ_default($val_typ));
   }
   | IDEN '|' expr {
     if (axo_none_check($expr.typ))
       yyerror(&@expr, "Cannot declare a none variable.");
-    $$.name = alloc_str($1);
+    $$.name = alloc_str($IDEN);
     $$.typ = $expr.typ;
-    $$.typ.def = $expr.val;
+    $$.def = alloc_str($expr.val);
   }
   | val_typ IDEN '|' expr {
     if (axo_none_check($val_typ))
       yyerror(&@val_typ, "Cannot declare a none variable.");
-    if (axo_typ_eq($val_typ, $expr.typ))
+    if (!axo_typ_eq($val_typ, $expr.typ))
       yyerror(&@expr, "Default value doesn't match type.");
-    $$.name = alloc_str($2);
+    $$.name = alloc_str($IDEN);
     $$.typ = $1;
-    $$.typ.def = $expr.val;
+    $$.def = alloc_str($expr.val);
   }
   ;
 
@@ -1899,8 +1985,8 @@ func_args : /*  NO TOKEN */ {
     $$.f_typ.args_defs = (char**)malloc(axo_func_args_cap*sizeof(char*));
     $$.f_typ.args_types = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
     $$.args_names[0] = $1.name;
-    $$.f_typ.args_defs[0] = axo_get_typ_default($1.typ);
-    $$.f_typ.args_types[0] = $1.typ;
+    $$.f_typ.args_defs[0] = $func_arg.def;
+    $$.f_typ.args_types[0] = $func_arg.typ;
     $$.f_typ.args_len = 1;
   }
   | func_args ',' func_arg {
@@ -1909,8 +1995,8 @@ func_args : /*  NO TOKEN */ {
     resize_dyn_arr_if_needed(char*, $$.f_typ.args_defs, $$.f_typ.args_len, axo_func_args_cap);
     resize_dyn_arr_if_needed(axo_typ, $$.f_typ.args_types, $$.f_typ.args_len, axo_func_args_cap);
     $$.args_names[$$.f_typ.args_len] = $3.name;
-    $$.f_typ.args_defs[$$.f_typ.args_len] = axo_get_typ_default($3.typ);
-    $$.f_typ.args_types[$$.f_typ.args_len] = $3.typ;
+    $$.f_typ.args_defs[$$.f_typ.args_len] = $func_arg.def;
+    $$.f_typ.args_types[$$.f_typ.args_len] = $func_arg.typ;
     $$.f_typ.args_len++;
   }
   ;

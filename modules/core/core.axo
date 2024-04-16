@@ -11,6 +11,10 @@ module(
 
 #typ float
 #typ double
+#typ size_t
+#typ va_list
+
+#provided (fn int) exit
 
 //Include axo types, functions and macros
 #include <stdbool.h>
@@ -19,4 +23,6 @@ module(
 include "./mod.axo"
 include "./test.axo"
 #include "./main.h"
+include "./string.axo"
+include "./error.axo"
 

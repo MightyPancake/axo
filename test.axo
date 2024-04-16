@@ -1,17 +1,14 @@
 use std
+use io
 
-fn some_fn(){
-    a = 2
-    if a == 2
-        ret;
-    printf("heyo!\n")
-}
-
-fn main() {
-    some_fn()
-    //Both produce the same type
-    my_fn1|(none fn int)
-    my_fn2|(fn int)
+fn main([][]byte args) {
+    fl|file
+    if (args.len[0] < 2){
+        printf("Provide a filename!\n")
+        exit(1)
+    }
+    fl ?= io.open(args[1].data)!$oops()
+    printf("File %s opened!\n", args[1].data)
     ret 0
 }
 

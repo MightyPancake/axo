@@ -110,8 +110,8 @@ typedef struct axo_typ {
     void*              def;
 }axo_typ;
 
-#define axo_no_typ ((axo_typ){.kind=axo_no_kind})
-#define axo_none_typ ((axo_typ){.kind=axo_none_kind})
+#define axo_no_typ ((axo_typ){.kind=axo_no_kind, .def=NULL})
+#define axo_none_typ ((axo_typ){.kind=axo_none_kind, .def=NULL})
 
 typedef struct axo_arr_typ{
     axo_typ    subtyp;
@@ -127,6 +127,7 @@ typedef enum axo_expr_kind{
     axo_expr_normal_kind,
     axo_expr_enum_typ_kind,
     axo_expr_module_kind,
+    axo_expr_assigned_declaration_kind
 }axo_expr_kind;
 
 typedef enum axo_lval_kind{
@@ -198,7 +199,8 @@ typedef struct axo_statement{
 typedef enum axo_decl_kind{
     axo_enum_decl_kind,
     axo_struct_decl_kind,
-    axo_func_decl_kind,
+    axo_func_def_decl_kind,
+    axo_func_decl_decl_kind,
     axo_use_decl_kind,
     axo_c_include_decl_kind,
     axo_c_register_decl_kind,
@@ -447,6 +449,15 @@ typedef enum axo_symbol_kind{
     axo_vertical_line_symbol
 }axo_symbol_kind;
 
+typedef enum axo_action_assign_op{
+    axo_add_assign_op,
+    axo_sub_assign_op,
+    axo_mul_assign_op,
+    axo_div_assign_op,
+    axo_mod_assign_op,
+    axo_err_assign_op
+}axo_action_assign_op;
+
 //Styles
 #define axo_reset_style     "\x1B[0m"
 #define axo_bold_style      "\x1B[1m"
@@ -573,6 +584,7 @@ char* axo_generate_modules(axo_state* st);
 axo_decl axo_add_module(axo_state* st, axo_module mod);
 
 //Functions
+axo_decl axo_func_decl_to_decl(axo_func func);
 axo_decl axo_func_def_to_decl(axo_func func);
 axo_expr axo_call_to_expr(axo_func_call cl);
 
@@ -641,6 +653,8 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg);
 
 //Unknown
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2);
+axo_expr axo_parse_special_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, const char* assign_op, axo_expr val);
+axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, axo_func_call fcall);
 long long int* axo_encode_easter(char* input, int* out_len);
 char* axo_decode_easter(long long int* data);
 char* axo_err_msg(axo_err_code err_code);
