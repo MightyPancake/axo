@@ -11,4 +11,6 @@ struct axo_module (
 	@byte description
 )
 
-modules|[]axo_module
+{
+	modules = none []axo_module
+}

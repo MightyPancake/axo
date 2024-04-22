@@ -84,6 +84,8 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "#provided" {ret_null; return PROVIDED_TAG; }
 "#typ" {ret_null; return TAG_TYP; }
 "while" {ret_null; return WHILE_KWRD; }
+"switch" {ret_null; return SWITCH_KWRD; }
+"case" {ret_null; return CASE_KWRD; }
 "enum" {ret_null; return ENUM_KWRD; }
 "ret" {ret_null; return RET_KWRD; }
 "break" {ret_null; return BREAK_KWRD; }
@@ -117,6 +119,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 ">>" {ret_null; return RIGHT_SHIFT_OP; }
 "->" {ret_null; return ARROW_OP; }
 
+":=" {ret_null; return WALRUS_OP; }
 "+=" {ret_null; return ASSIGN_ADD; }
 "-=" {ret_null; return ASSIGN_SUB; }
 "*=" {ret_null; return ASSIGN_MUL; }
@@ -139,7 +142,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   return(INTEGER_LITERAL);
 
 }
-([0-9]+\.[0-9]*|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
+([0-9]+\.[0-9]+|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z][0-9a-zA-Z_]* {ret_def; return IDEN; }
 \.[a-zA-Z][0-9a-zA-Z_]* {
     yylloc->first_line=yylloc->last_line=axo_line(state);

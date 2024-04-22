@@ -2,13 +2,20 @@ use std
 use io
 
 fn main([][]byte args) {
-    fl|file
-    if (args.len[0] < 2){
-        printf("Provide a filename!\n")
-        exit(1)
+    a = 1
+    ptr = a@
+    switch a {
+        7 case
+            printf("Single case\n")
+        10 case
+            printf("Another one\n")
+        0 ... 4 case none break
+         printf("Range case\n")
+        5,6,8 case {
+            printf("List case\n")
+            break
+        }
     }
-    fl ?= io.open(args[1].data)!$oops()
-    printf("File %s opened!\n", args[1].data)
     ret 0
 }
 

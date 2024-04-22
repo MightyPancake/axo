@@ -849,12 +849,14 @@ const axo_typ_def* axo_get_typ_def(axo_state* st, char* name){
 
 axo_scope* axo_new_scope(axo_scope* parent){
     new_ptr_one(sc, axo_scope);
-    sc->statements = NULL;
-    sc->statements_len = 0;
-    sc->parent = parent;
-    sc->variables = new_map(axo_var, map_hash_vars, map_cmp_vars);
-    sc->def_iter = (parent==NULL ? 0 : parent->def_iter);
-    sc->parent_func = parent ? parent->parent_func : NULL;
+    *sc = (axo_scope){
+        .statements = NULL,
+        .statements_len = 0,
+        .parent = parent,
+        .variables = new_map(axo_var, map_hash_vars, map_cmp_vars),
+        .to_global = NULL,
+        .parent_func = parent ? parent->parent_func : NULL
+    };
     return sc;
 }
 
@@ -878,6 +880,7 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
 }
 
 axo_var* axo_set_var(axo_scope* sc, axo_var var){
+    if (sc->to_global) return axo_set_var(sc->to_global, var);
     // printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
     new_ptr_one(ptr, axo_var);
     *ptr = var;
@@ -887,6 +890,7 @@ axo_var* axo_set_var(axo_scope* sc, axo_var var){
 
 axo_var* axo_get_var(axo_scope* sc, char* name){
     if (sc==NULL || sc->variables==NULL) return NULL;
+    if (sc->to_global) return axo_get_var(sc->to_global, name);
     axo_var placeholder = (axo_var){.name = name};
     axo_var* var = (axo_var*)(hashmap_get(sc->variables, &placeholder));
     if (var) return var;
@@ -923,6 +927,16 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
         asprintf(&(ret.val), "%s\n%s", ret.val, sc->statements[i].val);
     }
     strapnd(&(ret.val), "\n}");
+    return ret;
+}
+
+char* axo_scope_code(axo_scope* sc){
+    char* ret = empty_str;
+    for (int i = 0; i<sc->statements_len; i++){
+        if (i>0) strapnd(&ret, "\n");
+        strapnd(&ret, sc->statements[i].val);
+        free(sc->statements[i].val);
+    }
     return ret;
 }
 
@@ -1333,6 +1347,37 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
         .kind=axo_each_statement_kind,
         .val=val
     };
+}
+
+axo_statement axo_switch_to_statement(axo_switch swtch){
+    char* str = fmtstr("switch(%s){", swtch.root.val);
+    for (int i=0; i<swtch.cases_len; i++){
+        strapnd(&str, "\n");
+        axo_switch_case cs = swtch.cases[i];
+        switch(cs.kind){
+            case axo_list_case_kind:
+                for (int j=0; j<cs.exprs_len; j++){
+                    strapnd(&str, "case ");
+                    strapnd(&str, cs.exprs[j].val);
+                    strapnd(&str, ":\n");
+                }
+                break;
+            case axo_range_case_kind:
+                strapnd(&str, "case ");
+                strapnd(&str, cs.exprs[0].val);
+                strapnd(&str, " ... ");
+                strapnd(&str, cs.exprs[1].val);
+                strapnd(&str, ":\n");
+                break;
+            case axo_default_case_kind:
+                strapnd(&str, "default:\n");
+                break;
+        }
+        strapnd(&str, cs.statement.val);
+        if (!(cs.no_break)) strapnd(&str, "\nbreak;");
+    }
+    strapnd(&str, "}");
+    return (axo_statement){.val=str, .kind=axo_switch_statement_kind};
 }
 
 char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr){

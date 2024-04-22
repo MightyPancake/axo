@@ -68,46 +68,49 @@ extern int yydebug;
     PROVIDED_TAG = 269,            /* "#provided"  */
     FN_KWRD = 270,                 /* "fn"  */
     WHILE_KWRD = 271,              /* "while"  */
-    FOR_KWRD = 272,                /* "for"  */
-    EACH_KWRD = 273,               /* "each"  */
-    IN_KWRD = 274,                 /* "in"  */
-    IF_KWRD = 275,                 /* "if"  */
-    ELSE_KWRD = 276,               /* "else"  */
-    EQ_OP = 277,                   /* "=="  */
-    INEQ_OP = 278,                 /* "!="  */
-    EQ_SMLR_OP = 279,              /* ">="  */
-    EQ_GRTR_OP = 280,              /* "<="  */
-    BIT_OR_OP = 281,               /* "or"  */
-    BIT_AND_OP = 282,              /* "and"  */
-    LOGICAL_OR_OP = 283,           /* "||"  */
-    LOGICAL_AND_OP = 284,          /* "&&"  */
-    LEFT_SHIFT_OP = 285,           /* "<<"  */
-    RIGHT_SHIFT_OP = 286,          /* ">>"  */
-    TILL_KWRD = 287,               /* "till"  */
-    NULL_KWRD = 288,               /* "null"  */
-    INCR_OP = 289,                 /* "++"  */
-    DECR_OP = 290,                 /* "--"  */
-    ASSIGN_ADD = 291,              /* "+="  */
-    ASSIGN_SUB = 292,              /* "-="  */
-    ASSIGN_MUL = 293,              /* "*="  */
-    ASSIGN_DIV = 294,              /* "/="  */
-    ASSIGN_MOD = 295,              /* "%="  */
-    ASSIGN_AND_CALL_ERROR = 296,   /* "?="  */
-    ENUM_KWRD = 297,               /* "enum"  */
-    STRUCT_KWRD = 298,             /* "struct"  */
-    USE_KWRD = 299,                /* "use"  */
-    INCLUDE_KWRD = 300,            /* "include"  */
-    STRUCT_LITERAL_START = 301,    /* "struct{"  */
-    DOT_FIELD = 302,               /* ".field"  */
-    MODULE_KWRD = 303,             /* "module"  */
-    ARROW_OP = 304,                /* "->"  */
-    NONE_KWRD = 305,               /* "none"  */
-    IDENTIFIER_PREC = 306,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 307,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 308,               /* LOOP_PREC  */
-    UMINUS = 309,                  /* UMINUS  */
-    CALL_PREC = 310,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 311   /* STRUCT_LIT_NAMED_FIELD  */
+    SWITCH_KWRD = 272,             /* "switch"  */
+    CASE_KWRD = 273,               /* "case"  */
+    FOR_KWRD = 274,                /* "for"  */
+    EACH_KWRD = 275,               /* "each"  */
+    IN_KWRD = 276,                 /* "in"  */
+    IF_KWRD = 277,                 /* "if"  */
+    ELSE_KWRD = 278,               /* "else"  */
+    EQ_OP = 279,                   /* "=="  */
+    INEQ_OP = 280,                 /* "!="  */
+    EQ_SMLR_OP = 281,              /* ">="  */
+    EQ_GRTR_OP = 282,              /* "<="  */
+    BIT_OR_OP = 283,               /* "or"  */
+    BIT_AND_OP = 284,              /* "and"  */
+    LOGICAL_OR_OP = 285,           /* "||"  */
+    LOGICAL_AND_OP = 286,          /* "&&"  */
+    LEFT_SHIFT_OP = 287,           /* "<<"  */
+    RIGHT_SHIFT_OP = 288,          /* ">>"  */
+    TILL_KWRD = 289,               /* "till"  */
+    NULL_KWRD = 290,               /* "null"  */
+    INCR_OP = 291,                 /* "++"  */
+    DECR_OP = 292,                 /* "--"  */
+    ASSIGN_ADD = 293,              /* "+="  */
+    ASSIGN_SUB = 294,              /* "-="  */
+    ASSIGN_MUL = 295,              /* "*="  */
+    ASSIGN_DIV = 296,              /* "/="  */
+    ASSIGN_MOD = 297,              /* "%="  */
+    ASSIGN_AND_CALL_ERROR = 298,   /* "?="  */
+    WALRUS_OP = 299,               /* ":="  */
+    ENUM_KWRD = 300,               /* "enum"  */
+    STRUCT_KWRD = 301,             /* "struct"  */
+    USE_KWRD = 302,                /* "use"  */
+    INCLUDE_KWRD = 303,            /* "include"  */
+    STRUCT_LITERAL_START = 304,    /* "struct{"  */
+    DOT_FIELD = 305,               /* ".field"  */
+    MODULE_KWRD = 306,             /* "module"  */
+    ARROW_OP = 307,                /* "->"  */
+    NONE_KWRD = 308,               /* "none"  */
+    IDENTIFIER_PREC = 309,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 310,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 311,               /* LOOP_PREC  */
+    UMINUS = 312,                  /* UMINUS  */
+    CALL_PREC = 313,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 314   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -116,7 +119,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 163 "axo_gram.y"
+#line 168 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -141,8 +144,10 @@ union YYSTYPE
   axo_each_loop each_loop_type;
   axo_module module_type;
   bool bool_type;
+  axo_switch_case case_type;
+  axo_switch switch_type;
 
-#line 146 "axo_gram.tab.h"
+#line 151 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

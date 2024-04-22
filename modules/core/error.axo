@@ -28,6 +28,10 @@ fn error:reset(){
 	self^.code = 0
 }
 
-err|error=error{code=0, msg="No error"}
-errptr|@error=err@
+{
+	err = error{0, "No error"}
+	errptr = err@
+}
+// err:=error{code=0, msg="No error"}
+// errptr:=err@
 

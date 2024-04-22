@@ -79,6 +79,8 @@
 %token<str> PROVIDED_TAG "#provided"
 %token<str> FN_KWRD "fn"
 %token<str> WHILE_KWRD "while"
+%token<str> SWITCH_KWRD "switch"
+%token<str> CASE_KWRD "case"
 %token<str> FOR_KWRD "for"
 %token<str> EACH_KWRD "each"
 %token<str> IN_KWRD "in"
@@ -104,6 +106,7 @@
 %token<str> ASSIGN_DIV "/="
 %token<str> ASSIGN_MOD "%="
 %token<str> ASSIGN_AND_CALL_ERROR "?="
+%token<str> WALRUS_OP ":="
 %token<str> ENUM_KWRD "enum"
 %token<str> STRUCT_KWRD "struct"
 %token<str> USE_KWRD "use"
@@ -113,7 +116,7 @@
 %token<str> MODULE_KWRD "module"
 %token<str> ARROW_OP "->"
 %token<str> NONE_KWRD "none"
-%type<scope> code_scope code_scope_start
+%type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
 %type<expression> expr incr_decr_op if_condition assignment special_assignment call_error_assignment arr_literal
@@ -135,13 +138,15 @@
 %type<each_loop_type> each_iter_dims each_loop_base
 %type<module_type> module_info
 %type<bool_type> arr_lit_start
+%type<case_type> switch_expr_list switch_case switch_branch
+%type<switch_type> switch_statement switch_statement_start switch_body
 
 //Prec
 %left IDENTIFIER_PREC
 %left '$'
 %left EXPR_AS_STATEMENT
 %left RET_KWRD
-%right '=' "+=" "-=" "*=" "/=" "%=" "?="
+%right '=' "+=" "-=" "*=" "/=" "%=" "?=" ":="
 %left '?'
 %left "||"
 %left "&&"
@@ -184,6 +189,8 @@
   axo_each_loop each_loop_type;
   axo_module module_type;
   bool bool_type;
+  axo_switch_case case_type;
+  axo_switch switch_type;
 }
 
 %%
@@ -334,37 +341,6 @@ declaration : struct_def { //Fix! Make this use realloc less
     axo_load_module_defaults(state, &$module_info);
     $$ = axo_add_module(state, $module_info);
   }
-  | expr '|' val_typ {
-    if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "Cannot declare a none variable.");
-    if ($1.lval_kind == axo_var_lval_kind){
-      $$ = (axo_decl){
-        .kind=axo_is_decl_kind,
-        .val=axo_name_typ_decl($1.val, $3)
-      };
-      strapnd(&($$.val), ";");
-      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
-    }else{
-      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
-    }
-  }
-  | expr '|' val_typ '=' expr {
-    if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "Cannot declare a none value.");
-    if (!axo_typ_eq($val_typ, $5.typ))
-      yyerror(&@5, "Expected an expression of type '%s'.", axo_typ_to_str($5.typ));
-    axo_validate_rval(&@5, $5);
-    if ($1.lval_kind == axo_var_lval_kind){
-      $$ = (axo_decl){
-        .kind=axo_is_decl_kind,
-        .val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
-      };
-      strapnd(&($$.val), ";");
-      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
-    }else{
-      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
-    }
-  }
   | "#typ" IDEN {
     char* name = alloc_str($IDEN);
     axo_set_typ_def(&@$, state, (axo_typ_def){.name=name, .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name=name, .cname=name}, .def="0"}});
@@ -385,6 +361,22 @@ declaration : struct_def { //Fix! Make this use realloc less
       },
     };
     axo_set_typ_def(&@$, state, td);
+  }
+  | global_code_scope {
+    $$ = (axo_decl){.val=axo_scope_code($global_code_scope)};
+  }
+  ;
+
+global_code_scope_start : '{' {
+    axo_push_scope(scopes, axo_new_scope(top_scope));
+    top_scope->to_global = state->global_scope;
+    axo_code_scope_started = false;
+  }
+  ;
+  
+global_code_scope : global_code_scope_start statements '}' {
+    $$ = top_scope;
+    scopes->len--;
   }
   ;
 
@@ -1044,51 +1036,111 @@ matching_statement : expr {
     }
   }
   | code_scope {
-    $$ = axo_scope_to_statement($1);
+    $$ = axo_scope_to_statement($code_scope);
   }
-  | expr '|' val_typ {
-    if ($1.lval_kind == axo_var_lval_kind){
+  | expr '=' "none"  val_typ {
+    if ($expr.lval_kind == axo_var_lval_kind){
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
-        .val=axo_name_typ_decl($1.val, $3)
+        .val=axo_name_typ_decl($expr.val, $val_typ)
       };
       strapnd(&($$.val), ";");
-      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
+      axo_set_var(top_scope, (axo_var){.name=$expr.val, .typ=axo_clean_typ($val_typ), .is_const=false});
     }else{
-      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
-    }
-  }
-  | expr '|' val_typ '=' expr {
-    axo_validate_rval(&@5, $5);
-    if ($1.lval_kind == axo_var_lval_kind){
-      $$ = (axo_statement){
-        .kind=axo_assignment_statement_kind,
-        .val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=$val_typ, .val=$5.val})
-      };
-      strapnd(&($$.val), ";");
-      axo_set_var(top_scope, (axo_var){.name=$1.val, .typ=axo_clean_typ($3), .is_const=false});
-    }else{
-      yyerror(&@1, "Cannot declare non-variable value '%s'.", $1.val);
+      yyerror(&@expr, "Cannot declare non-variable value '%s'.", $expr.val);
     }
   }
   | "continue" {
-    if (in_loop_count<=0) yyerror(&@1, "No loop to continue.");
+    if (in_loop_count<=0) yyerror(&@1, "No loop/switch to continue from.");
     $$ = (axo_statement){
       .kind = axo_continue_statement_kind,
       .val = "continue;"
     };
   }
   | "break" {
-    if (in_loop_count<=0) yyerror(&@1, "No loop to break out of.");
+    if (in_loop_count<=0) yyerror(&@1, "No loop/switch to break out of.");
     $$ = (axo_statement){
       .kind = axo_break_statement_kind,
       .val = "break;"
     };
   }
+  | switch_statement {
+    $$ = axo_switch_to_statement($switch_statement);
+  }
   | matching_if_statement
   | matching_for_loop
   | matching_while
   | matching_each_loop
+  ;
+
+switch_statement_start : "switch" expr {
+    if ($expr.typ.kind != axo_simple_kind)
+      yyerror(&@expr, "Cannot switch on a non-primitive (%s) value.", axo_typ_to_str($expr.typ));
+    $$ = (axo_switch){
+      .root = $expr
+    };
+    in_loop_count++;
+  }
+  ;
+
+switch_statement : switch_statement_start '{' switch_body '}' {
+    $$ = (axo_switch){
+      .root=$switch_statement_start.root,
+      .cases = $switch_body.cases,
+      .cases_len = $switch_body.cases_len
+    };
+    in_loop_count--;
+  }
+  ;
+
+switch_body : switch_branch statement {
+    $$ = (axo_switch){
+      .cases = (axo_switch_case*)malloc(axo_cases_cap*sizeof(axo_switch_case)),
+      .cases_len = 1
+    };
+    $$.cases[0] = $switch_branch;
+    $$.cases[0].statement = $statement;
+  }
+  | switch_body switch_branch statement {
+    resize_dyn_arr_if_needed(axo_switch_case, $$.cases, $$.cases_len, axo_cases_cap);
+    $$.cases[$$.cases_len] = $switch_branch;
+    $$.cases[$$.cases_len++].statement = $statement;
+  }
+  ;
+
+switch_branch : switch_case "none" "break" {
+    $$=$1;
+    $$.no_break = true;
+  }
+  | switch_case
+  ;
+
+switch_case : switch_expr_list "case" {
+    $$ = $switch_expr_list;
+  }
+  | expr '.' '.' '.' expr "case" {
+    $$ = (axo_switch_case){
+      .exprs = (axo_expr*)malloc(2*sizeof(axo_expr)),
+      .exprs_len = 2,
+      .kind = axo_range_case_kind
+    };
+    $$.exprs[0] = $1;
+    $$.exprs[1] = $5;
+  }
+  ;
+
+switch_expr_list : expr {
+    $$ = (axo_switch_case){
+      .exprs = (axo_expr*)malloc(axo_switch_expr_list_cap*sizeof(axo_expr)),
+      .exprs_len = 1,
+      .kind = axo_list_case_kind
+    };
+    $$.exprs[0] = $expr;
+  }
+  | switch_expr_list ',' expr {
+    resize_dyn_arr_if_needed(axo_expr, $$.exprs, $$.exprs_len, axo_switch_expr_list_cap);
+    $$.exprs[$$.exprs_len++] = $expr;
+  }
   ;
 
 if_condition : IF_KWRD expr {
@@ -1574,7 +1626,6 @@ called_expr : expr '(' {
         yyerror(&@1, "Methods can only operate on simple types (primitives, enums or structures), not '%s'.", axo_typ_to_str($expr.typ));
         break;
     }
-  
   }
   | expr '$' IDEN '(' {
     axo_validate_rval(&@expr, $expr);
@@ -1956,14 +2007,14 @@ func_arg : val_typ IDEN {
     $$.typ = $val_typ;
     $$.def = alloc_str(axo_get_typ_default($val_typ));
   }
-  | IDEN '|' expr {
+  | IDEN '=' expr {
     if (axo_none_check($expr.typ))
       yyerror(&@expr, "Cannot declare a none variable.");
     $$.name = alloc_str($IDEN);
     $$.typ = $expr.typ;
     $$.def = alloc_str($expr.val);
   }
-  | val_typ IDEN '|' expr {
+  | val_typ IDEN '=' expr {
     if (axo_none_check($val_typ))
       yyerror(&@val_typ, "Cannot declare a none variable.");
     if (!axo_typ_eq($val_typ, $expr.typ))

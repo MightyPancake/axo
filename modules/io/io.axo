@@ -59,7 +59,7 @@ struct file (
   @FILE    file
 )
 
-file fn io.open(@byte filename, @byte mode|"r", @error errptr){
+file fn io.open(@byte filename, @byte mode="r", @error errptr){
   f = file{file=fopen(filename, mode)}
   errptr$get_c()
   ret f

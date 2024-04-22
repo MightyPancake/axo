@@ -22,7 +22,7 @@ build:
 	@echo [96mGenerating lexer...[0m
 	@flex -l scan.l
 	@echo [96mGenerating parser...[0m
-	@bison --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	@bison -v --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
 	@echo [94mBuilding the compiler... [0m
 	@make -s compile
 

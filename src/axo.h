@@ -18,7 +18,7 @@ typedef struct hashmap* map;
 #include <time.h>
 #include <stdio.h>
 
-    //Define YYLTYPE
+//Define YYLTYPE
 typedef struct YYLTYPE YYLTYPE;
 struct YYLTYPE
 {
@@ -44,6 +44,8 @@ struct YYLTYPE
 #define axo_index_access_cap 128
 #define axo_state_sources_cap 32
 #define axo_modules_cap 16
+#define axo_switch_expr_list_cap 16
+#define axo_cases_cap 16
 
 #ifdef __WIN32
     #define AXO_BIN_EXT ".exe"
@@ -186,6 +188,7 @@ typedef enum axo_statement_kind{
     axo_stat_arr_init_statement_kind,
     axo_var_is_decl_statement_kind,
     axo_expr_statement_kind,
+    axo_switch_statement_kind,
     axo_no_statement_kind
 }axo_statement_kind;
 
@@ -217,14 +220,13 @@ typedef struct axo_decl {
 }axo_decl;
 
 typedef struct axo_scope{
-    axo_statement* statements;    //Statements in the scope
-    int            statements_len;//Length of statments
+    axo_statement* statements;     //Statements in the scope
+    int            statements_len; //Length of statments
     map            variables;      //Variables declared in the scope
     void*          parent;         //Pointer to the parent scope (or NULL for global scope)
     
-    int            def_iter;
-    
-    void*          parent_func;
+    void*          to_global;      //Pointer to global scope (for global scopes, else NULL)
+    void*          parent_func;    //Pointer to the function (else NULL)
 }axo_scope;
 
 typedef struct axo_scopes{
@@ -395,6 +397,26 @@ typedef struct axo_for_loop{
     char*          body;
 }axo_for_loop;
 
+typedef enum axo_case_kind{
+    axo_list_case_kind,
+    axo_range_case_kind,
+    axo_default_case_kind
+}axo_case_kind;
+
+typedef struct axo_switch_case {
+    axo_expr*        exprs;
+    int              exprs_len;
+    axo_case_kind    kind;
+    axo_statement    statement;
+    bool             no_break;
+}axo_switch_case;
+
+typedef struct axo_switch {
+    axo_expr            root;
+    axo_switch_case*    cases;
+    int                 cases_len;
+}axo_switch;
+
 typedef struct axo_till_loop{
     char*        iter;
     char*        body;
@@ -558,6 +580,7 @@ char* axo_get_code(axo_state* st);
 axo_scope* axo_new_scope(axo_scope* parent);
 void axo_add_statement(axo_scope* sc, axo_statement s);
 axo_statement axo_scope_to_statement(axo_scope* sc);
+char* axo_scope_code(axo_scope* sc);
 axo_scope* axo_scopes_top(axo_scopes* scopes);
 void axo_push_scope(axo_scopes* scopes, axo_scope* sc);
 
@@ -618,6 +641,9 @@ const char* axo_identifier_kind_to_str(axo_identifier_kind kind);
 
 //Loops
 char* axo_for_loop_to_str(axo_for_loop lp);
+
+//Switch
+axo_statement axo_switch_to_statement(axo_switch swtch);
 
 //Files
 char* axo_file_to_str(char* path);
