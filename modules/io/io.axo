@@ -9,47 +9,47 @@ module(
 #typ FILE
 #typ fpos_t
 
-#register int fclose(@FILE)
-#register none clearerr(@FILE)
-#register int feof(@FILE)
-#register int ferror(@FILE)
-#register int fflush(@FILE)
-#register int fgetpos(@FILE, @fpos_t)
-#register @FILE fopen(@byte, @byte)
-#register size_t fread(@byte, size_t, size_t, @FILE)
-#register @FILE freopen(@FILE, @byte, @FILE)
-#register int fseek(@FILE, i64, int)
-#register int fsetpos(@FILE, @fpos_t)
-#register i64 ftell(@FILE)
-#register size_t fwrite(@byte, size_t, size_t, @FILE)
-#register int remove(@byte)
-#register int rename(@byte, @byte)
-#register none rewind(@FILE)
-#register none setbuf(@FILE, @byte)
-#register int setvbuf(@FILE, @byte, int, size_t)
-#register @FILE tmpfile()
-#register @byte tmpnam(@byte)
-#register int fprintf(@FILE, @byte, ...)
-#register int printf(@byte, ...)
-#register int sprintf(@byte, @byte, ...)
-#register int vfprintf(@FILE, @byte, va_list)
-#register int vprintf(@FILE, va_list)
-#register int vsprintf(@FILE, @byte, va_list)
-#register int fscanf(@FILE, @byte, ...)
-#register int scanf(@byte, ...)
-#register int sscanf(@byte, @byte, ...)
-#register int fgetc(@FILE)
-#register @byte fgets(@byte, int, @FILE)
-#register int fputc(int, @FILE)
-#register int fputs(@byte, @FILE)
-#register int getc(@FILE)
-#register int getchar()
-#register @byte gets(@byte)
-#register int putc(int, @FILE)
-#register int putchar(int)
-#register int puts(@byte)
-#register int ungetc(int, @FILE)
-#register none perror(@byte)
+#provided (int fn @FILE) fclose
+#provided (fn @FILE) clearerr
+#provided (int fn @FILE) feof
+#provided (int fn @FILE) ferror
+#provided (int fn @FILE) fflush
+#provided (int fn @FILE, @fpos_t) fgetpos
+#provided (@FILE fn @byte, @byte) fopen
+#provided (size_t fn @byte, size_t, size_t, @FILE) fread
+#provided (@FILE fn @FILE, @byte, @FILE) freopen
+#provided (int fn @FILE, i64, int) fseek
+#provided (int fn @FILE, @fpos_t) fsetpos
+#provided (i64 fn @FILE) ftell
+#provided (size_t fn @byte, size_t, size_t, @FILE) fwrite
+#provided (int fn @byte) remove
+#provided (int fn @byte, @byte) rename
+#provided (fn @FILE) rewind
+#provided (fn @FILE, @byte) setbuf
+#provided (int fn @FILE, @byte, int, size_t) setvbbuf
+#provided (@FILE fn) tmpfile
+#provided (@byte fn @byte) nmpnam
+#provided (int fn @FILE, @byte, ...) fprintf
+#provided (int fn @byte, ...) printf
+#provided (int fn @byte, @byte, ...) sprintf
+#provided (int fn @FILE, @byte, va_list) vfprintf
+#provided (int fn @FILE, va_list) vprintf
+#provided (int fn @FILE, @byte, va_list)  vsprintf
+#provided (int fn @FILE, @byte, ...) fscanf
+#provided (int fn @byte, ...) scanf
+#provided (int fn @byte, @byte, ...) sscanf
+#provided (int fn @FILE) fgetc
+#provided (@byte fn @byte, int, @FILE) fgets
+#provided (int fn int, @FILE) fputc
+#provided (int fn @byte, @FILE) fputs
+#provided (int fn @FILE) getc
+#provided (int fn) getchar
+#provided (@byte fn @byte) gets
+#provided (int fn int, @FILE) putc
+#provided (int fn int) putchar
+#provided (int fn @byte) puts
+#provided (int fn int, @FILE) ungetc
+#provided (fn @byte) perror
 
 #provided @FILE stderr
 #provided @FILE stdin

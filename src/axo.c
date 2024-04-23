@@ -66,6 +66,8 @@ char* axo_get_typ_default(axo_typ typ){
             axo_typ err_t = (axo_typ){.kind=axo_struct_kind, .structure=&(axo_struct){.name="error"}};
             return (axo_typ_eq(err_t, *axo_subtyp(typ))) ? "errptr" : "NULL";
             break;
+        case axo_c_arg_list_kind:
+            return "";
         default:
             yyerror(NULL, "Couldn't get default type for kind %s.", axo_typ_kind_to_str(typ.kind));
             break;
@@ -1029,6 +1031,7 @@ bool axo_is_typ_prim(axo_typ t){
         case axo_enum_kind:
         case axo_arr_kind:
         case axo_none_kind:
+        case axo_c_arg_list_kind:
             return true;
             break;
         default:
@@ -1049,6 +1052,8 @@ char* axo_prim_typ_to_c_str(axo_typ t){
             return "axo__arr"; break;
         case axo_none_kind:
             return "void"; break;
+        case axo_c_arg_list_kind:
+            return "..."; break;
         default:
             return "unknown";
     }

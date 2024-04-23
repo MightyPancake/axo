@@ -11,14 +11,14 @@ module(
 
 #include <stdio.h>
 
-#register int printf(@byte, ...)
-#register int scanf(@byte, ...)
+#provided (int fn @byte, ...) printf
+#provided (int fn @byte, ...) scanf
 
-#register int srand(int)
-#register int rand()
+#provided (int fn int) srand
+#provided (int fn) rand
 
-#register int system(@byte)
-#register int remove(@byte)
+#provided (int fn @byte) system
+#provided (int fn @byte) remove
 
 fn std.seed_rand(int seed){
 	srand(seed)

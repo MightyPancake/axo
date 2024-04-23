@@ -74,7 +74,6 @@
 %token<str> CONTINUE_KWRD "continue"
 %token<str> C_INCLUDE_LOCAL "#include 'local_file'"
 %token<str> C_INCLUDE "#include"
-%token<str> C_REGISTER "#register"
 %token<str> TAG_TYP "#typ"
 %token<str> PROVIDED_TAG "#provided"
 %token<str> FN_KWRD "fn"
@@ -122,8 +121,7 @@
 %type<expression> expr incr_decr_op if_condition assignment special_assignment call_error_assignment arr_literal
 %type<declaration_type> declaration
 %type<str> statements declarations while_loop_base
-%type<typ_type> func_def_ret_typ val_typ c_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
-%type<types_list> c_typ_list
+%type<typ_type> func_def_ret_typ val_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
 %type<function_argument> func_arg
 %type<for_loop_type> for_loop_start for_loop_init for_loop_base
 %type<till_loop_type> till_loop_start
@@ -175,7 +173,6 @@
   axo_func_arg function_argument;
   axo_func_call function_call;
   axo_typ typ_type;
-  axo_types_list types_list;
   axo_for_loop for_loop_type;
   axo_till_loop till_loop_type;
   axo_enum enum_type;
@@ -210,25 +207,6 @@ declarations : /* EMPTY */ {}
       axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", res_path), .kind=axo_c_include_decl_kind});
       free(res_path);
     }
-  }
-  | declarations C_REGISTER c_typ IDEN '(' c_typ_list ')' {
-    // printf("Starting to register a C function\n");
-    axo_func fn;
-    fn.name = alloc_str($4);
-    fn.f_typ.args_len = $6.len;
-    fn.f_typ.ret_typ = $3;
-    fn.body = NULL; //This is only true for C functions!
-    fn.args_names = (char**)malloc(fn.f_typ.args_len*sizeof(char*));
-    fn.f_typ.args_defs = (char**)malloc(fn.f_typ.args_len*sizeof(char*));
-    fn.f_typ.args_types = (axo_typ*)malloc(fn.f_typ.args_len*sizeof(axo_typ));
-    for (int i = 0; i<fn.f_typ.args_len; i++){
-      asprintf(&(fn.args_names[i]), "p%d", i+1);
-      //FIX: Every type should have default value!
-      fn.f_typ.args_defs[i] = $6.values[i].def;
-      fn.f_typ.args_types[i] = $6.values[i];
-    }
-    axo_set_func(state, fn);
-    axo_add_decl(state, (axo_decl){.val=fmtstr("//registered function '%s'", fn.name), .kind=axo_c_register_decl_kind});
   }
   | declarations ENUM_KWRD IDEN '(' enum_names ')' {
     new_ptr_one(enm, axo_enum);
@@ -1521,35 +1499,12 @@ val_typ : IDEN {
   }
   | func_typ
   | arr_typ
-  ;
-  
-c_typ : val_typ
   | '.' '.' '.' {
     $$.kind = axo_c_arg_list_kind;
     $$.def = NULL;
   }
   ;
-
-c_typ_list : /*  EMPTY  */ {
-    $$.len = 0;
-    $$.values = NULL;
-  }
-  | c_typ {
-    $$.values = (axo_typ*)malloc(axo_func_args_cap*sizeof(axo_typ));
-    $$.values[0] = $1;
-    $$.len = 1;
-  }
-  | c_typ_list ',' c_typ {
-    if ($1.values[$1.len-1].kind == axo_c_arg_list_kind)
-      yyerror(&@1, "The C v_args argument has to be the last one.");
-    $$ = $1;
-    if ($$.len % axo_func_args_cap == 0)
-      $$.values = (axo_typ*)realloc($$.values, ($$.len+axo_func_args_cap)*sizeof(axo_typ));
-    $$.values[$$.len] = $3;
-    $$.len++;
-  }
-  ;
-
+  
 called_expr : expr '(' {
     if (axo_validate_rval(&@expr, $expr)){
       switch($1.typ.kind){

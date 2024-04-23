@@ -8,8 +8,8 @@ module(
 	description: "Memory module"
 )
 
-#register @byte malloc(u32)
-#register int free(@byte)
+#provided (@byte fn u32) malloc
+#provided (int fn @byte) free
 
 fn mem.alc(u32 sz){
 	ret malloc(sz)

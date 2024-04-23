@@ -2,20 +2,21 @@ use std
 use io
 
 fn main([][]byte args) {
-    a = 1
-    ptr = a@
-    switch a {
-        7 case
-            printf("Single case\n")
-        10 case
-            printf("Another one\n")
-        0 ... 4 case none break
-         printf("Range case\n")
-        5,6,8 case {
-            printf("List case\n")
-            break
-        }
-    }
+    ptr1 = [@10]int
+    ptr2 = [@][1,2,3,4]
+    // a = 1
+    // switch a {
+    //     7 case
+    //         printf("Single case\n")
+    //     10 case
+    //         printf("Another one\n")
+    //     0 ... 4 case none break
+    //      printf("Range case\n")
+    //     5,6,8 case {
+    //         printf("List case\n")
+    //         break
+    //     }
+    // }
     ret 0
 }
 

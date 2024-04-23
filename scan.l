@@ -70,7 +70,6 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 <MULTI_LINE_COMMENT>"*/" {BEGIN(INITIAL);}
 <MULTI_LINE_COMMENT>\n {axo_line(state)++; axo_col(state)=1;};
 <SINGLE_LINE_COMMENT,MULTI_LINE_COMMENT>. axo_col(state)++;
-"#register" {ret_null; return(C_REGISTER); }
 "#include" {adv_loc; BEGIN(INCLUDE_ST); }
 <INCLUDE_ST>{include_path_pat}/\s*\, {ret_def; BEGIN(INCLUDE_MORE_ST); return C_INCLUDE;}
 <INCLUDE_ST>{include_path_pat} {ret_def; BEGIN(INITIAL); return C_INCLUDE;}
