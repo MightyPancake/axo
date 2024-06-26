@@ -1183,6 +1183,7 @@ non_matching_while : while_loop_base non_matching_statement {
 
 for_loop_start : "for" {
     axo_push_scope(scopes, axo_new_scope(top_scope));
+    in_loop_count++;
   }
   ;
 
@@ -1200,7 +1201,6 @@ for_loop_base : for_loop_init ',' expr ',' statement {
       .condition = $3.val,
       .iteration = iter,
     };
-    in_loop_count++;
   } %prec LOOP_PREC
   | till_loop_start {
     $$ = (axo_for_loop){
@@ -1208,7 +1208,6 @@ for_loop_base : for_loop_init ',' expr ',' statement {
       .condition = fmtstr("%s<%s", $1.iter, $1.lim.val),
       .iteration = fmtstr("%s++", $1.iter),
     };
-    in_loop_count++;
   }
   ;
 
@@ -1225,6 +1224,22 @@ non_matching_for_loop : for_loop_base non_matching_statement {
     $1.body = $2.val;
     $$.kind = axo_for_statement_kind;
     $$.val=axo_for_loop_to_str($1);
+    scopes->len--;
+    in_loop_count--;
+  }
+  ;
+
+matching_each_loop : each_loop_base matching_statement {
+    $1.body = $2.val;
+    $$ = axo_each_to_statement($1);
+    scopes->len--;
+    in_loop_count--;
+  }
+  ;
+
+non_matching_each_loop : each_loop_base non_matching_statement {
+    $1.body = $2.val;
+    $$ = axo_each_to_statement($1);
     scopes->len--;
     in_loop_count--;
   }
@@ -1258,13 +1273,7 @@ each_iter_dims : '[' expr {
   }
   ;
 
-each_loop_start : "for" "each" {
-    axo_push_scope(scopes, axo_new_scope(top_scope));
-    in_loop_count++;
-  }
-  ;
-
-each_loop_base: each_loop_start identifier "in" expr {
+each_loop_base: for_loop_start identifier "in" expr {
     $$ = (axo_each_loop){
       .dim_count=axo_get_arr_typ($expr.typ).dim_count,
       .dim_iters=malloc(axo_get_arr_typ($expr.typ).dim_count*sizeof(axo_expr)),
@@ -1278,22 +1287,8 @@ each_loop_base: each_loop_start identifier "in" expr {
     ((YYLTYPE*)($$.locs))[2] = @expr;
     axo_parse_each_loop(&$$, state, top_scope, in_loop_count);
   }
-  | each_loop_start identifier ',' each_iter_dims ']' "in" expr {
+  | for_loop_start identifier "each" each_iter_dims ']' "in" expr {
     @each_iter_dims.last_column = @5.last_column;
-    $$ = (axo_each_loop){
-      .dim_count=$each_iter_dims.dim_count,
-      .dim_iters=$each_iter_dims.dim_iters,
-      .value_iter=(axo_identifier){.kind=axo_no_identifier_kind, .data=NULL},
-      .collection=$expr,
-      .locs=$each_iter_dims.locs
-    };
-    ((YYLTYPE*)($$.locs))[0] = @identifier;
-    ((YYLTYPE*)($$.locs))[1] = @each_iter_dims;
-    ((YYLTYPE*)($$.locs))[2] = @expr;
-    axo_parse_each_loop(&$$, state, top_scope, in_loop_count);
-  }
-  | each_loop_start each_iter_dims ']' ',' identifier "in" expr {
-    @each_iter_dims.last_column = @3.last_column;
     $$ = (axo_each_loop){
       .dim_count=$each_iter_dims.dim_count,
       .dim_iters=$each_iter_dims.dim_iters,
@@ -1306,7 +1301,7 @@ each_loop_base: each_loop_start identifier "in" expr {
     ((YYLTYPE*)($$.locs))[2] = @expr;
     axo_parse_each_loop(&$$, state, top_scope, in_loop_count);
   }
-  | each_loop_start each_iter_dims ']' "in" expr {
+  | for_loop_start "each" each_iter_dims ']' "in" expr {
     @each_iter_dims.last_column = @3.last_column;
     $$ = (axo_each_loop){
       .dim_count=$each_iter_dims.dim_count,
@@ -1318,23 +1313,6 @@ each_loop_base: each_loop_start identifier "in" expr {
     ((YYLTYPE*)($$.locs))[1] = @each_iter_dims;
     ((YYLTYPE*)($$.locs))[2] = @expr;
     axo_parse_each_loop(&$$, state, top_scope, in_loop_count);
-  }
-  ;
-
-
-matching_each_loop : each_loop_base matching_statement {
-    $1.body = $2.val;
-    $$ = axo_each_to_statement($1);
-    scopes->len--;
-    in_loop_count--;
-  }
-  ;
-
-non_matching_each_loop : each_loop_base non_matching_statement {
-    $1.body = $2.val;
-    $$ = axo_each_to_statement($1);
-    scopes->len--;
-    in_loop_count--;
   }
   ;
 

@@ -2,8 +2,9 @@ use std
 use io
 
 fn main([][]byte args) {
-    ptr1 = [@10]int
-    ptr2 = [@][1,2,3,4]
+    // ptr1 = [@10]int
+    
+    // ptr2 = [@][1,2,3,4]
     // a = 1
     // switch a {
     //     7 case
