@@ -105,12 +105,13 @@ extern int yydebug;
     ARROW_OP = 306,                /* "->"  */
     NONE_KWRD = 307,               /* "none"  */
     BYTE_LITERAL = 308,            /* "byte literal"  */
-    IDENTIFIER_PREC = 309,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 310,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 311,               /* LOOP_PREC  */
-    UMINUS = 312,                  /* UMINUS  */
-    CALL_PREC = 313,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 314   /* STRUCT_LIT_NAMED_FIELD  */
+    SZ_OF_KWRD = 309,              /* "sz_of"  */
+    IDENTIFIER_PREC = 310,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 311,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 312,               /* LOOP_PREC  */
+    UMINUS = 313,                  /* UMINUS  */
+    CALL_PREC = 314,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 315   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -119,7 +120,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 167 "axo_gram.y"
+#line 168 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -146,7 +147,7 @@ union YYSTYPE
   axo_switch_case case_type;
   axo_switch switch_type;
 
-#line 150 "axo_gram.tab.h"
+#line 151 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

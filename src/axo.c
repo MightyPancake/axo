@@ -123,7 +123,7 @@ axo_state* axo_new_state(char* root_path){
     axo_new_numeric_typ(st, "i16", "short int", "0");
     axo_new_numeric_typ(st, "i64", "long long int", "0");
     axo_new_numeric_typ(st, "u16", "short unsigned", "0");
-    axo_new_numeric_typ(st, "u64", "long long unsigned", "0");
+    axo_new_numeric_typ(st, "u64", "long unsigned", "0");
     //File related
     st->root_path = root_path;
     st->sources = NULL;

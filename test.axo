@@ -2,11 +2,8 @@ use std
 use io
 
 fn main([][]byte args) {
-    a = 'l'
-    s = ['H', 'e', 'l', 'l', 'o']
-    printf("%s world!\n", s.data@^)
-    printf("%c\n", s[1])
-    printf("%s\n", s.data@.(@@byte)^)
+    a = sz_of(0.(int))
+    printf("size of: %d\n", a)
     ret 0
 }
 

@@ -9,14 +9,14 @@ fn static_arrays(){
 	arr2 = [3|3][
 		0,0,0,
 		1,1,1,
-		2,4,8
+		2,4,7
 	]
-		
+	
 	//Initialized 1D array
-	arr3 = [0,1,2,3,4]
+	arr3 = [0,5,2,3,4]
 
 	//Initialized static array of size 1
-	arr3 = [1,]
+	arr3 = [12,]
 
 	/*
 		Iteration syntax
@@ -27,14 +27,14 @@ fn static_arrays(){
 		3,6,9
 	]
 
-	for val in arr
-		printf("v: %d\n", val)
+	// for val in arr
+	// 	printf("val: %d\n", val)
 
-	for each [x|y] in arr
-		printf("%d:%d\n", x, y)
+	// for each [x|y] in arr
+	// 	printf("%d:%d\n", x, y)
 
-	for val each [x|y] in arr
-		printf("%d*%d=%d\n", x, y, val)
+	// for val each [x|y] in arr
+	// 	printf("arr[%d|%d]=%d\n", x, y, val)
 
 	//Smart enough to reuse iterators.
 	//This is dangerous because of variable shadowing!
@@ -65,7 +65,7 @@ fn dynamic_arrays(){
 
 	arr2 = [?10]int
 	arr2:push(12)
-	printf("arr2.len = %d\n", arr2.len[0])
+	arr2 = [10]int
 	for v each [i] in arr2 printf("arr2[%d] = %d\n", i, v)
 }
 
@@ -80,6 +80,6 @@ fn main(){
 	//Uncomment to see the corresponding demo
 
 	// static_arrays()
-	// dynamic_arrays()
+	dynamic_arrays()
 	ret 0
 }

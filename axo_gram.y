@@ -116,6 +116,7 @@
 %token<str> ARROW_OP "->"
 %token<str> NONE_KWRD "none"
 %token<str> BYTE_LITERAL "byte literal"
+%token<str> SZ_OF_KWRD "sz_of"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -783,6 +784,15 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         }
         break;
     }
+  }
+  | "sz_of" '(' expr ')' {
+    const axo_typ_def* lu_def = axo_get_typ_def(state, "u64");
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .lval_kind = axo_not_lval_kind,
+      .val = fmtstr("sizeof(%s)", $3.val),
+      .typ = lu_def->typ
+    };
   }
   | arr_literal
   | incr_decr_op
