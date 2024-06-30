@@ -115,6 +115,7 @@
 %token<str> MODULE_KWRD "module"
 %token<str> ARROW_OP "->"
 %token<str> NONE_KWRD "none"
+%token<str> BYTE_LITERAL "byte literal"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -461,6 +462,7 @@ incr_decr_op : expr INCR_OP {
 expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
   | INTEGER_LITERAL {set_val(&$$, axo_int_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | FLOAT_LITERAL {set_val(&$$, axo_float_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | BYTE_LITERAL {set_val(&$$, axo_byte_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | "null" {
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,

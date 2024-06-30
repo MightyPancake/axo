@@ -1,7 +1,7 @@
 use std
 use io
 
-fn main(){
+fn static_arrays(){
 	//Uninitialzed static array
 	arr1 = [12]int
 
@@ -17,7 +17,6 @@ fn main(){
 
 	//Initialized static array of size 1
 	arr3 = [1,]
-
 
 	/*
 		Iteration syntax
@@ -46,7 +45,41 @@ fn main(){
 		}
 		printf("\n")
 	}
-	
+}
 
+fn dynamic_arrays(){
+	//Dynamic arrays: basic push/pop
+	arr1 = [?1,2,3]
+	printf("Before push: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+	arr1:push(4)
+	printf("After push: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+	arr1:pop()
+	arr1:pop()
+	printf("After 2 pops: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+
+	arr2 = [?10]int
+	arr2:push(12)
+	printf("arr2.len = %d\n", arr2.len[0])
+	for v each [i] in arr2 printf("arr2[%d] = %d\n", i, v)
+}
+
+fn print_modules(){
+	printf("Modules:\n")
+	for mod each [i] in modules {
+		printf("%d. %s\n", i, mod.name)
+	}
+}
+
+fn main(){
+	//Uncomment to see the corresponding demo
+
+	// static_arrays()
+	// dynamic_arrays()
 	ret 0
 }

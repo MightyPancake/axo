@@ -19,9 +19,9 @@ typedef char axo_arr_flags;
 #define AXO_ARR_FLAG_7 0x80
 
 typedef struct axo__arr{
+    void*           data;
     axo_arr_flags   flags;
     axo_arr_dim_t*  len;
-    void*           data;
 }axo__arr;
 
 #define AXO_ARR_CAP_FLAG ((char)(0x1F))

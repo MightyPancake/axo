@@ -161,6 +161,10 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     return STRUCT_LITERAL_START;
   }
 }
+'((\\[abfnrtv\\?'']|a)|(\\[0-7]{1,3})|(\\x[0-9A-Fa-f]+)|.)' {
+  ret_def;
+  return BYTE_LITERAL;
+}
 (\!|\+|\-|\*|\/|\(|\)|\=|\{|\}|\$|\,|\:|\>|\<|\.|\[|\]|\?|\_|\@|\%|\^|\||\;) {ret_def; return yytext[0]; }
 \n {axo_line(state)++; axo_col(state)=1;}
 \r ;
