@@ -1,12 +1,13 @@
 use std
 use io
 
+//Usually, you should include file.h here, but...
+int fn c_func(int a, int b);
+#source "file.c"
+#provided (int fn int, int) c_func
+
 fn main([][]byte args) {
-    arr = [?1,2,3]
-    defer arr:free()
-    for v in arr printf("%d, ", v)
-    printf("\nHello from %s%s - %d:%d%s\n",
-    aesc.blue, #file, #line, #column, aesc.reset)
+    printf("c_func(3,2)=%d\n", c_func(3,2))
     ret 0
 }
 

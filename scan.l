@@ -79,7 +79,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
     adv_loc;
     yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
   }
-
+"#source" {ret_null; return SOURCE_TAG; }
 "#provided" {ret_null; return PROVIDED_TAG; }
 "#typ" {ret_null; return TAG_TYP; }
 "#line" {ret_null; return LINE_TAG; }

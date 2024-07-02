@@ -46,6 +46,7 @@ struct YYLTYPE
 #define axo_modules_cap 16
 #define axo_switch_expr_list_cap 16
 #define axo_cases_cap 16
+#define axo_c_sources_cap 16
 
 #ifdef __WIN32
     #define AXO_BIN_EXT ".exe"
@@ -54,7 +55,6 @@ struct YYLTYPE
 #endif
 
 //Function declarations
-
 typedef enum axo_typ_kind{
     axo_simple_kind,
     axo_func_kind,
@@ -304,7 +304,7 @@ typedef struct axo_state{
     axo_typ_def*           int_def;
     axo_typ_def*           u32_def;
     axo_typ_def*           bool_def;
-    axo_typ_def*           float_def;
+    axo_typ_def*           f32_def;
     axo_typ_def*           byte_def;
     axo_typ_def*           str_def;
 
@@ -316,6 +316,8 @@ typedef struct axo_state{
     char*                  entry_point;
     char*                  output_file;
     char*                  output_c_file;
+    char**                 extra_c_sources;
+    int                    extra_c_sources_len;
 
     //Modules
     map                    modules;
@@ -338,7 +340,7 @@ typedef struct axo_state{
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)
 #define axo_u32_typ(STATE) (STATE->u32_def->typ)
-#define axo_float_typ(STATE) (STATE->float_def->typ)
+#define axo_float_typ(STATE) (STATE->f32_def->typ)
 #define axo_byte_typ(STATE) (STATE->byte_def->typ)
 #define axo_bool_typ(STATE) (STATE->bool_def->typ)
 #define axo_str_typ(STATE) (STATE->str_def->typ)

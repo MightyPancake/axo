@@ -121,6 +121,7 @@
 %token<str> LINE_TAG "#line"
 %token<str> COLUMN_TAG "#column"
 %token<str> FILE_TAG "#file"
+%token<str> SOURCE_TAG "#source"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -348,6 +349,19 @@ declaration : struct_def { //Fix! Make this use realloc less
   }
   | global_code_scope {
     $$ = (axo_decl){.val=axo_scope_code($global_code_scope)};
+  }
+  | "#source" STRING_LITERAL {
+      char* res = alloc_str(&($STRING_LITERAL[1]));
+      res[strlen($STRING_LITERAL)-2] = '\0';
+    if (axo_file_exists(res)){
+      char* resolved = axo_resolve_path(res);
+      // printf("Sourced '%s'\nResolved to: %s\n", res, resolved);
+      resize_dyn_arr_if_needed(char*, state->extra_c_sources, state->extra_c_sources_len, axo_c_sources_cap);
+      state->extra_c_sources[state->extra_c_sources_len++] = resolved;
+    }else{
+      yyerror(&@2, "File '%s' doesn't exist.", res);
+    }
+    $$ = (axo_decl){.val=fmtstr("//sourced %s", res)};
   }
   ;
 
@@ -1508,10 +1522,11 @@ func_typ : func_typ_start ')' {$$=$1;}
 
 val_typ : IDEN {
     const axo_typ_def* def = axo_get_typ_def(state, $1);
-    if (def==NULL)
+    if (def==NULL){
       yyerror(&@1, "Type '%s' isn't defined.", $1);
-    else
+    }else{
       $$=def->typ;
+    }
   }
   | '@' val_typ {
     $$.kind = axo_ptr_kind;
@@ -2201,7 +2216,12 @@ int main(int argc, char** argv) {
       int res = 1;
       switch(state->config.cc){
         case axo_gcc_cc_kind:
-          compiler_cmd = fmtstr("gcc %s -o %s -g", state->output_c_file, state->output_file);
+          compiler_cmd = fmtstr("gcc -o %s %s", state->output_file, state->output_c_file, state->output_c_file);
+          for (int i=0; i<state->extra_c_sources_len; i++){
+            strapnd(&compiler_cmd, " ");
+            strapnd(&compiler_cmd, state->extra_c_sources[i]);
+          }
+          printf("Compiling command:\n%s\n", compiler_cmd);
           res = system(compiler_cmd) >> 8;
           break;
         default:

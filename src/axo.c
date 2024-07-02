@@ -113,7 +113,7 @@ axo_state* axo_new_state(char* root_path){
     st->int_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="int", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="int", .cname="int"}, .def="0"}});
     st->u32_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="u32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="u32", .cname="unsigned"}, .def="0"}});
     st->bool_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="bool", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="bool", .cname="bool"}, .def="false"}});
-    st->float_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="f32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="f32", .cname="float"}, .def="0.0"}});
+    st->f32_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="f32", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="f32", .cname="float"}, .def="0.0"}});
     st->byte_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="byte", .typ=(axo_typ){.kind=axo_simple_kind, .simple=(axo_simple_t){.name="byte", .cname="char"}, .def="((char)0)"}});
     // st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_arr_kind, .arr=new_struct_lit_ptr(axo_arr_typ, axo_arr_typ*, ((axo_arr_typ){.subtyp=axo_byte_typ(st), .dim_count=1})), .def="\"\""}});
     st->str_def = axo_set_typ_def(NULL, st, (axo_typ_def){.name="AXO_STRING_TYP", .typ=(axo_typ){.kind=axo_ptr_kind, .def="\"\""}});
@@ -132,6 +132,8 @@ axo_state* axo_new_state(char* root_path){
     st->entry_point = NULL;
     st->output_file = NULL;
     st->output_c_file = NULL;
+    st->extra_c_sources = (char**)malloc(axo_c_sources_cap*sizeof(char*));
+    st->extra_c_sources_len = 0;
     //Modules
     st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
     st->module_names = NULL;
@@ -715,12 +717,9 @@ axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_
     }else{
         strcpy(str, filename);
     }
-    // printf("include %s\n", str);
-    // printf("Checking for '%s'\n", str);
     //Check local first
     bool exists = axo_file_exists(str);
     if (exists){
-      // printf("Found!\n");
       axo_new_source(st, str);
     }else{
       yyerror(loc, "Couldn't find '%s'.\n", str);
@@ -1533,17 +1532,13 @@ axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLT
 }
 
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2){
-    if (!axo_typ_eq(val1.typ, val2.typ)){
+    if (val1.typ.kind != axo_simple_kind || !axo_typ_eq(val1.typ, val2.typ)){
         yyerror(loc, "The '%s' operator cannot be used with %s and %s!", op, axo_typ_to_str(val1.typ), axo_typ_to_str(val2.typ));
         return;
-    }
-    if (is_simple_typ_eq(val1.typ, "int") || is_simple_typ_eq(val1.typ, "float")){
+    }else{
         dest->typ = val1.typ;
         asprintf(&(dest->val), "%s%s%s", val1.val, op, val2.val);
         dest->kind = axo_expr_normal_kind;
-    }else{
-        yyerror(loc, "The '%s' operator cannot be used with %s and %s!", op, axo_typ_to_str(val1.typ), axo_typ_to_str(val2.typ));
-        return;
     }
 }
 
