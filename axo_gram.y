@@ -118,6 +118,9 @@
 %token<str> BYTE_LITERAL "byte literal"
 %token<str> SZ_OF_KWRD "sz_of"
 %token<str> DEFER_KWRD "defer"
+%token<str> LINE_TAG "#line"
+%token<str> COLUMN_TAG "#column"
+%token<str> FILE_TAG "#file"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -793,6 +796,30 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .lval_kind = axo_not_lval_kind,
       .val = fmtstr("sizeof(%s)", $3.val),
       .typ = lu_def->typ
+    };
+  }
+  | "#line" {
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .lval_kind = axo_not_lval_kind,
+      .val = fmtstr("%d", @$.first_line),
+      .typ = axo_int_typ(state)
+    };
+  }
+  | "#column" {
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .lval_kind = axo_not_lval_kind,
+      .val = fmtstr("%d", @$.first_column),
+      .typ = axo_int_typ(state)
+    };
+  }
+  | "#file" {
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .lval_kind = axo_not_lval_kind,
+      .val = fmtstr("\"%s\"", axo_src_path(state)),
+      .typ = axo_str_typ(state)
     };
   }
   | arr_literal

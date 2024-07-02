@@ -5,7 +5,8 @@ fn main([][]byte args) {
     arr = [?1,2,3]
     defer arr:free()
     for v in arr printf("%d, ", v)
-    printf("\nHello world!\n")
+    printf("\nHello from %s%s - %d:%d%s\n",
+    aesc.blue, #file, #line, #column, aesc.reset)
     ret 0
 }
 

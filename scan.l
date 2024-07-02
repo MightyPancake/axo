@@ -82,6 +82,9 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 
 "#provided" {ret_null; return PROVIDED_TAG; }
 "#typ" {ret_null; return TAG_TYP; }
+"#line" {ret_null; return LINE_TAG; }
+"#column" {ret_null; return COLUMN_TAG; }
+"#file" {ret_null; return FILE_TAG; }
 "while" {ret_null; return WHILE_KWRD; }
 "switch" {ret_null; return SWITCH_KWRD; }
 "case" {ret_null; return CASE_KWRD; }
