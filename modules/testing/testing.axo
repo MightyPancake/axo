@@ -36,7 +36,7 @@ fn test_batch:add((int fn) func, @byte name){
 
 fn test_batch:run(){
 	printf("%sTesting '%s':%s\n", aesc.blue, self^.name, aesc.reset)
-	for each [i], test in self^.tests {
+	for test in self^.tests {
 		res = test.func()
 		if res == 0 {
 			self^.success_count++

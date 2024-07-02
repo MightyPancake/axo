@@ -24,7 +24,7 @@ fn hello(){
 }
 
 fn arg_test([][]byte args){
-  for each [i], arg in args
+  for arg each [i] in args
     printf("arg #%d: %s\n", i, arg.data)
   ret 0
 }

@@ -2,8 +2,10 @@ use std
 use io
 
 fn main([][]byte args) {
-    defer printf("lmao\n")
-    printf("Hello world!\n")
+    arr = [?1,2,3]
+    defer arr:free()
+    for v in arr printf("%d, ", v)
+    printf("\nHello world!\n")
     ret 0
 }
 
