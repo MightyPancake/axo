@@ -189,6 +189,7 @@ typedef enum axo_statement_kind{
     axo_var_is_decl_statement_kind,
     axo_expr_statement_kind,
     axo_switch_statement_kind,
+    axo_defer_statement_kind,
     axo_no_statement_kind
 }axo_statement_kind;
 
@@ -227,6 +228,7 @@ typedef struct axo_scope{
     
     void*          to_global;      //Pointer to global scope (for global scopes, else NULL)
     void*          parent_func;    //Pointer to the function (else NULL)
+    bool           defer_used;
 }axo_scope;
 
 typedef struct axo_scopes{
@@ -580,6 +582,7 @@ char* axo_get_code(axo_state* st);
 axo_scope* axo_new_scope(axo_scope* parent);
 void axo_add_statement(axo_scope* sc, axo_statement s);
 axo_statement axo_scope_to_statement(axo_scope* sc);
+char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt);
 char* axo_scope_code(axo_scope* sc);
 axo_scope* axo_scopes_top(axo_scopes* scopes);
 void axo_push_scope(axo_scopes* scopes, axo_scope* sc);

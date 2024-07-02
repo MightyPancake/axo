@@ -18,6 +18,7 @@ module(
 
 //Include axo types, functions and macros
 #include <stdbool.h>
+#include "./defer/defer.h"
 #include "./core.h"
 #include "./arr.h"
 include "./mod.axo"

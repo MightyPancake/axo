@@ -2,8 +2,8 @@ use std
 use io
 
 fn main([][]byte args) {
-    a = sz_of(0.(int))
-    printf("size of: %d\n", a)
+    defer printf("lmao\n")
+    printf("Hello world!\n")
     ret 0
 }
 

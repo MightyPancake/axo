@@ -103,6 +103,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "module" {ret_null; return MODULE_KWRD; }
 "none" {ret_null; return NONE_KWRD; }
 "sz_of" {ret_null; return SZ_OF_KWRD;}
+"defer" {ret_null; return DEFER_KWRD;}
 
 "or" {ret_null; return BIT_OR_OP; }
 "and" {ret_null; return BIT_AND_OP; }

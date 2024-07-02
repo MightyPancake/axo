@@ -857,7 +857,8 @@ axo_scope* axo_new_scope(axo_scope* parent){
         .parent = parent,
         .variables = new_map(axo_var, map_hash_vars, map_cmp_vars),
         .to_global = NULL,
-        .parent_func = parent ? parent->parent_func : NULL
+        .parent_func = parent ? parent->parent_func : NULL,
+        .defer_used = false
     };
     return sc;
 }
@@ -924,12 +925,23 @@ void axo_set_func(axo_state* st, axo_func fn){
 
 axo_statement axo_scope_to_statement(axo_scope* sc){
     axo_statement ret = (axo_statement){.kind=axo_scope_statement_kind};
-    ret.val = alloc_str("{");
+    ret.val = sc->defer_used ? alloc_str("{Deferral\n") : alloc_str("{\n");
     for (int i = 0; i<sc->statements_len; i++){
-        asprintf(&(ret.val), "%s\n%s", ret.val, sc->statements[i].val);
+        asprintf(&(ret.val), "%s\n%s", ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
     }
     strapnd(&(ret.val), "\n}");
     return ret;
+}
+
+char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt){
+    switch(stmnt.kind){
+        case axo_ret_statement_kind:
+            if (sc->defer_used) stmnt.val[0] = 'R';
+            break;
+        default:
+            break;
+    }
+    return stmnt.val;
 }
 
 char* axo_scope_code(axo_scope* sc){

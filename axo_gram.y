@@ -117,6 +117,7 @@
 %token<str> NONE_KWRD "none"
 %token<str> BYTE_LITERAL "byte literal"
 %token<str> SZ_OF_KWRD "sz_of"
+%token<str> DEFER_KWRD "defer"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -1056,6 +1057,13 @@ matching_statement : expr {
   }
   | switch_statement {
     $$ = axo_switch_to_statement($switch_statement);
+  }
+  | "defer" matching_statement {
+    top_scope->defer_used = true;
+    $$ = (axo_statement){
+      .kind=axo_defer_statement_kind,
+      .val=fmtstr("Defer({%s});", $2.val)
+    };
   }
   | matching_if_statement
   | matching_for_loop
