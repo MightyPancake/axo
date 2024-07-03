@@ -3,5 +3,5 @@
     #include "./asprintf.h"
     #include "./mem.h"
     #include "./str.h"
-    #include "./hashmap.h"
+    #include "./hashmap/hashmap.h"
 #endif

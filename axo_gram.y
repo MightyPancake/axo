@@ -117,6 +117,7 @@
 %token<str> NONE_KWRD "none"
 %token<str> BYTE_LITERAL "byte literal"
 %token<str> SZ_OF_KWRD "sz_of"
+%token<str> TYPE_SZ_KWRD "type_sz"
 %token<str> DEFER_KWRD "defer"
 %token<str> LINE_TAG "#line"
 %token<str> COLUMN_TAG "#column"
@@ -346,6 +347,7 @@ declaration : struct_def { //Fix! Make this use realloc less
       },
     };
     axo_set_typ_def(&@$, state, td);
+    $$ = (axo_decl){.val=fmtstr("//Recognized struct '%s'", $struct_def.name)};
   }
   | global_code_scope {
     $$ = (axo_decl){.val=axo_scope_code($global_code_scope)};
@@ -355,7 +357,6 @@ declaration : struct_def { //Fix! Make this use realloc less
       res[strlen($STRING_LITERAL)-2] = '\0';
     if (axo_file_exists(res)){
       char* resolved = axo_resolve_path(res);
-      // printf("Sourced '%s'\nResolved to: %s\n", res, resolved);
       resize_dyn_arr_if_needed(char*, state->extra_c_sources, state->extra_c_sources_len, axo_c_sources_cap);
       state->extra_c_sources[state->extra_c_sources_len++] = resolved;
     }else{
@@ -809,6 +810,15 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .kind = axo_expr_normal_kind,
       .lval_kind = axo_not_lval_kind,
       .val = fmtstr("sizeof(%s)", $3.val),
+      .typ = lu_def->typ
+    };
+  }
+  | "type_sz" '(' val_typ ')' {
+    const axo_typ_def* lu_def = axo_get_typ_def(state, "u64");
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .lval_kind = axo_not_lval_kind,
+      .val = fmtstr("sizeof(%s)", axo_typ_to_str($val_typ)),
       .typ = lu_def->typ
     };
   }
@@ -1673,9 +1683,9 @@ func_call_start : called_expr {
     if (axo_validate_rval(&@expr, $expr)) {
       axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
       if ($$.params_len <= fnt->args_len){
-        if (!axo_typ_eq(fnt->args_types[$$.params_len], $expr.typ))
+        if (!axo_typ_eq(fnt->args_types[$$.params_len], $expr.typ)){
           yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len]), $$.params_len+1, axo_typ_to_str($expr.typ));
-        else{
+        }else{
           resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
           $$.params[$$.params_len++] = $expr;
         }
@@ -2012,8 +2022,11 @@ func_arg : val_typ IDEN {
   | val_typ IDEN '=' expr {
     if (axo_none_check($val_typ))
       yyerror(&@val_typ, "Cannot declare a none variable.");
-    if (!axo_typ_eq($val_typ, $expr.typ))
-      yyerror(&@expr, "Default value doesn't match type.");
+    if (!axo_typ_eq($val_typ, $expr.typ)){
+      char* expected_type_str = alloc_str(axo_typ_to_str($val_typ));
+      yyerror(&@expr, "Default value of type '%s' doesn't match expected type '%s'.", axo_typ_to_str($expr.typ), expected_type_str);
+      free(expected_type_str);
+    }
     $$.name = alloc_str($IDEN);
     $$.typ = $1;
     $$.def = alloc_str($expr.val);

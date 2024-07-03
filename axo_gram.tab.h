@@ -106,17 +106,18 @@ extern int yydebug;
     NONE_KWRD = 307,               /* "none"  */
     BYTE_LITERAL = 308,            /* "byte literal"  */
     SZ_OF_KWRD = 309,              /* "sz_of"  */
-    DEFER_KWRD = 310,              /* "defer"  */
-    LINE_TAG = 311,                /* "#line"  */
-    COLUMN_TAG = 312,              /* "#column"  */
-    FILE_TAG = 313,                /* "#file"  */
-    SOURCE_TAG = 314,              /* "#source"  */
-    IDENTIFIER_PREC = 315,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 316,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 317,               /* LOOP_PREC  */
-    UMINUS = 318,                  /* UMINUS  */
-    CALL_PREC = 319,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 320   /* STRUCT_LIT_NAMED_FIELD  */
+    TYPE_SZ_KWRD = 310,            /* "type_sz"  */
+    DEFER_KWRD = 311,              /* "defer"  */
+    LINE_TAG = 312,                /* "#line"  */
+    COLUMN_TAG = 313,              /* "#column"  */
+    FILE_TAG = 314,                /* "#file"  */
+    SOURCE_TAG = 315,              /* "#source"  */
+    IDENTIFIER_PREC = 316,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 317,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 318,               /* LOOP_PREC  */
+    UMINUS = 319,                  /* UMINUS  */
+    CALL_PREC = 320,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 321   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -125,7 +126,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 173 "axo_gram.y"
+#line 174 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -152,7 +153,7 @@ union YYSTYPE
   axo_switch_case case_type;
   axo_switch switch_type;
 
-#line 156 "axo_gram.tab.h"
+#line 157 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

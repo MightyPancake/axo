@@ -120,10 +120,10 @@ axo_state* axo_new_state(char* root_path){
     st->str_def->typ.subtyp = &axo_byte_typ(st);
     //Other types
     axo_new_numeric_typ(st, "f64", "double", "0.0");
-    axo_new_numeric_typ(st, "i16", "short int", "0");
-    axo_new_numeric_typ(st, "i64", "long long int", "0");
-    axo_new_numeric_typ(st, "u16", "short unsigned", "0");
-    axo_new_numeric_typ(st, "u64", "long unsigned", "0");
+    axo_new_numeric_typ(st, "i16", "int16_t", "0");
+    axo_new_numeric_typ(st, "i64", "int64_t", "0");
+    axo_new_numeric_typ(st, "u16", "uint16_t", "0");
+    axo_new_numeric_typ(st, "u64", "uint64_t", "0");
     //File related
     st->root_path = root_path;
     st->sources = NULL;
@@ -962,9 +962,7 @@ char* axo_err_msg(axo_err_code err_code){
   return "Invalid error code!";
 }
 
-char* axo_typ_to_str(axo_typ typ){
-    char* ret = (char[1024]){};
-    char* func_ret = (char[1024]){};
+char* axo_type_str(axo_typ typ, char* ret){
     axo_func_typ fnt;
     int i;
     char dim_stars[128];
@@ -974,13 +972,13 @@ char* axo_typ_to_str(axo_typ typ){
             break;
         case axo_func_kind:
             fnt = *((axo_func_typ*)(typ.func_typ));
-            func_ret = fmt_str(func_ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
+            ret = fmt_str(ret, "(%s fn ", axo_typ_to_str(fnt.ret_typ));
             for (int i=0; i<fnt.args_len; i++){
-                if (i>0) strcat(func_ret, ",");
-                strcat(func_ret, axo_typ_to_str(fnt.args_types[i]));
+                if (i>0) strcat(ret, ",");
+                strcat(ret, axo_typ_to_str(fnt.args_types[i]));
             }
-            strcat(func_ret, ")");
-            return func_ret;
+            strcat(ret, ")");
+            return ret;
             break;
         case axo_c_arg_list_kind:
             return "...";
@@ -1219,7 +1217,7 @@ axo_typ axo_clean_typ(axo_typ typ){
 char* axo_get_code(axo_state* st){
     //Generate rest of the code
     //Load args
-    char* ret = empty_str;
+    char* ret = alloc_str("");
     st->decls[st->modules_decl].val = axo_generate_modules(st);
     // strapnd(&ret, "axo_load_args(args);\n");
     for (int i = 0; i<st->decls_len; i++){
@@ -1431,7 +1429,10 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return !(strcmp(((axo_struct*)(t1.structure))->name, ((axo_struct*)(t2.structure))->name)); break;
         case axo_ptr_kind:
-            return axo_typ_eq(*((axo_typ*)(t1.subtyp)), *((axo_typ*)(t2.subtyp)));
+            axo_typ* subtyp1 = axo_subtyp(t1);
+            axo_typ* subtyp2 = axo_subtyp(t2);
+            if (subtyp1->kind==axo_none_kind || subtyp2->kind==axo_none_kind) return true;
+            return axo_typ_eq(*subtyp1, *subtyp2);
         case axo_arr_kind:
             a1 = axo_get_arr_typ(t1);
             a2 = axo_get_arr_typ(t2);

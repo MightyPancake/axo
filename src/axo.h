@@ -630,7 +630,8 @@ char* axo_get_arr_name_typ_decl(axo_typ typ, char* name, int sz);
 axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td);
 const axo_typ_def* axo_get_typ_def(axo_state* st, char* name);
 char* axo_get_typ_default(axo_typ typ);
-char* axo_typ_to_str(axo_typ typ);
+char* axo_type_str(axo_typ typ, char* dest);
+#define axo_typ_to_str(T) axo_type_str(T, (char[1024]){'\0'})
 char* axo_c_arr_of_typ(axo_typ typ, char* inside);
 bool axo_is_typ_prim(axo_typ t);
 char* axo_prim_typ_to_c_str(axo_typ t);

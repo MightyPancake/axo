@@ -1,13 +1,10 @@
 use std
 use io
-
-//Usually, you should include file.h here, but...
-int fn c_func(int a, int b);
-#source "file.c"
-#provided (int fn int, int) c_func
+use hashmaps
 
 fn main([][]byte args) {
-    printf("c_func(3,2)=%d\n", c_func(3,2))
+    printf("Hello\n")
+    // my_map = hashmaps.new()
     ret 0
 }
 
