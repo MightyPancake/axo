@@ -1,0 +1,15 @@
+module(
+  name: "tim"
+  author: "mightypancake"
+  description: "Provides basic time functionality."
+)
+
+#typ time_t
+
+#include <time.h>
+
+#register int time(@time_t)
+
+fn tim.now(){
+  ret time(null.(@time_t))
+}

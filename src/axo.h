@@ -7,6 +7,9 @@ typedef struct hashmap* map;
     #include <windows.h>
 #elif __linux__
     #include <unistd.h>
+#elif __EMSCRIPTEN__
+    #include <emscripten.h>
+    #include <emscripten/html5.h>
 #endif
 
 #include <stdbool.h>
@@ -275,7 +278,16 @@ typedef struct axo_source{
     long             pos;
     int              line;
     int              col;
+    int              index;
 }axo_source;
+
+#define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
+#define axo_line(ST) (axo_source(ST)->line)
+#define axo_col(ST) (axo_source(ST)->col)
+#define axo_pos(ST) (axo_source(ST)->pos)
+#define axo_src_path(ST) (axo_source(ST)->path)
+#define axo_src_file(ST) (axo_source(ST)->file)
+#define axo_src_index(ST) (axo_source(ST)->index)
 
 typedef struct axo_module{
     char*        name;
@@ -291,14 +303,14 @@ typedef struct axo_module{
 }axo_module;
 
 typedef struct axo_state{
-    axo_decl*              decls;
-    int                    decls_len;
-    axo_scope*             global_scope;
-    axo_scope**            scopes_table;
+    axo_decl*              decls;            //Declarations
+    int                    decls_len;        //Length of declarations
+    axo_scope*             global_scope;     //Global scope
+    axo_scope**            scopes_table;     //All scopes
     
-    map                    types_def;
+    map                    types_def;        //Type definitions
     
-    axo_compiler_config    config;
+    axo_compiler_config    config;           //Config from file
 
     //Default types
     axo_typ_def*           int_def;
@@ -309,15 +321,18 @@ typedef struct axo_state{
     axo_typ_def*           str_def;
 
     //File related
-    char*                  root_path;
-    axo_source*            sources;
-    int                    sources_len;
-    char*                  entry_file;
-    char*                  entry_point;
-    char*                  output_file;
-    char*                  output_c_file;
-    char**                 extra_c_sources;
-    int                    extra_c_sources_len;
+    char*                  orig_cwd;            //Original working directory
+    char*                  root_path;           //Compiler root path (compiler's parent dir)
+    axo_source*            sources;             //Code sources
+    int                    sources_len;         //Code sources length
+    char*                  entry_file;          //Path to entry file (NULL if none)
+    char*                  entry_point;         //Entry point (function name), defaults to axo__main
+    char*                  output_file;         //Binary output path
+    char*                  output_c_file;       //C output path (deleted by default)
+    char**                 extra_c_sources;     //Sources pointed by #source directive
+    int                    extra_c_sources_len; //Length of extra C sources
+    char*                  input_str;           //Input string (defaults to NULL)
+    int                    input_str_index;
 
     //Modules
     map                    modules;
@@ -331,12 +346,6 @@ typedef struct axo_state{
 }axo_state;
 
 #define axo_col_sup(ST) (ST->config.color_support)
-
-#define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
-#define axo_line(ST) (axo_source(ST)->line)
-#define axo_col(ST) (axo_source(ST)->col)
-#define axo_pos(ST) (axo_source(ST)->pos)
-#define axo_src_path(ST) (axo_source(ST)->path)
 
 #define axo_int_typ(STATE) (STATE->int_def->typ)
 #define axo_u32_typ(STATE) (STATE->u32_def->typ)
@@ -530,6 +539,8 @@ typedef enum axo_action_assign_op{
 #define axo_terminal_link(LINK, TEXT) "\e]8;;"LINK"\a"TEXT"\e]8;;\a"
 #define axo_terminal_blink(TEXT) "\033[5m"TEXT"\033[0m"
 
+#define axo_basic_col_sup(ST) (!((ST)->config->color_support != axo_no_color_support_kind))
+
 //Function declarations
 
 //Hashmap helpers
@@ -575,6 +586,7 @@ int asprintf(char **strp, const char *format, ...);
 axo_state* axo_new_state(char* root_path);
 void axo_add_decl(axo_state* st, axo_decl d);
 void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg);
+void axo_load_cfg(axo_state* st);
 void axo_print_config(axo_state* st);
 int axo_info_cmd(axo_state* st, int argc, char** argv);
 int axo_set_cmd(axo_state* st, int argc, char** argv);
@@ -598,8 +610,11 @@ char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr);
 
 //Sources
 void axo_new_source(axo_state* st, char* path);
+void axo_new_string_source(axo_state* st, char* code);
 void axo_pop_source(axo_state* st);
+void axo_switch_source(axo_source* src);
 axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit);
+void axo_set_input_string(const char *str);
 
 //Modules
 axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name);
@@ -696,7 +711,7 @@ char* axo_resolve_path(char* filename);
 int axo_chdir(char* path);
 char* axo_get_exec_path(char* buf, int sz) ;
 char* axo_cwd(char* dest, size_t sz);
-char* axo_get_parent_dir(char* path) ;
+char* axo_get_parent_dir(char* path);
 
 //Deprecated/shouldn't be used (will have to replace them)
 void set_val(axo_expr* dest, axo_typ typ, char* val);

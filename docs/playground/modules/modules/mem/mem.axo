@@ -1,0 +1,21 @@
+module(
+	name: "mem"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Memory module"
+)
+
+#provided (@none fn size_t) malloc
+#provided (fn @none) free
+
+fn mem.alc(size_t sz){
+	ret malloc(sz)
+}
+
+fn mem.free(@none ptr){
+	free(ptr)
+	ret 0
+}

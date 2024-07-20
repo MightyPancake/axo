@@ -1,0 +1,14 @@
+module(
+	// name: "math"
+	author: "mightypancake"
+)
+
+#include <math.h>
+
+math.pi|f32 = 3.14
+
+fn math.sin(f32 x){
+	//To be fixed
+	ret 0.0
+}
+

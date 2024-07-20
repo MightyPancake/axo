@@ -26,6 +26,8 @@ fn main([][]byte args){
     |Argument #3: !
 ```
 
+Why don't you [try it out](https://axolang.com/playground/playground.html)?
+
 <div style="text-align: center;">
     <img src="images/axo_coding.png" alt="axo playing with c" width="35%"/>
 </div>

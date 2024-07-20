@@ -1,7 +1,14 @@
 %{
   #define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc)
+  #define YY_BUF_SIZE 16384
   #include "src/utils/utils.h"
   #include "src/axo.h"
+  YYLTYPE yylloc = (YYLTYPE){
+    .first_line = 1,
+    .first_column = 1,
+    .last_line = 1,
+    .last_column = 1
+  };
   
   extern int prog_return;
   extern axo_state* state;
@@ -10,6 +17,30 @@
   int yywrap(void);
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
   void yyerror(YYLTYPE* loc, const char * fmt, ...);
+  void axo_set_input_string(const char *str) {
+      yy_switch_to_buffer(yy_scan_string(state->input_str));
+  }
+
+    #define YY_INPUT(buf, result, max_size) \
+    { \
+        char* str = axo_src_path(state); \
+        if (axo_src_file(state)) { \
+            if ((result = fread(buf, 1, max_size, yyin)) < 0) \
+              YY_FATAL_ERROR("input in flex scanner failed"); \
+        } else { \
+            if (!str) { \
+                YY_FATAL_ERROR("input string not properly initialized"); \
+                result = YY_NULL; \
+            } else { \
+                int LEN = strlen(str + axo_src_index(state)); \
+                result = max_size > LEN ? LEN : max_size; \
+                if (result>0){ \
+                  memcpy(buf, str + axo_src_index(state), result); \
+                } \
+                axo_src_index(state) += result; \
+            } \
+        } \
+  }
 
   void bin_to_hex_lit(char *bin, int len) {
     char hex_char[17] = "0123456789ABCDEF";
@@ -90,6 +121,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "case" {ret_null; return CASE_KWRD; }
 "enum" {ret_null; return ENUM_KWRD; }
 "ret" {ret_null; return RET_KWRD; }
+"const" {ret_null; return CONST_KWRD; }
 "break" {ret_null; return BREAK_KWRD; }
 "continue" {ret_null; return CONTINUE_KWRD; }
 "fn" {ret_null; return FN_KWRD; }
