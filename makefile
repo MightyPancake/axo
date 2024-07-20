@@ -1,29 +1,52 @@
-CC=gcc
+CC = gcc
+
+ifeq ($(OS), Windows_NT)
+	SHOW_FILE_CMD = type
+	CLEAR_CMD = cls
+	RM_CMD = del
+	TARGET_EXT = .exe
+else
+	SHOW_FILE_CMD = bat
+	CLEAR_CMD = clear
+	RM_CMD = rm
+	TARGET_EXT = 
+endif
+
+default: build
 
 compile:
-	gcc axo_gram.tab.c lex.yy.c  -o axo.exe -Wall
-	@echo "[92mCompiler built![0m"
+	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
+	@echo [92mCompiler built![0m
 
 build:
-	@echo "[96mGenerating lexer...[0m"
-	flex -l scan.l
-	@echo "[96mGenerating parser...[0m"
-	bison --defines axo_gram.y -Wcounterexamples -Wconflicts-rr
-	@echo "[94mBuilding the compiler... [0m"
+	@echo [96mGenerating lexer...[0m
+	@flex -l scan.l
+	@echo [96mGenerating parser...[0m
+	@bison -v --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	@echo [94mBuilding the compiler... [0m
 	@make -s compile
 
 run:
-	clear
+	$(CLEAR_CMD)
 	@make -s build
-	@bat test.axo
-	@./axo.exe test.axo
-	@bat test.c
-	@echo "[92mRunning output program...[0m"
-	@./test.exe
+	@$(SHOW_FILE_CMD) test.axo
+	@./axo$(TARGET_EXT) test.axo
+	@$(SHOW_FILE_CMD) test.c
+	@echo [92mRunning output program...[0m
+	@./test$(TARGET_EXT)
 	@make -s clean
+	
+show:
+	@make -s build
+	@$(SHOW_FILE_CMD) test.axo
+	@$(SHOW_FILE_CMD) test.c
 
 clean:
-	@rm axo.exe
-	@rm test.c
-	@rm test.exe
+	@$(RM_CMD) axo$(TARGET_EXT)
+	@$(RM_CMD) test.c
+	@$(RM_CMD) test$(TARGET_EXT)
+	
+debug_test:
+	@make -s build
+	valgrind --track-origins=yes axo test.axo
 

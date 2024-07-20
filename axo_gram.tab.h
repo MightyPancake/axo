@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -63,29 +63,61 @@ extern int yydebug;
     CONTINUE_KWRD = 264,           /* "continue"  */
     C_INCLUDE_LOCAL = 265,         /* "#include 'local_file'"  */
     C_INCLUDE = 266,               /* "#include"  */
-    C_REGISTER = 267,              /* "#register"  */
-    FN_KWRD = 268,                 /* "fn"  */
-    WHILE_KWRD = 269,              /* "while"  */
-    FOR_KWRD = 270,                /* "for"  */
-    IF_KWRD = 271,                 /* "if"  */
-    ELSE_KWRD = 272,               /* "else"  */
-    EQ_OP = 273,                   /* "=="  */
-    INEQ_OP = 274,                 /* "!="  */
-    EQ_SMLR_OP = 275,              /* ">="  */
-    EQ_GRTR_OP = 276,              /* "<="  */
-    TILL_KWRD = 277,               /* "till"  */
-    INCR_OP = 278,                 /* "++"  */
-    DECR_OP = 279,                 /* "--"  */
-    ENUM_KWRD = 280,               /* "enum"  */
-    STRUCT_KWRD = 281,             /* "struct"  */
-    STRUCT_LITERAL_START = 282,    /* "struct{"  */
-    DOT_FIELD = 283,               /* ".field"  */
-    ARROW_OP = 284,                /* "->"  */
-    IS_KWRD = 285,                 /* "is"  */
-    IDENTIFIER_PREC = 286,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 287,       /* EXPR_AS_STATEMENT  */
-    UMINUS = 288,                  /* UMINUS  */
-    STRUCT_LIT_NAMED_FIELD = 289   /* STRUCT_LIT_NAMED_FIELD  */
+    TAG_TYP = 267,                 /* "#typ"  */
+    PROVIDED_TAG = 268,            /* "#provided"  */
+    FN_KWRD = 269,                 /* "fn"  */
+    WHILE_KWRD = 270,              /* "while"  */
+    SWITCH_KWRD = 271,             /* "switch"  */
+    CASE_KWRD = 272,               /* "case"  */
+    FOR_KWRD = 273,                /* "for"  */
+    EACH_KWRD = 274,               /* "each"  */
+    IN_KWRD = 275,                 /* "in"  */
+    IF_KWRD = 276,                 /* "if"  */
+    ELSE_KWRD = 277,               /* "else"  */
+    EQ_OP = 278,                   /* "=="  */
+    INEQ_OP = 279,                 /* "!="  */
+    EQ_SMLR_OP = 280,              /* ">="  */
+    EQ_GRTR_OP = 281,              /* "<="  */
+    BIT_OR_OP = 282,               /* "or"  */
+    BIT_AND_OP = 283,              /* "and"  */
+    LOGICAL_OR_OP = 284,           /* "||"  */
+    LOGICAL_AND_OP = 285,          /* "&&"  */
+    LEFT_SHIFT_OP = 286,           /* "<<"  */
+    RIGHT_SHIFT_OP = 287,          /* ">>"  */
+    TILL_KWRD = 288,               /* "till"  */
+    NULL_KWRD = 289,               /* "null"  */
+    INCR_OP = 290,                 /* "++"  */
+    DECR_OP = 291,                 /* "--"  */
+    ASSIGN_ADD = 292,              /* "+="  */
+    ASSIGN_SUB = 293,              /* "-="  */
+    ASSIGN_MUL = 294,              /* "*="  */
+    ASSIGN_DIV = 295,              /* "/="  */
+    ASSIGN_MOD = 296,              /* "%="  */
+    ASSIGN_AND_CALL_ERROR = 297,   /* "?="  */
+    WALRUS_OP = 298,               /* ":="  */
+    ENUM_KWRD = 299,               /* "enum"  */
+    STRUCT_KWRD = 300,             /* "struct"  */
+    USE_KWRD = 301,                /* "use"  */
+    INCLUDE_KWRD = 302,            /* "include"  */
+    STRUCT_LITERAL_START = 303,    /* "struct{"  */
+    DOT_FIELD = 304,               /* ".field"  */
+    MODULE_KWRD = 305,             /* "module"  */
+    ARROW_OP = 306,                /* "->"  */
+    NONE_KWRD = 307,               /* "none"  */
+    BYTE_LITERAL = 308,            /* "byte literal"  */
+    SZ_OF_KWRD = 309,              /* "sz_of"  */
+    TYPE_SZ_KWRD = 310,            /* "type_sz"  */
+    DEFER_KWRD = 311,              /* "defer"  */
+    LINE_TAG = 312,                /* "#line"  */
+    COLUMN_TAG = 313,              /* "#column"  */
+    FILE_TAG = 314,                /* "#file"  */
+    SOURCE_TAG = 315,              /* "#source"  */
+    IDENTIFIER_PREC = 316,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 317,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 318,               /* LOOP_PREC  */
+    UMINUS = 319,                  /* UMINUS  */
+    CALL_PREC = 320,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 321   /* STRUCT_LIT_NAMED_FIELD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -94,17 +126,17 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 111 "axo_gram.y"
+#line 174 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
   axo_scope* scope;
   axo_expr expression;
+  axo_decl declaration_type;
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
   axo_typ typ_type;
-  axo_types_list types_list;
   axo_for_loop for_loop_type;
   axo_till_loop till_loop_type;
   axo_enum enum_type;
@@ -112,10 +144,16 @@ union YYSTYPE
   axo_struct struct_type;
   axo_struct_val struct_val_type;
   axo_identifier identifier_type;
-  axo_stat_arr_val stat_arr_val_type;
-  axo_stat_arr_init stat_arr_init_type;
+  axo_arr_lit arr_lit_type;
+  axo_empty_arr_lit empty_arr_lit_type;
+  axo_index_access index_access_type;
+  axo_each_loop each_loop_type;
+  axo_module module_type;
+  bool bool_type;
+  axo_switch_case case_type;
+  axo_switch switch_type;
 
-#line 119 "axo_gram.tab.h"
+#line 157 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -139,6 +177,8 @@ struct YYLTYPE
 
 
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_AXO_GRAM_TAB_H_INCLUDED  */

@@ -1,9 +1,10 @@
-#include <stdio.h>
-#register int printf(char*, ...)
+use std
+use io
+use hashmaps
 
-fn main(){
-    a = 1
-    printf("%d\n", (a<3 ? 42 : 10))
+fn main([][]byte args) {
+    printf("Hello\n")
+    // my_map = hashmaps.new()
     ret 0
 }
 

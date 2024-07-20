@@ -1,0 +1,11 @@
+/*
+
+    AXO_TEST
+
+*/
+
+struct axo_test (
+    @byte name,        //Name of the given test
+    (bool fn) func     //Function to be run to determine if it passes
+)
+

@@ -1,0 +1,39 @@
+use std
+use testing
+
+fn test1(){
+  ret 0
+}
+
+fn test2(){
+  a = 1
+  b = (123.456).(int)
+  c = a + b
+  ptr = a@
+  ptr^ = 12
+  ret a == 12 ? 0 : 1
+}
+
+fn test3(){
+  ret 1
+}
+
+fn hello(){
+  printf("Hello!\n")
+  ret 0
+}
+
+fn arg_test([][]byte args){
+  for arg each [i] in args
+    printf("arg #%d: %s\n", i, arg.data)
+  ret 0
+}
+
+fn main([][]byte args){
+  batch = testing.new(args[0].data)
+  batch:add(test1, "test1")
+  batch:add(test2, "test2")
+  batch:add(test3, "test3")
+  ret batch:run()
+}
+

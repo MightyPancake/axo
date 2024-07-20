@@ -1,0 +1,85 @@
+use std
+use io
+
+fn static_arrays(){
+	//Uninitialzed static array
+	arr1 = [12]int
+
+	//Initialized static array (type is inferred)
+	arr2 = [3|3][
+		0,0,0,
+		1,1,1,
+		2,4,7
+	]
+	
+	//Initialized 1D array
+	arr3 = [0,5,2,3,4]
+
+	//Initialized static array of size 1
+	arr3 = [12,]
+
+	/*
+		Iteration syntax
+	*/
+	arr = [3|3][
+		1,2,3,
+		2,4,6,
+		3,6,9
+	]
+
+	// for val in arr
+	// 	printf("val: %d\n", val)
+
+	// for each [x|y] in arr
+	// 	printf("%d:%d\n", x, y)
+
+	// for val each [x|y] in arr
+	// 	printf("arr[%d|%d]=%d\n", x, y, val)
+
+	//Smart enough to reuse iterators.
+	//This is dangerous because of variable shadowing!
+	//However, having shadowed variables is bad anyways.
+	for each [x|] in arr {
+		for v each [x|y] in arr {
+			printf("%d, ", v)
+		}
+		printf("\n")
+	}
+}
+
+fn dynamic_arrays(){
+	//Dynamic arrays: basic push/pop
+	arr1 = [?1,2,3]
+	printf("Before push: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+	arr1:push(4)
+	printf("After push: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+	arr1:pop()
+	arr1:pop()
+	printf("After 2 pops: ")
+	for v in arr1 printf("%d, ", v)
+	printf("\n")
+
+	arr2 = [?10]int
+	arr2:push(12)
+	arr2 = [10]int
+	for v each [i] in arr2 printf("arr2[%d] = %d\n", i, v)
+}
+
+fn print_modules(){
+	printf("Modules:\n")
+	for mod each [i] in modules {
+		printf("%d. %s\n", i, mod.name)
+	}
+}
+
+fn main(){
+	//Uncomment to see the corresponding demo
+
+	// static_arrays()
+	dynamic_arrays()
+	ret 0
+}
