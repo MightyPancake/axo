@@ -1,0 +1,51 @@
+module(
+	name: "testing"
+	prefix: "test_"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "Apache 2.0"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "A module for writing tests."
+)
+
+struct tested_func (
+	@byte				name,
+	(int fn)		func
+)
+
+struct test_batch (
+	@byte						name,
+	[]tested_func		tests,
+	u32							success_count
+)
+
+fn testing.new(@byte name){
+	r = test_batch{
+		name=name,
+		tests=[?0]tested_func,
+		success_count=(0).(u32)
+	}
+	ret r
+}
+
+fn test_batch:add((int fn) func, @byte name){
+	self^.tests:push(tested_func{func=func, name=name})
+	ret 0
+}
+
+fn test_batch:run(){
+	printf("%sTesting '%s':%s\n", aesc.blue, self^.name, aesc.reset)
+	for test in self^.tests {
+		res = test.func()
+		if res == 0 {
+			self^.success_count++
+			printf("%s%s passed.%s\n", aesc.green, test.name, aesc.reset)
+		} else {
+			printf("%s%s failed, returned %d%s\n", aesc.red, test.name, res, aesc.reset)
+		}
+	}
+	printf("%sTest results: %d/%d%s\n", aesc.blue, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
+	ret self^.success_count.(int) == self^.tests.len[0] ? 0 : 1
+}
+

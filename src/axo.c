@@ -10,8 +10,6 @@
 #include "./axo.h"
 #include "./asciiart.h" //ASCII art for the mascot!
 
-//YYLEX
-extern FILE *yyin;
 void yyrestart(FILE*);
 
 long long int axo_easter_msg1[] = {2334956330867777876, 2338060278192697204, 8243113893085146979, 8297728800164421695, 7237125614924164640, 2339460887010487854, 7594793506165449313, 8030798189137847406, 7954880256880436589, 7310595013176488804, 2188385};
@@ -54,6 +52,7 @@ char* fmtstr(const char fmt[], ...){
 }
 
 char* axo_get_typ_default(axo_typ typ){
+    axo_typ err_t;
     if (typ.def != NULL) return (char*)(typ.def);
     switch(typ.kind){
         case axo_arr_kind:
@@ -63,7 +62,7 @@ char* axo_get_typ_default(axo_typ typ){
             return "NULL";
             break;
         case axo_ptr_kind:
-            axo_typ err_t = (axo_typ){.kind=axo_struct_kind, .structure=&(axo_struct){.name="error"}};
+            err_t = (axo_typ){.kind=axo_struct_kind, .structure=&(axo_struct){.name="error"}};
             return (axo_typ_eq(err_t, *axo_subtyp(typ))) ? "errptr" : "NULL";
             break;
         case axo_c_arg_list_kind:
@@ -93,7 +92,6 @@ char* axo_file_to_str(char* path){
     if (!(str && file)) return (char*)NULL;
     return str;
 }
-
 
 axo_state* axo_new_state(char* root_path){
     new_ptr_one(st, axo_state);
@@ -134,6 +132,8 @@ axo_state* axo_new_state(char* root_path){
     st->output_c_file = NULL;
     st->extra_c_sources = (char**)malloc(axo_c_sources_cap*sizeof(char*));
     st->extra_c_sources_len = 0;
+    st->input_str = NULL;
+    st->input_str_index = 0;
     //Modules
     st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
     st->module_names = NULL;
@@ -142,6 +142,23 @@ axo_state* axo_new_state(char* root_path){
     st->silenced = false;
     st->run = false;
     return st;
+}
+
+void axo_load_cfg(axo_state* st){
+    #ifdef __EMSCRIPTEN__
+        st->config = (axo_compiler_config){
+            .cc=axo_gcc_cc_kind,
+            .keep_c=false,
+            .timer=false,
+            .bug_hunter=false,
+            .color_support=axo_no_color_support_kind,
+            .extended_ascii=false
+        };
+    #else
+        size_t cfg_sz;
+        axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes(fmt_str((char[axo_max_path_len]){}, "%s"axo_dir_sep"axo.config", st->root_path), &cfg_sz);
+        st->config = *cfg;
+    #endif
 }
 
 #define skip_arg ({ \
@@ -182,6 +199,13 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
                 st->output_file = alloc_str(arg);
             else
                 yyerror(NULL, "Cannot set output file name to '%s' after it was already set to '%s'.", arg, st->output_file);
+        }else if (strcmp(arg, "-i")==0){ //Get input from argument
+            next_arg;
+            if (st->input_str == NULL){
+                st->input_str = alloc_str(arg);
+            }else{
+                yyerror(NULL, "Multiple string inputs.");
+            }
         }else if (strcmp(arg, "-oc")==0){ //Set output c file name
             next_arg;
             if (st->output_c_file == NULL)
@@ -686,13 +710,31 @@ void axo_new_source(axo_state* st, char* path){
     //ERROR
     src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
     src->file = fopen(src->path, "rb");
+    src->index = 0;
     src->pos = 0;
     src->line = 1;
     src->col = 1;
     axo_chdir(src->parent_dir);
-    if (!(src->file))
-        perror("fopen");
     yyrestart(src->file);
+    st->sources_len++;
+    if (!(src->file)){
+        fprintf(stderr, "fopen('%s') error: ", path);
+        perror("");
+    }
+}
+
+void axo_new_string_source(axo_state* st, char* code){
+    resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
+    axo_source* src = &(st->sources[st->sources_len]);
+    src->path = alloc_str(code);
+    src->index = 0;
+    src->parent_dir = alloc_str(axo_cwd((char[1024]){}, 1024));
+    src->file = NULL;
+    src->pos = 0;
+    src->line = 1;
+    src->col = 1;
+    axo_chdir(src->parent_dir);
+    // yyrestart(src->file);
     st->sources_len++;
 }
 
@@ -700,17 +742,24 @@ void axo_pop_source(axo_state* st){
     st->sources_len--;
     if (st->sources_len>0){
         axo_source* src = &(st->sources[st->sources_len-1]);
-        fseek(src->file, src->pos, SEEK_SET);
-        axo_chdir(src->parent_dir);
-        yyrestart(src->file);
-        // printf("switching to '%s':%ld\n", src->path, ftell(yyin));
+        axo_switch_source(src);
     }else{
         printf("all sources ended. (this should never happen)\n");
     }
 }
 
+void axo_switch_source(axo_source* src){
+    axo_chdir(src->parent_dir);
+    if (src->file){
+        fseek(src->file, src->pos, SEEK_SET);
+        yyrestart(src->file);
+    }else{
+        src->index = src->pos;
+    }
+}
+
 axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit){
-    char str[axo_max_path_len];
+    char str[axo_max_path_len] = "";
     if (str_lit){
         strcpy(str, &(filename[1]));
         str[strlen(str)-1] = '\0';
@@ -924,7 +973,7 @@ void axo_set_func(axo_state* st, axo_func fn){
 
 axo_statement axo_scope_to_statement(axo_scope* sc){
     axo_statement ret = (axo_statement){.kind=axo_scope_statement_kind};
-    ret.val = sc->defer_used ? alloc_str("{Deferral\n") : alloc_str("{\n");
+    ret.val = sc->defer_used ? alloc_str("{Deferral") : alloc_str("{");
     for (int i = 0; i<sc->statements_len; i++){
         asprintf(&(ret.val), "%s\n%s", ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
     }
@@ -1423,14 +1472,16 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     axo_arr_typ a1, a2;
     axo_func_typ* fnt1;
     axo_func_typ* fnt2;
+    axo_typ* subtyp1;
+    axo_typ* subtyp2;
     switch(t1.kind){
         case axo_none_kind: return true; break;
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return !(strcmp(((axo_struct*)(t1.structure))->name, ((axo_struct*)(t2.structure))->name)); break;
         case axo_ptr_kind:
-            axo_typ* subtyp1 = axo_subtyp(t1);
-            axo_typ* subtyp2 = axo_subtyp(t2);
+            subtyp1 = axo_subtyp(t1);
+            subtyp2 = axo_subtyp(t2);
             if (subtyp1->kind==axo_none_kind || subtyp2->kind==axo_none_kind) return true;
             return axo_typ_eq(*subtyp1, *subtyp2);
         case axo_arr_kind:
@@ -1581,6 +1632,9 @@ unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii){
 }
 
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
+    #ifdef __EMSCRIPTEN__
+        return fmtstr("Error at %d:%d: %s", loc->first_line, loc->first_column);
+    #endif
     bool e_ascii = st->config.extended_ascii;
     //Produce the error string from fmt and args
     char* line_num;
@@ -1655,14 +1709,14 @@ void axo_bytes_to_file(const char *filename, char* bytes, size_t size) {
         fwrite(bytes, sizeof(char), size, file);
         fclose(file);
     } else {
-        printf("Failed to open the file %s\n", filename);
+        printf("Saving failed, cannot to open the file '%s'\n", filename);
     }
 }
 
 char* axo_file_to_bytes(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
-        printf("Failed to open the file %s\n", filename);
+        printf("Reading failed, cannot open the file '%s'\n", filename);
         return NULL;
     }
     fseek(file, 0, SEEK_END);
@@ -1788,6 +1842,18 @@ char* axo_decode_easter(long long int* data){
     char* axo_resolve_path(char* filename){
         return filename;
     }
+#elif __EMSCRIPTEN__
+    char* axo_resolve_path(char* filename) {
+        char resolved_path[axo_max_path_len];
+        EM_ASM({
+            var inputPath = UTF8ToString($0);
+            var lookup = FS.lookupPath(inputPath, { follow: true });
+            var resolvedPath = lookup.path;
+            stringToUTF8(resolvedPath, $1, 1024);
+        }, filename, resolved_path);
+
+        return alloc_str(resolved_path);
+    }
 #endif
 
 #ifdef _WIN32
@@ -1801,8 +1867,26 @@ char* axo_decode_easter(long long int* data){
     }
 #elif __APPLE__ 
     int axo_chdir(char* path){
-        return 0;
+        return 1;
     }
+#elif __EMSCRIPTEN__
+    int axo_chdir(char* path) {
+        int result;
+        result = EM_ASM_INT({
+            var newPath = UTF8ToString($0);
+            try {
+                FS.chdir(newPath);
+                return 0; // Success
+            } catch (e) {
+                console.error('Failed to change directory to ' + newPath + ': ' + e);
+                return -1; // Failure
+            }
+        }, path);
+
+        return result;
+    }
+
+    
 #endif
 
 #ifdef _WIN32
@@ -1829,6 +1913,11 @@ char* axo_decode_easter(long long int* data){
     char* axo_get_exec_path(char* buf, int sz){
         return "";
     }
+#elif __EMSCRIPTEN__
+    char* axo_get_exec_path(char* buf, int sz){
+        return "";
+    }
+    
 #endif
 
 #ifdef _WIN32
@@ -1842,6 +1931,17 @@ char* axo_decode_easter(long long int* data){
 
 #elif __APPLE__
 
+#elif __EMSCRIPTEN__
+char* axo_cwd(char* dest, size_t sz) {
+    // JavaScript code to get the current working directory
+    EM_ASM({
+        var currentDir = FS.cwd();
+        stringToUTF8(currentDir, $0, $1);
+    }, dest, sz);
+
+    return dest;
+}
+    
 #endif
 
 char* axo_get_parent_dir(char* path) {

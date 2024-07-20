@@ -5,6 +5,7 @@ Terminals unused in grammar
     "and"
     ":="
     "->"
+    "const"
 
 
 Grammar
@@ -351,211 +352,212 @@ Terminals, with rules where they appear
     "#column" <str> (313) 65
     "#file" <str> (314) 66
     "#source" <str> (315) 15
-    IDENTIFIER_PREC (316)
-    EXPR_AS_STATEMENT (317)
-    LOOP_PREC (318)
-    UMINUS (319)
-    CALL_PREC (320)
-    STRUCT_LIT_NAMED_FIELD (321)
+    "const" <str> (316)
+    IDENTIFIER_PREC (317)
+    EXPR_AS_STATEMENT (318)
+    LOOP_PREC (319)
+    UMINUS (320)
+    CALL_PREC (321)
+    STRUCT_LIT_NAMED_FIELD (322)
 
 
 Nonterminals, with rules where they appear
 
-    $accept (91)
+    $accept (92)
         on left: 0
-    declarations <str> (92)
+    declarations <str> (93)
         on left: 1 2 3 4 5
         on right: 0 2 3 4 5
-    declaration <declaration_type> (93)
+    declaration <declaration_type> (94)
         on left: 6 7 8 9 10 11 12 13 14 15
         on right: 5
-    global_code_scope_start <scope> (94)
+    global_code_scope_start <scope> (95)
         on left: 16
         on right: 17
-    global_code_scope <scope> (95)
+    global_code_scope <scope> (96)
         on left: 17
         on right: 14
-    struct_def <struct_type> (96)
+    struct_def <struct_type> (97)
         on left: 18
         on right: 6 13
-    module_info <module_type> (97)
+    module_info <module_type> (98)
         on left: 19 20
         on right: 11 20
-    statements <str> (98)
+    statements <str> (99)
         on left: 21 22
         on right: 17 22 166
-    index_access <index_access_type> (99)
+    index_access <index_access_type> (100)
         on left: 23 24
         on right: 24 60
-    identifier <identifier_type> (100)
+    identifier <identifier_type> (101)
         on left: 25
         on right: 45 130 131
-    incr_decr_op <expression> (101)
+    incr_decr_op <expression> (102)
         on left: 26 27
         on right: 68
-    expr <expression> (102)
+    expr <expression> (103)
         on left: 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69
         on right: 23 24 26 27 33 34 35 36 37 38 39 40 41 46 48 49 50 51 52 53 54 55 56 57 58 60 61 62 69 70 71 72 77 83 84 87 96 103 104 105 106 114 115 120 126 127 128 130 131 132 134 135 136 137 138 139 140 157 158 159 161 162 174 175 176 178 182 183
-    stat_arr_literal_start <arr_lit_type> (103)
+    stat_arr_literal_start <arr_lit_type> (104)
         on left: 70 71 72
         on right: 72 78
-    arr_lit_start <bool_type> (104)
+    arr_lit_start <bool_type> (105)
         on left: 73 74
         on right: 70 75 77
-    empty_arr_dims <empty_arr_lit_type> (105)
+    empty_arr_dims <empty_arr_lit_type> (106)
         on left: 75 76
         on right: 71 76 80
-    stat_arr_literal <arr_lit_type> (106)
+    stat_arr_literal <arr_lit_type> (107)
         on left: 77 78
         on right: 79
-    arr_literal <expression> (107)
+    arr_literal <expression> (108)
         on left: 79 80
         on right: 67
-    statement <statement_type> (108)
+    statement <statement_type> (109)
         on left: 81 82
         on right: 22 98 99 112 119 120
-    matching_statement <statement_type> (109)
+    matching_statement <statement_type> (110)
         on left: 83 84 85 86 87 88 89 90 91 92 93 94 95
         on right: 81 91 107 113 116 122 124
-    switch_statement_start <switch_type> (110)
+    switch_statement_start <switch_type> (111)
         on left: 96
         on right: 97
-    switch_statement <switch_type> (111)
+    switch_statement <switch_type> (112)
         on left: 97
         on right: 90
-    switch_body <switch_type> (112)
+    switch_body <switch_type> (113)
         on left: 98 99
         on right: 97 99
-    switch_branch <case_type> (113)
+    switch_branch <case_type> (114)
         on left: 100 101
         on right: 98 99
-    switch_case <case_type> (114)
+    switch_case <case_type> (115)
         on left: 102 103
         on right: 100 101
-    switch_expr_list <case_type> (115)
+    switch_expr_list <case_type> (116)
         on left: 104 105
         on right: 102 105
-    if_condition <expression> (116)
+    if_condition <expression> (117)
         on left: 106
         on right: 107 112 113
-    matching_if_statement <statement_type> (117)
+    matching_if_statement <statement_type> (118)
         on left: 107
         on right: 92
-    non_matching_statement <statement_type> (118)
+    non_matching_statement <statement_type> (119)
         on left: 108 109 110 111
         on right: 82 113 117 123 125
-    non_matching_if_statement <statement_type> (119)
+    non_matching_if_statement <statement_type> (120)
         on left: 112 113
         on right: 108
-    till_loop_start <till_loop_type> (120)
+    till_loop_start <till_loop_type> (121)
         on left: 114
         on right: 121
-    while_loop_base <str> (121)
+    while_loop_base <str> (122)
         on left: 115
         on right: 116 117
-    matching_while <statement_type> (122)
+    matching_while <statement_type> (123)
         on left: 116
         on right: 94
-    non_matching_while <statement_type> (123)
+    non_matching_while <statement_type> (124)
         on left: 117
         on right: 110
-    for_loop_start <for_loop_type> (124)
+    for_loop_start <for_loop_type> (125)
         on left: 118
         on right: 119 130 131 132
-    for_loop_init <for_loop_type> (125)
+    for_loop_init <for_loop_type> (126)
         on left: 119
         on right: 120
-    for_loop_base <for_loop_type> (126)
+    for_loop_base <for_loop_type> (127)
         on left: 120 121
         on right: 122 123
-    matching_for_loop <statement_type> (127)
+    matching_for_loop <statement_type> (128)
         on left: 122
         on right: 93
-    non_matching_for_loop <statement_type> (128)
+    non_matching_for_loop <statement_type> (129)
         on left: 123
         on right: 109
-    matching_each_loop <statement_type> (129)
+    matching_each_loop <statement_type> (130)
         on left: 124
         on right: 95
-    non_matching_each_loop <statement_type> (130)
+    non_matching_each_loop <statement_type> (131)
         on left: 125
         on right: 111
-    each_iter_dims <each_loop_type> (131)
+    each_iter_dims <each_loop_type> (132)
         on left: 126 127 128 129
         on right: 128 129 131 132
-    each_loop_base <each_loop_type> (132)
+    each_loop_base <each_loop_type> (133)
         on left: 130 131 132
         on right: 124 125
-    assign_op (133)
+    assign_op (134)
         on left: 133
         on right: 134
-    assignment <expression> (134)
+    assignment <expression> (135)
         on left: 134
         on right: 42
-    special_assignment <expression> (135)
+    special_assignment <expression> (136)
         on left: 135 136 137 138 139
         on right: 43
-    call_error_assignment <expression> (136)
+    call_error_assignment <expression> (137)
         on left: 140
         on right: 44
-    arr_multidim_typ <typ_type> (137)
+    arr_multidim_typ <typ_type> (138)
         on left: 141 142
         on right: 142 144
-    arr_typ <typ_type> (138)
+    arr_typ <typ_type> (139)
         on left: 143 144
         on right: 155
-    func_typ_start <typ_type> (139)
+    func_typ_start <typ_type> (140)
         on left: 145 146
         on right: 147 149
-    func_typ_args <typ_type> (140)
+    func_typ_args <typ_type> (141)
         on left: 147 148
         on right: 148 150
-    func_typ <typ_type> (141)
+    func_typ <typ_type> (142)
         on left: 149 150
         on right: 154
-    val_typ <typ_type> (142)
+    val_typ <typ_type> (143)
         on left: 151 152 153 154 155 156
         on right: 8 63 69 80 87 143 144 145 147 148 152 169 171 181 183
-    called_expr <function_call> (143)
+    called_expr <function_call> (144)
         on left: 157 158 159
         on right: 160 161
-    func_call_start <function_call> (144)
+    func_call_start <function_call> (145)
         on left: 160 161 162 163
         on right: 162 163 164
-    func_call <function_call> (145)
+    func_call <function_call> (146)
         on left: 164
         on right: 47 140
-    code_scope_start <scope> (146)
+    code_scope_start <scope> (147)
         on left: 165
         on right: 166
-    code_scope <scope> (147)
+    code_scope <scope> (148)
         on left: 166
         on right: 86 180
-    func_def_name <function> (148)
+    func_def_name <function> (149)
         on left: 167 168 169
         on right: 7 172
-    func_def_ret_typ <typ_type> (149)
+    func_def_ret_typ <typ_type> (150)
         on left: 170 171
         on right: 7 172
-    func_def_start <function> (150)
+    func_def_start <function> (151)
         on left: 172
         on right: 180
-    struct_literal_start <struct_val_type> (151)
+    struct_literal_start <struct_val_type> (152)
         on left: 173 174 175 176 177 178
         on right: 176 177 178 179
-    struct_literal <struct_val_type> (152)
+    struct_literal <struct_val_type> (153)
         on left: 179
         on right: 59
-    func_def <function> (153)
+    func_def <function> (154)
         on left: 180
         on right: 2
-    func_arg <function_argument> (154)
+    func_arg <function_argument> (155)
         on left: 181 182 183
         on right: 185 186
-    func_args <function> (155)
+    func_args <function> (156)
         on left: 184 185 186
         on right: 7 18 172 186
-    enum_names <enum_type> (156)
+    enum_names <enum_type> (157)
         on left: 187 188
         on right: 4 188
 

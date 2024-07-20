@@ -4,6 +4,7 @@
   #include "src/utils/utils.h"
   #include <stdint.h>
   #include "src/axo.h"
+  #include "axo_gram.tab.h"
   //Bison extern
   extern int yylineno;
   extern FILE *yyin;
@@ -123,6 +124,7 @@
 %token<str> COLUMN_TAG "#column"
 %token<str> FILE_TAG "#file"
 %token<str> SOURCE_TAG "#source"
+%token<str> CONST_KWRD "const"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
@@ -212,8 +214,14 @@ declarations : /* EMPTY */ {}
       path[strlen($C_INCLUDE)-2] = '\0';
       // printf("Path of c_include: %s\nResolved path: %s\n", path, axo_resolve_path(path));
       char* res_path = axo_resolve_path(path);
-      axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", res_path), .kind=axo_c_include_decl_kind});
-      free(res_path);
+      #ifdef __EMSCRIPTEN__
+        char* code = axo_file_to_str(res_path);
+        axo_add_decl(state, (axo_decl){.val = fmtstr("//#include \"%s\"\n%s", res_path, code), .kind=axo_c_include_decl_kind});
+        free(code);
+      #else
+        axo_add_decl(state, (axo_decl){.val = fmtstr("#include \"%s\"", res_path), .kind=axo_c_include_decl_kind});
+        free(res_path);
+      #endif
     }
   }
   | declarations ENUM_KWRD IDEN '(' enum_names ')' {
@@ -493,18 +501,18 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   }
   | expr '+' expr {parse_operator(&@2, &$$, $1, "+", $3); }
   | expr '-' expr {parse_operator(&@2, &$$, $1, "-", $3); }
-  | '-' expr {asprintf(&($$.val), "-%s", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; } %prec UMINUS
+  | '-' expr {$$.val = fmtstr("-%s", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; } %prec UMINUS
   | expr '*' expr {parse_operator(&@2, &$$, $1, "*", $3); }
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
-  | '(' expr ')' {asprintf(&($$.val), "(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
+  | '(' expr ')' {$$.val = fmtstr("(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
   | expr '@' { //Referencing
     if ($1.lval_kind == axo_not_lval_kind)
       yyerror(&@1, "Cannot reference a non l-value.");
     $$.typ.kind = axo_ptr_kind;
     $$.typ.subtyp = malloc(sizeof(axo_typ));
     *axo_subtyp($$.typ) = $1.typ;
-    asprintf(&($$.val), "&%s", $1.val);
+    $$.val = fmtstr("&%s", $1.val);
   }
   | expr '^' { //Dereferencing
     axo_validate_rval(&@1, $1);
@@ -512,7 +520,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
     $$.typ = *axo_subtyp($1.typ);
     $$.lval_kind=$1.lval_kind;
-    asprintf(&($$.val), "(*(%s))", $1.val);
+    $$.val=fmtstr("(*(%s))", $1.val);
   }
   | assignment
   | special_assignment
@@ -1011,7 +1019,7 @@ arr_literal : stat_arr_literal {
     for (int i=0; i<$1.dim_count; i++){
       total_sz *= $1.len[i];
       if (i>0) strapnd(&dims_str, ",");
-      asprintf(&dims_str, "%s%d", dims_str, $1.len[i]);
+      strapnd(&dims_str, fmt_str((char[16]){}, "%d", $1.len[i]));
     }
     strapnd(&dims_str, "");
     axo_typ typ = (axo_typ){
@@ -2106,28 +2114,35 @@ int playground(){
 
 void yyerror(YYLTYPE* loc, const char * fmt, ...){
   if (prog_return==0)
-    printf(axo_cyan_bg axo_magenta_fg "\aClick an error to learn more."axo_reset_style"\n");
+    fprintf(stderr,"Click an error to learn more.\n");
   prog_return = 1;
   axo_raise_error;
   va_list args;
   if (loc==NULL){
-    printf(axo_red_fg "Error: ");
+    fprintf(stderr, axo_red_fg "Error: ");
     va_start(args, fmt);
-    vprintf(fmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
     printf(axo_reset_style"\n");
   }else{
     va_start(args, fmt);
     char* msg = NULL;
-    vasprintf(&msg, fmt, args);
+    if (vasprintf(&msg, fmt, args) < 0)
+      fprintf(stderr, "Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
+    #ifdef __EMSCRIPTEN__
+      printf("error %d:%d: %s\n", loc->first_line, loc->first_column, msg);
+      free(msg);
+      return;
+    #endif
     char* err_msg = axo_error_with_loc(state, loc, msg);
     va_end(args);
-    printf("%s\n", err_msg);
+    fprintf(stderr, "%s\n", err_msg);
     free(err_msg);
+    free(msg);
   }
 }
 
-int main(int argc, char** argv) {
+int compile(int argc, char** argv) {
   //Seed the pseudo random number generator
   srand(time(NULL));
   //Start timing the event
@@ -2138,21 +2153,22 @@ int main(int argc, char** argv) {
   //Get the root path (the path where the axo compiler lays)
   char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
   // printf("Root: %s\n", root_p);
-  
   //Initialize state
   state = axo_new_state(root_p);
   //Save the original working dir
-  char* orig_cwd = axo_cwd((char[axo_max_path_len]){}, axo_max_path_len);
+  state->orig_cwd = axo_cwd((char[axo_max_path_len]){}, axo_max_path_len);
   // printf("orig_cwd: %s\n", orig_cwd);
   
   //Load config from axo.config
   // axo_bytes_to_file("axo.config", (char*)(&(state->config)), sizeof(axo_compiler_config));
-  size_t cfg_sz;
-  axo_compiler_config* cfg = (axo_compiler_config*)axo_file_to_bytes(fmt_str((char[axo_max_path_len]){}, "%s"axo_dir_sep"axo.config", state->root_path), &cfg_sz);
-  state->config = *cfg;
+  axo_load_cfg(state);
   bool measure_time = state->config.timer;
   if (measure_time){
     start = clock();
+  }
+  if (argc <= 1){
+    yyerror(NULL, "No input.");
+    return 1;
   }
   char* cmd = argv[1];
   if (strcmp(cmd, "info")==0){
@@ -2162,22 +2178,37 @@ int main(int argc, char** argv) {
   }else{
     axo_handle_args(state, argc, argv, 1);
     axo_printf = state->silenced ?  axo_no_printf : printf;
-    if (state->entry_file){
-      //Load default args where needed
-      char* input_file_path = state->entry_file;
-      state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
-      state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
+    if (state->entry_file || state->input_str){
+      if (state->input_str && state->entry_file){
+        yyerror(NULL, "Cannot take input from string and file.");
+        return 1;
+      }else if (state->entry_file){
+        char* input_file_path = state->entry_file;
+        state->output_c_file = state->output_c_file ? state->output_c_file : axo_swap_file_extension(input_file_path, ".c");
+        state->output_file = state->output_file ? state->output_file : axo_swap_file_extension(input_file_path, AXO_BIN_EXT);
+      }else if (state->input_str){
+        axo_new_string_source(state, state->input_str);
+        state->output_c_file = state->output_c_file ? state->output_c_file : alloc_str("a.c");
+        state->output_file = state->output_file ? state->output_file : alloc_str("a"AXO_BIN_EXT);
+      }else{
+        yyerror(NULL, "No input.");
+        return 1;
+      }
       state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
       //Scopes table
       scopes = alloc_one(axo_scopes);
       scopes->scopes = NULL;
       scopes->len = 0;
       axo_push_scope(scopes, state->global_scope);
-      axo_new_source(state, state->entry_file);
+      if (state->entry_file)
+        axo_new_source(state, state->entry_file);
+      else
+        state->entry_file = alloc_str("./in.axo");
     }else{
-      yyerror(NULL, "Entry file wasn't provided.\nUsage: axo <file> |options|");
+      yyerror(NULL, "No code provided.\nUsage: axo <source> |options|");
       return 1;
     }
+    //Use the core module
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
     //Set entry point
@@ -2188,6 +2219,7 @@ int main(int argc, char** argv) {
     //Parse
     yyparse();
     // axo_printf("Parsing done.\n");
+    // char* cde = axo_get_code(state);
     //Check if the entry point is present
     axo_var* var = axo_get_var(top_scope, (strcmp("axo__main", state->entry_point) == 0) ? "main" : state->entry_point);
     if (var == NULL){
@@ -2219,43 +2251,47 @@ int main(int argc, char** argv) {
     }
     //Handle produced C code
     //change the working dir back to original
-    axo_chdir(orig_cwd);
+    axo_chdir(state->orig_cwd);
     if (!prog_return){
-      char* code = axo_get_code(state);
-      overwrite_file_with_string(state->output_c_file, code);
-      free(code);
-      //Compile program
-      char* compiler_cmd;
-      int res = 1;
-      switch(state->config.cc){
-        case axo_gcc_cc_kind:
-          compiler_cmd = fmtstr("gcc -o %s %s", state->output_file, state->output_c_file, state->output_c_file);
-          for (int i=0; i<state->extra_c_sources_len; i++){
-            strapnd(&compiler_cmd, " ");
-            strapnd(&compiler_cmd, state->extra_c_sources[i]);
-          }
-          printf("Compiling command:\n%s\n", compiler_cmd);
-          res = system(compiler_cmd) >> 8;
-          break;
-        default:
-          fprintf(stderr, "This C compiler is not yet supported!\n");
-          break;
-      }
-      if (res != 0)
-        printf("Error while compiling the output C file! D:\n");
-      prog_return = prog_return||res;
-      if (prog_return) return prog_return;
-      if (state->run){
-        #ifdef _WIN32
-          prog_return = system(fmt_str((char[512]){}, "%s", state->output_file)) >> 8;
-        #else
-          prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
-        #endif
-        remove(state->output_file);
-        remove(state->output_c_file);
-      }else if (!(state->config.keep_c)){
-        remove(state->output_c_file);
-      }
+      #ifdef __EMSCRIPTEN__
+        return 0;
+      #else
+        char* code = axo_get_code(state);
+        overwrite_file_with_string(state->output_c_file, code);
+        free(code);
+        //Compile program
+        char* compiler_cmd;
+        int res = 1;
+        switch(state->config.cc){
+          case axo_gcc_cc_kind:
+            compiler_cmd = fmtstr("gcc -o %s %s", state->output_file, state->output_c_file, state->output_c_file);
+            for (int i=0; i<state->extra_c_sources_len; i++){
+              strapnd(&compiler_cmd, " ");
+              strapnd(&compiler_cmd, state->extra_c_sources[i]);
+            }
+            printf("Compiling command:\n%s\n", compiler_cmd);
+            res = system(compiler_cmd) >> 8;
+            break;
+          default:
+            fprintf(stderr, "This C compiler is not yet supported!\n");
+            break;
+        }
+        if (res != 0)
+          printf("Error while compiling the output C file! D:\n");
+        prog_return = prog_return||res;
+        if (prog_return) return prog_return;
+        if (state->run){
+          #ifdef _WIN32
+            prog_return = system(fmt_str((char[512]){}, "%s", state->output_file)) >> 8;
+          #else
+            prog_return = system(fmt_str((char[512]){}, "./%s", state->output_file)) >> 8;
+          #endif
+          remove(state->output_file);
+          remove(state->output_c_file);
+        }else if (!(state->config.keep_c)){
+          remove(state->output_c_file);
+        }
+      #endif
     }
     // printf("\n\n%s\n", axo_axelotl_str);
   }
@@ -2268,3 +2304,21 @@ int main(int argc, char** argv) {
   // printf("Returning: %d\n", prog_return);
   return prog_return;
 }
+
+int main(int argc, char** argv){
+  #ifdef __EMSCRIPTEN__
+    return 0;
+  #else
+    return compile(argc, argv);
+  #endif
+}
+
+char* axo_compile_to_c(int argc, char* input){
+  char** argv = (char**)malloc(3*sizeof(char*));
+  argv[0] = alloc_str(".");
+  argv[1] = alloc_str("-i");
+  argv[2] = alloc_str(input);
+  compile(argc, argv);
+  return axo_get_code(state);
+}
+
