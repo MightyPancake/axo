@@ -23,9 +23,6 @@
     <script>
         // Define the JavaScript function first
         var axo_errors = [];
-        function axo_wasm_append_error(error) {
-            axo_errors.push(error);
-        }
     </script>
     <script type="module">
         import initModule from './playground.js';
@@ -46,7 +43,7 @@
             if (axo_errors.length > 0) {
                 outputDiv.textContent = "";
                 axo_errors.forEach(function(error, index) {
-                    outputDiv.textContent += `${index + 1}: ${error}\n`;
+                    outputDiv.textContent += `${error}`;
                 });
                 axo_errors = [];
                 return; // Skip the Piston API call
