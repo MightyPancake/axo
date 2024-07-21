@@ -20,6 +20,12 @@
             padding: 10px;
         }
     </style>
+    <script>
+        var axo_errors = [];
+        function axo_wasm_append_error(error) {
+            axo_errors.push(error);
+        }
+    </script>
     <script src="playground.js"></script>
 </head>
 <body>
@@ -29,8 +35,6 @@
     <button onclick="runCode()">Run</button>
     <div id="output"></div>
     <script>
-        var axo_errors = [];
-
         async function runCode() {
             const axo_code = document.getElementById('code').value;
             var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["string"]);
