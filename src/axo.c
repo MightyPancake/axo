@@ -1631,9 +1631,24 @@ unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii){
     return ' ';
 }
 
+void axo_verrorf(const char* fmt, va_list args){
+    #ifdef __EMSCRIPTEN__
+        axo_add_wasm_error(fmt, args);
+    #else
+        vfprintf(stderr, fmt, args);
+    #endif
+}
+
+void axo_errorf(const char* fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    axo_verrorf(fmt, args);
+    va_end(args);
+}
+
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     #ifdef __EMSCRIPTEN__
-        return fmtstr("Error at %d:%d: %s", loc->first_line, loc->first_column);
+        return fmtstr("%s > %d:%d -> %s", axo_src_file(st)?axo_src_path(st):"input.axo", loc->first_line, loc->first_column, msg);
     #endif
     bool e_ascii = st->config.extended_ascii;
     //Produce the error string from fmt and args

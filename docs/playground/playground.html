@@ -29,12 +29,25 @@
     <button onclick="runCode()">Run</button>
     <div id="output"></div>
     <script>
+        var axo_errors = [];
+
         async function runCode() {
             const axo_code = document.getElementById('code').value;
-            var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["number", "string"]);
-            var c_code = js_wrapped_compile(3, axo_code);
+            var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["string"]);
+            var c_code = js_wrapped_compile(axo_code);
+
             const outputDiv = document.getElementById('output');
             outputDiv.textContent = 'Running...';
+
+            if (axo_errors.length > 0) {
+                outputDiv.textContent = "";
+                axo_errors.forEach(function(error, index) {
+                    outputDiv.textContent += `${error}`;
+                });
+                axo_errors = [];
+                return;
+            }
+
             try {
                 const response = await fetch('https://emkc.org/api/v2/piston/execute', {
                     method: 'POST',

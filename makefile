@@ -31,7 +31,7 @@ build:
 
 wasm:
 	@make -s gen
-	emcc axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o playground.js -s WASM=1 --preload-file "modules" -gsource-map -s STACK_SIZE=20971520 -s INITIAL_MEMORY=33554432 -s EXPORTED_RUNTIME_METHODS='["cwrap", "stringToUTF8"]' -s EXPORTED_FUNCTIONS='["_axo_compile_to_c"]'
+	emcc axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c src/wasm.c lex.yy.c -o playground.js -s WASM=1 --preload-file "modules" -gsource-map -s STACK_SIZE=20971520 -s INITIAL_MEMORY=33554432 -s EXPORTED_RUNTIME_METHODS='["cwrap", "stringToUTF8"]' -s EXPORTED_FUNCTIONS='["_axo_compile_to_c"]'
 	@mv ./playground.js docs/playground/playground.js
 	@mv ./playground.wasm docs/playground/playground.wasm
 	@mv ./playground.wasm.map docs/playground/playground.wasm.map

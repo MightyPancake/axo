@@ -10,8 +10,10 @@ typedef struct hashmap* map;
 #elif __EMSCRIPTEN__
     #include <emscripten.h>
     #include <emscripten/html5.h>
+    #include "./wasm.h"
 #endif
 
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include "./axo_err.h"
@@ -697,6 +699,8 @@ void* axo_safe_malloc(size_t n);
 
 //Errors
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg);
+void axo_verrorf(const char* fmt, va_list args);
+void axo_errorf(const char* fmt, ...);
 
 //Unknown
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2);

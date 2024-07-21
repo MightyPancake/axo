@@ -1181,10 +1181,11 @@ function dbg(text) {
 // === Body ===
 
 var ASM_CONSTS = {
-  21001688: ($0, $1) => { var inputPath = UTF8ToString($0); var lookup = FS.lookupPath(inputPath, { follow: true }); var resolvedPath = lookup.path; stringToUTF8(resolvedPath, $1, 1024); },  
- 21001853: ($0) => { var newPath = UTF8ToString($0); try { FS.chdir(newPath); return 0; } catch (e) { console.error('Failed to change directory to ' + newPath + ': ' + e); return -1; } },  
- 21002021: ($0, $1) => { var currentDir = FS.cwd(); stringToUTF8(currentDir, $0, $1); }
+  21001672: ($0, $1) => { var inputPath = UTF8ToString($0); var lookup = FS.lookupPath(inputPath, { follow: true }); var resolvedPath = lookup.path; stringToUTF8(resolvedPath, $1, 1024); },  
+ 21001837: ($0) => { var newPath = UTF8ToString($0); try { FS.chdir(newPath); return 0; } catch (e) { console.error('Failed to change directory to ' + newPath + ': ' + e); return -1; } },  
+ 21002005: ($0, $1) => { var currentDir = FS.cwd(); stringToUTF8(currentDir, $0, $1); }
 };
+function axo_wasm_append_error(str) { axo_errors.push(String(UTF8ToString(str))); }
 
 
 // end include: preamble.js
@@ -4712,6 +4713,8 @@ var wasmImports = {
   /** @export */
   abort: _abort,
   /** @export */
+  axo_wasm_append_error: axo_wasm_append_error,
+  /** @export */
   emscripten_asm_const_int: _emscripten_asm_const_int,
   /** @export */
   emscripten_date_now: _emscripten_date_now,
@@ -4749,7 +4752,8 @@ var stackAlloc = createExportWrapper('stackAlloc');
 var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
 var dynCall_jijj = Module['dynCall_jijj'] = createExportWrapper('dynCall_jijj');
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper('dynCall_jiji');
-
+var ___start_em_js = Module['___start_em_js'] = 21002070;
+var ___stop_em_js = Module['___stop_em_js'] = 21002139;
 
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===

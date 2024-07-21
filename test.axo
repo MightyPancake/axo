@@ -2,9 +2,6 @@ use std
 use io
 
 fn main([][]byte args) {
-    for arg each [i] in args {
-        printf("arg #%d: %s\n", i, arg.data)
-    }
+    a += 1
     ret 0
 }
-

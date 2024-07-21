@@ -5102,32 +5102,30 @@ int playground(){
 }
 
 void yyerror(YYLTYPE* loc, const char * fmt, ...){
-  if (prog_return==0)
-    fprintf(stderr,"Click an error to learn more.\n");
+  // if (prog_return==0)
+  //   axo_errorf("Click an error to learn more.\n");
   prog_return = 1;
   axo_raise_error;
   va_list args;
   if (loc==NULL){
     fprintf(stderr, axo_red_fg "Error: ");
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    axo_verrorf(fmt, args);
     va_end(args);
     printf(axo_reset_style"\n");
   }else{
     va_start(args, fmt);
     char* msg = NULL;
     if (vasprintf(&msg, fmt, args) < 0)
-      fprintf(stderr, "Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
-    #ifdef __EMSCRIPTEN__
-      printf("error %d:%d: %s\n", loc->first_line, loc->first_column, msg);
-      free(msg);
-      return;
-    #endif
+      axo_errorf("Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
     char* err_msg = axo_error_with_loc(state, loc, msg);
     va_end(args);
-    fprintf(stderr, "%s\n", err_msg);
-    free(err_msg);
+    axo_errorf("%s\n", err_msg);
     free(msg);
+    #ifdef __EMSCRIPTEN__
+      return;
+    #endif
+    free(err_msg);
   }
 }
 
@@ -5302,12 +5300,12 @@ int main(int argc, char** argv){
   #endif
 }
 
-char* axo_compile_to_c(int argc, char* input){
+char* axo_compile_to_c(char* input){
   char** argv = (char**)malloc(3*sizeof(char*));
   argv[0] = alloc_str(".");
   argv[1] = alloc_str("-i");
   argv[2] = alloc_str(input);
-  compile(argc, argv);
+  compile(3, argv);
   return axo_get_code(state);
 }
 
