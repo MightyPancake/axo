@@ -21,35 +21,35 @@
         }
     </style>
     <script>
+        // Define the JavaScript function first
         var axo_errors = [];
         function axo_wasm_append_error(error) {
             axo_errors.push(error);
         }
     </script>
-    <script src="playground.js"></script>
-</head>
-<body>
-    <h1>axo playground</h1>
-    <textarea id="code" placeholder="Enter your axo code here..."></textarea>
-    <br>
-    <button onclick="runCode()">Run</button>
-    <div id="output"></div>
-    <script>
+    <script type="module">
+        import initModule from './playground.js';
+
         async function runCode() {
             const axo_code = document.getElementById('code').value;
-            var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["string"]);
-            var c_code = js_wrapped_compile(axo_code);
-
             const outputDiv = document.getElementById('output');
             outputDiv.textContent = 'Running...';
 
+            // Ensure the WebAssembly module is initialized
+            const Module = await initModule();
+
+            // Wrap and call the compiled C function
+            var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["string"]);
+            var c_code = js_wrapped_compile(axo_code);
+
+            // Check if axo_errors array is not empty
             if (axo_errors.length > 0) {
                 outputDiv.textContent = "";
                 axo_errors.forEach(function(error, index) {
-                    outputDiv.textContent += `${error}`;
+                    outputDiv.textContent += `${index + 1}: ${error}\n`;
                 });
                 axo_errors = [];
-                return;
+                return; // Skip the Piston API call
             }
 
             try {
@@ -83,6 +83,15 @@
                 outputDiv.textContent = `Error: ${error.message}`;
             }
         }
+
+        document.querySelector('button').onclick = runCode;
     </script>
+</head>
+<body>
+    <h1>axo playground</h1>
+    <textarea id="code" placeholder="Enter your axo code here..."></textarea>
+    <br>
+    <button>Run</button>
+    <div id="output"></div>
 </body>
 </html>
