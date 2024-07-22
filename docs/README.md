@@ -18,6 +18,9 @@ fn main([][]byte args){
 }
 ```
 
+Why don't you [try it out?](https://axolang.com/playground/editor.html?code=use%20std%0Ause%20io%0A%0Afn%20main(%5B%5D%5B%5Dbyte%20args)%7B%0A%20%20%20%20printf(%22Hello%20world%5Cn%22)%0A%0A%20%20%20%20%20%20%20%20%2F%2FPrints%20an%20array%0A%20%20%20%20%20%20%20%20for%20v%20in%20%5B0%2C1%2C2%2C3%2C4%2C5%5D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20printf(%22%25d%5Cn%22%2C%20v)%0A%20%20%20%20ret%200%0A%7D)
+
+
 ```terminal
     >|info|axo main.axo
     |success|Compiled!
@@ -27,8 +30,6 @@ fn main([][]byte args){
     |Argument #2: world
     |Argument #3: !
 ```
-
-Why don't you [try it out](https://axolang.com/playground/editor.html?code=use std%0Ause io%0A%0Afn main([][]byte args){%0A%20%20%20 printf("Hello world\n")%0A%0A%20%20%20%20%20%20%20 %2F%2FPrints an array%0A%20%20%20%20%20%20%20 for v in [0%2C1%2C2%2C3%2C4%2C5]%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20 printf("%25d\n"%2C v)%0A%20%20%20 ret 0%0A})?
 
 <div style="text-align: center;">
     <img src="images/axo_coding.png" alt="axo playing with c" width="35%"/>
