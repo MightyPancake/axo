@@ -12,6 +12,10 @@
 </head>
 <body>
     <h1>Code playground</h1>
+    <div class="buttons">
+        <button id="run-button">Run</button>
+        <button id="share-button">Share</button>
+    </div>
     <div id="editor-container">
         <div id="line-numbers"></div>
         <div id="editor-container-inner">
@@ -19,11 +23,7 @@
             <div id="editor" contenteditable="true" spellcheck="false"></div>
         </div>
     </div>
-    <div>
-        <button id="run-button">Run</button>
-        <button id="share-button">Share</button>
-    </div>
-    <h3>Output:</h3>
+    <h3 class="output-label">Output:</h3>
     <div id="output"></div>
     <script>
         const editor = document.getElementById('editor');

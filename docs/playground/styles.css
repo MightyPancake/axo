@@ -3,7 +3,6 @@ body {
     padding: 0;
     font-family: 'GitHub Mono', monospace;
     display: flex;
-    justify-content: center;
     align-items: center;
     flex-direction: column;
     height: 100vh;
@@ -18,16 +17,25 @@ body {
 h1 {
   color: #D73A6F;
   font-family: 'Roboto', sans-serif;
+  /* a hack but it works: */
+  margin-bottom: 5px;
 }
 
 h3 {
   color: #003366;
   margin: 0px;
+  margin-top: 10px;
 }
 
 #output {
+    margin-top: 20px;
+    white-space: pre-wrap;
+    background: #f0f0f0;
+    padding: 10px;
+    width: 80%;
     border: 1px solid #ddd;
-    border-radius: 8px; /* Rounded corners */
+    border-radius: 8px;
+    height: 15vh;
 }
 
 #editor-container {
@@ -35,7 +43,7 @@ h3 {
     border: 1px solid #ddd;
     border-radius: 8px; /* Rounded corners */
     width: 80%; /* Default width is 80% of the container */
-    height: 70vh;
+    height: 60vh;
     background-color: white;
     font-family: 'GitHub Mono', monospace;
     overflow: hidden;
@@ -130,14 +138,6 @@ h3 {
     font-family: 'GitHub Mono', monospace;
 }
 
-#output {
-    margin-top: 20px;
-    white-space: pre-wrap;
-    background: #f0f0f0;
-    padding: 10px;
-    width: 80%;
-}
-
 button#run-button {
     background-color: #28a745; /* Green background */
     border: none; /* Remove default border */
@@ -147,7 +147,6 @@ button#run-button {
     text-decoration: none; /* Remove underline */
     display: inline-block; /* Inline block */
     font-size: 16px; /* Increase font size */
-    margin: 10px 2px; /* Margin */
     cursor: pointer; /* Pointer cursor on hover */
     border-radius: 5px; /* Rounded corners */
     transition: background-color 0.3s ease; /* Smooth transition for background color */
@@ -175,7 +174,6 @@ button#share-button {
     text-decoration: none; /* Remove underline */
     display: inline-block; /* Inline block */
     font-size: 16px; /* Increase font size */
-    margin: 10px 2px; /* Margin */
     cursor: pointer; /* Pointer cursor on hover */
     border-radius: 5px; /* Rounded corners */
     transition: background-color 0.3s ease; /* Smooth transition for background color */
@@ -196,4 +194,10 @@ button#share-button:active {
 button#share-button:focus {
     outline: none; /* Remove focus outline */
     box-shadow: 0 0 0 3px rgba(38, 143, 255, 0.5); /* Add custom focus outline */
+}
+
+.header {
+    padding: 0px;
+    display: flex;
+    align-items: center;
 }
