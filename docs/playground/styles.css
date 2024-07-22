@@ -33,7 +33,9 @@ h3 {
     display: flex;
     border: 1px solid #ddd;
     border-radius: 8px; /* Rounded corners */
-    width: 80%;
+    width: 80%; /* Default width is 80% of the container */
+    min-width: 600px; /* Ensure the width is at least 600px */
+    max-width: 100%; /* Ensure the width doesn't exceed the viewport width */
     height: 70vh;
     background-color: white;
     font-family: 'GitHub Mono', monospace;
