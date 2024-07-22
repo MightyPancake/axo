@@ -8,7 +8,7 @@ body {
     flex-direction: column;
     height: 100vh;
     background-color: #f5f5f5; /* Fallback color */
-    background-image: url('bg2.jpg'); /* Path to your background image */
+    background-image: url('bg.jpg'); /* Path to your background image */
     background-size: 100% 100%; /* Ensure the image covers the entire background */
     background-position: center; /* Center the image */
     background-repeat: no-repeat; /* Prevent repeating the image */

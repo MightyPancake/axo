@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor Playground with Syntax Highlighting</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="../axo-syntax-highlighting.js"></script> <!-- Your custom grammar file -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body spellcheck="false">
+    <div id="editor-container">
+        <div id="line-numbers"></div>
+        <div id="editor-container-inner">
+            <div id="highlighted-text"></div>
+            <div id="editor" contenteditable="true" autocomplete="off" spellcheck="false"></div>
+        </div>
+    </div>
+    <script>
+
+        const editor = document.getElementById('editor');
+        editor.spellcheck = false;
+        editor.focus();
+        editor.blur();
+        const highlightedText = document.getElementById('highlighted-text');
+        const lineNumbers = document.getElementById('line-numbers');
+        editor.addEventListener('input', updateLineNumbersAndHighlight);
+        editor.addEventListener('scroll', syncScroll);
+        editor.addEventListener('keydown', function(event) {
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                insertTab();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                insertNewLine();
+            }
+        });
+
+        function updateLineNumbersAndHighlight() {
+            updateLineNumbers();
+            updateHighlightedText();
+        }
+
+        function updateLineNumbers() {
+            const text = editor.innerText;
+            var lineCount = (text.match(/\n/g) || []).length; // Calculate line count
+            if (lineCount < 1){
+              lineCount = 1;
+            }
+            lineNumbers.innerHTML = Array.from({ length: lineCount }, () => `<div></div>`).join(''); // Create empty divs
+        }
+
+        function updateHighlightedText() {
+            const code = editor.innerText;
+            const highlighted = Prism.highlight(code, Prism.languages.axo, 'axo');
+            highlightedText.innerHTML = highlighted;
+        }
+
+        function insertTab() {
+            const sel = window.getSelection();
+            const range = sel.getRangeAt(0);
+            const tabNode = document.createTextNode('\t');
+            range.deleteContents();
+            range.insertNode(tabNode);
+            range.setStartAfter(tabNode);
+            range.setEndAfter(tabNode);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            updateLineNumbersAndHighlight();
+        }
+
+        function insertNewLine() {
+            const sel = window.getSelection();
+            const range = sel.getRangeAt(0);
+            const br = document.createElement('br');
+            range.deleteContents();
+            range.insertNode(br);
+            range.setStartAfter(br);
+            range.setEndAfter(br);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            updateLineNumbersAndHighlight();
+        }
+
+        function syncScroll() {
+            highlightedText.scrollTop = editor.scrollTop;
+            highlightedText.scrollLeft = editor.scrollLeft;
+            lineNumbers.scrollTop = editor.scrollTop; // Sync line numbers scroll
+            lineNumbers.scrollLeft = editor.scrollLeft; // Optional: sync horizontal scroll if needed
+        }
+        updateLineNumbersAndHighlight();
+    </script>
+</body>
+</html>
