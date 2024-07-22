@@ -3,7 +3,10 @@
 [![Home](images/axo_think.png)]()
 
 
-- [Online playground](https://axolang.com/playground/playground.html)
+- [Online playground](https://axolang.com/playground/editor.html)
+  - ~Hello world~
+  - ~Arrays~
+  - ~Other stuff~
 - Getting started
   - [Install](install)
   - ~First program~
