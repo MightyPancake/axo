@@ -1,0 +1,198 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'GitHub Mono', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f5f5f5; /* Fallback color */
+    background-image: url('bg2.jpg'); /* Path to your background image */
+    background-size: 100% 100%; /* Ensure the image covers the entire background */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; /* Prevent repeating the image */
+}
+
+h1 {
+  color: #D73A6F;
+  font-family: 'Roboto', sans-serif;
+}
+
+h3 {
+  color: #003366;
+  margin: 0px;
+}
+
+#output {
+    border: 1px solid #ddd;
+    border-radius: 8px; /* Rounded corners */
+}
+
+#editor-container {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 8px; /* Rounded corners */
+    width: 80%;
+    height: 70vh;
+    background-color: white;
+    font-family: 'GitHub Mono', monospace;
+    overflow: hidden;
+    position: relative; /* Needed for absolute positioning of child elements */
+}
+
+#line-numbers {
+    counter-reset: line;
+    text-align: right;
+    padding: 0 10px; /* Maintain padding for alignment */
+    border-right: 1px solid #ddd;
+    background-color: #f0f0f0;
+    user-select: none;
+    width: 50px; /* Fixed width for line numbers */
+    box-sizing: border-box;
+    position: absolute; /* Absolute positioning */
+    top: 0;
+    bottom: 0; /* Full height of the container */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    z-index: 3; /* Ensure it is above other elements */
+
+    /* Hide scrollbar for Webkit browsers */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer and Edge */
+}
+
+#line-numbers::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+#line-numbers div {
+    counter-increment: line;
+    height: 1.5em; /* Match the line height of editor */
+    line-height: 1.5em; /* Ensure line height matches */
+    margin: 0; /* Remove margin */
+}
+
+#line-numbers div:before {
+    content: counter(line);
+    display: block;
+    color: #888;
+    background-color: transparent; /* Set background to transparent */
+}
+
+#editor-container-inner {
+    display: flex;
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    margin-left: 50px; /* Ensure it doesn't overlap line numbers */
+}
+
+#highlighted-text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+    z-index: 2; /* Ensure it is above #editor */
+    tab-size: 4;
+    background-color: transparent; /* Set background to transparent */
+    box-sizing: border-box;
+    color: inherit;
+    pointer-events: none; /* Make it non-interactive */
+    position: absolute;
+    width: calc(100% - 50px); /* Adjust width to account for line numbers */
+    height: 100%;
+    top: 0;
+    left: 0;
+    line-height: 1.5; /* Ensure consistent line height */
+    padding-left: 10px; /* Add left padding */
+}
+
+#editor {
+    margin: 0;
+    outline: none;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+    tab-size: 4;
+    line-height: 1.5; /* Ensure consistent line height */
+    box-sizing: border-box;
+    z-index: 1; /* Ensure it is below #highlighted-text */
+    width: calc(100% - 50px); /* Adjust width to account for line numbers */
+    height: 100%;
+    position: relative;
+    padding-left: 10px; /* Add left padding */
+}
+
+#line-count {
+    margin-top: 10px;
+    font-family: 'GitHub Mono', monospace;
+}
+
+#output {
+    margin-top: 20px;
+    white-space: pre-wrap;
+    background: #f0f0f0;
+    padding: 10px;
+    width: 80%;
+}
+
+button#run-button {
+    background-color: #28a745; /* Green background */
+    border: none; /* Remove default border */
+    color: white; /* White text */
+    padding: 10px 20px; /* Padding */
+    text-align: center; /* Center text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Inline block */
+    font-size: 16px; /* Increase font size */
+    margin: 10px 2px; /* Margin */
+    cursor: pointer; /* Pointer cursor on hover */
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth transition for background color */
+}
+
+button#run-button:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+button#run-button:active {
+    background-color: #1e7e34; /* Even darker green on click */
+}
+
+button#run-button:focus {
+    outline: none; /* Remove focus outline */
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.5); /* Add custom focus outline */
+}
+
+button#share-button {
+    background-color: #007bff; /* Blue background */
+    border: none; /* Remove default border */
+    color: white; /* White text */
+    padding: 10px 20px; /* Padding */
+    text-align: center; /* Center text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Inline block */
+    font-size: 16px; /* Increase font size */
+    margin: 10px 2px; /* Margin */
+    cursor: pointer; /* Pointer cursor on hover */
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth transition for background color */
+}
+
+button#share-button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+button#share-button, button#run-button {
+  margin: 15px;
+}
+
+button#share-button:active {
+    background-color: #004080; /* Even darker blue on click */
+}
+
+button#share-button:focus {
+    outline: none; /* Remove focus outline */
+    box-shadow: 0 0 0 3px rgba(38, 143, 255, 0.5); /* Add custom focus outline */
+}

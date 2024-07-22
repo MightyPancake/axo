@@ -6,12 +6,14 @@ Axo is a statically typed, general-purpose programming language that aims to be 
 ## Sample code
 ```axo
 use std
+use io
 
-//Main program entry point
 fn main([][]byte args){
-    //Write each argument
-    for each [i], arg in args
-        printf("Argument #%d: %s\n", i, arg.data)
+    printf("Hello world\n")
+
+	//Prints an array
+	for v in [0,1,2,3,4,5]
+		printf("%d\n", v)
     ret 0
 }
 ```
@@ -26,7 +28,7 @@ fn main([][]byte args){
     |Argument #3: !
 ```
 
-Why don't you [try it out](https://axolang.com/playground/playground.html)?
+Why don't you [try it out](https://axolang.com/playground/editor.html?code=use std%0Ause io%0A%0Afn main([][]byte args){%0A%20%20%20 printf("Hello world\n")%0A%0A%20%20%20%20%20%20%20 %2F%2FPrints an array%0A%20%20%20%20%20%20%20 for v in [0%2C1%2C2%2C3%2C4%2C5]%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20 printf("%25d\n"%2C v)%0A%20%20%20 ret 0%0A})?
 
 <div style="text-align: center;">
     <img src="images/axo_coding.png" alt="axo playing with c" width="35%"/>
