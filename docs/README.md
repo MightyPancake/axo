@@ -18,8 +18,7 @@ fn main([][]byte args){
 }
 ```
 
-Why don't you [try it out?](https://axolang.com/playground/editor.html?code=use%20std%0Ause%20io%0A%0Afn%20main(%5B%5D%5B%5Dbyte%20args)%7B%0A%20%20%20%20printf(%22Hello%20world%5Cn%22)%0A%0A%20%20%20%20%20%20%20%20%2F%2FPrints%20an%20array%0A%20%20%20%20%20%20%20%20for%20v%20in%20%5B0%2C1%2C2%2C3%2C4%2C5%5D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20printf(%22%25d%5Cn%22%2C%20v)%0A%20%20%20%20ret%200%0A%7D)
-
+Why don't you [try it out?](https://axolang.com/playground/editor.html?code=use%2520std%250Ause%2520io%250A%250Afn%2520main%28%255B%255D%255B%255Dbyte%2520args%29%257B%250A%2520%2520%2520%2520printf%28%2522Hello%2520world%255Cn%2522%29%250A%250A%2520%2520%2520%2520%252F%252FPrints%2520an%2520array%250A%2520%2520%2520%2520for%2520v%2520in%2520%255B0%252C1%252C2%252C3%252C4%252C5%255D%250A%2520%2520%2520%2520%2520%2520%2520%2520printf%28%2522%2525d%255Cn%2522%252C%2520v%29%250A%2520%2520%2520%2520ret%25200%250A%257D)
 
 ```terminal
     >|info|axo main.axo
