@@ -3,8 +3,8 @@
 [![Home](images/axo_think.png)]()
 
 
-- [Online playground](https://axolang.com/playground/editor.html)
-  - ~Hello world~
+- Online playground
+  - [Hello world](https://axolang.com/playground/editor.html)
   - ~Arrays~
   - ~Other stuff~
 - Getting started
