@@ -1,0 +1,133 @@
+html, body {
+    height: 100%; /* Make sure the body and html take up the full viewport height */
+    margin: 0;    /* Remove default margin */
+    font-family: 'GitHub Mono', monospace;
+}
+
+h1 {
+  color: #D73A6F;
+  font-family: 'Roboto', sans-serif;
+  margin-bottom: 5px;
+}
+h3 {
+  color: #003366;
+  margin: 0px;
+  margin-top: 10px;
+}
+
+#output {
+    margin-top: 20px;
+    margin: 16px;
+    white-space: pre-wrap;
+    background: #f0f0f0;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    height: 15vh;
+    text-align: left;
+}
+
+div#main {
+    /* Ensure the div is at least 600px wide */
+    min-width: 600px;
+    flex: 1;
+    height: 100%;
+
+    background: linear-gradient(45deg, #9ABBE8, hsl(359.14, 98.23%, 90%), #FFFFFF);
+
+    padding: 40px;              /* Add padding */
+    color: #333;                /* Text color */
+    font-family: 'Roboto Mono', monospace; /* Font family */
+    text-align: center;         /* Center text alignment */
+    overflow: hidden;           /* Ensure no content overflow */
+}
+
+pre.prism-live {
+    font-size: 20px;
+    color: #333; /* Change text color */
+    padding: 12px;
+    border-radius: 20px;
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+/* Style for the div container of the Prism Live JS component */
+div.prism-live {
+    /* Customize the padding, margin, border, etc. */
+    border: 1px solid #ddd; /* Add a border */
+    background: #fff; /* Change background color */
+    border-radius: 20px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
+    font-family: 'Roboto Mono', monospace, !important;
+}
+
+/* Style for the textarea of the Prism Live JS component */
+textarea.prism-live {
+    /* Set height or max-height if needed */
+    --height: 300px;
+    --max-height: 500px;
+    /* Set selection background and color */
+    selection-background: rgba(0, 0, 255, 0.3); /* Blue background for selected text */
+    --selection-color: #fff; /* White color for selected text */
+}
+
+/* Buttons */
+
+button#run-button {
+    background-color: #28a745; /* Green background */
+    border: none; /* Remove default border */
+    color: white; /* White text */
+    padding: 10px 20px; /* Padding */
+    text-align: center; /* Center text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Inline block */
+    font-size: 16px; /* Increase font size */
+    cursor: pointer; /* Pointer cursor on hover */
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth transition for background color */
+}
+
+button#run-button:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+button#run-button:active {
+    background-color: #1e7e34; /* Even darker green on click */
+}
+
+button#run-button:focus {
+    outline: none; /* Remove focus outline */
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.5); /* Add custom focus outline */
+}
+
+button#share-button {
+    background-color: #007bff; /* Blue background */
+    border: none; /* Remove default border */
+    color: white; /* White text */
+    padding: 10px 20px; /* Padding */
+    text-align: center; /* Center text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Inline block */
+    font-size: 16px; /* Increase font size */
+    cursor: pointer; /* Pointer cursor on hover */
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth transition for background color */
+}
+
+button#share-button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+button#share-button, button#run-button {
+  margin: 15px;
+}
+
+button#share-button:active {
+    background-color: #004080; /* Even darker blue on click */
+}
+
+button#share-button:focus {
+    outline: none; /* Remove focus outline */
+    box-shadow: 0 0 0 3px rgba(38, 143, 255, 0.5); /* Add custom focus outline */
+}

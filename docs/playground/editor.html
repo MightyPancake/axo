@@ -1,107 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Run axo online!</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="../axo-syntax-highlighting.js"></script> <!-- Your custom grammar file -->
-</head>
-<body>
-    <h1>Code playground</h1>
-    <div class="buttons">
+    <title>axo playground</title>
+  	<link rel="stylesheet" href="https://prismjs.com/themes/prism.css">
+    <link rel="stylesheet" href="https://prismjs.com/plugins/line-numbers/prism-line-numbers.css">
+    <link rel="stylesheet" href="editor.css">
+  </head>
+  <body>
+    <div id="main">
+      <h1>Code playground</h1>
+      <div class="buttons">
         <button id="run-button">Run</button>
         <button id="share-button">Share</button>
-    </div>
-    <div id="editor-container">
-        <div id="line-numbers"></div>
-        <div id="editor-container-inner">
-            <div id="highlighted-text"></div>
-            <div id="editor" contenteditable="true" spellcheck="false"></div>
-        </div>
-    </div>
+      </div>
+      <textarea id="editor" class="prism-live language-axo line-numbers fill" spellcheck="false">
+use std
+use io
+
+//Main entry point
+fn main(){
+  printf("hello world!\n")
+  ret 0
+}
+</textarea>
     <h3 class="output-label">Output:</h3>
     <div id="output"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js"></script>
+    <script src="https://prismjs.com/plugins/line-numbers/prism-line-numbers.js"></script>
+    <script src="../axo-syntax-highlighting.js"></script>
+    <script src = "https://live.prismjs.com/src/prism-live.js"</script>
     <script>
-        const editor = document.getElementById('editor');
-        const highlightedText = document.getElementById('highlighted-text');
-        const lineNumbers = document.getElementById('line-numbers');
-        editor.addEventListener('input', updateLineNumbersAndHighlight);
-        editor.addEventListener('scroll', syncScroll);
-        editor.addEventListener('keydown', function(event) {
-            if (event.key === 'Tab') {
-                event.preventDefault();
-                insertTab();
-            } else if (event.key === 'Enter') {
-                event.preventDefault();
-                insertNewLine();
-            }
+      PrismLive.registerLanguage("axo", Prism.languages.axo)
+      PrismLive.update();
+      document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', () => {
+          textarea.classList.add('line-numbers');
+          Prism.highlightElement(textarea);
         });
-        editor.addEventListener('paste', function(event) {
-            event.preventDefault(); // Prevent default paste behavior
-
-            const clipboardData = event.clipboardData || window.clipboardData;
-            const text = clipboardData.getData('text/plain'); // Get plain text from clipboard
-
-            document.execCommand('insertText', false, text);
-
-            updateLineNumbersAndHighlight();
-        });
-
-        function updateLineNumbersAndHighlight() {
-            updateLineNumbers();
-            updateHighlightedText();
-        }
-
-        function updateLineNumbers() {
-            const text = editor.innerText;
-            var lineCount = (text.match(/\n/g) || []).length + 1;
-            lineNumbers.innerHTML = Array.from({ length: lineCount }, () => `<div></div>`).join(''); // Create empty divs
-        }
-
-        function updateHighlightedText() {
-            const code = editor.innerText;
-            const highlighted = Prism.highlight(code, Prism.languages.axo, 'axo');
-            highlightedText.innerHTML = highlighted;
-        }
-
-        function insertTab() {
-            const sel = window.getSelection();
-            const range = sel.getRangeAt(0);
-            const tabNode = document.createTextNode('\t');
-            range.deleteContents();
-            range.insertNode(tabNode);
-            range.setStartAfter(tabNode);
-            range.setEndAfter(tabNode);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            updateLineNumbersAndHighlight();
-        }
-
-        function insertNewLine() {
-            const sel = window.getSelection();
-            const range = sel.getRangeAt(0);
-            const newTextNode = document.createTextNode('\n'); // Create a new text node with newline character
-
-            range.deleteContents(); // Remove existing content in the selection
-            range.insertNode(newTextNode); // Insert the newline character
-            range.setStartAfter(newTextNode); // Set the range to start after the new text node
-            range.setEndAfter(newTextNode); // Set the range to end after the new text node
-            sel.removeAllRanges();
-            sel.addRange(range);
-            updateLineNumbersAndHighlight();
-        }
-
-        function syncScroll() {
-            highlightedText.scrollTop = editor.scrollTop;
-            highlightedText.scrollLeft = editor.scrollLeft;
-            lineNumbers.scrollTop = editor.scrollTop; // Sync line numbers scroll
-            lineNumbers.scrollLeft = editor.scrollLeft; // Optional: sync horizontal scroll if needed
-        }
-        updateLineNumbersAndHighlight();
+      });
     </script>
     <script>
         var axo_errors = [];
@@ -109,36 +48,13 @@
     <script type="module">
         import initModule from './playground.js';
 
-        function getTextWithNewlines(element) {
-            let text = '';
-            const nodes = element.childNodes;
-
-            nodes.forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    text += node.textContent;
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
-                    text += '\n';
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // Recursively handle nested elements
-                    text += getTextWithNewlines(node);
-                }
-            });
-
-            return text;
-        }
-
         async function runCode() {
-            const axo_code = getTextWithNewlines(document.getElementById('editor'));
+            const axo_code = document.getElementById('editor').value;
             const outputDiv = document.getElementById('output');
             outputDiv.textContent = 'Running...';
-
-            // Ensure the WebAssembly module is initialized
             const Module = await initModule();
-
-            // Wrap and call the compiled C function
             var js_wrapped_compile = Module.cwrap("axo_compile_to_c", "string", ["string"]);
             var c_code = js_wrapped_compile(axo_code);
-
             // Check if axo_errors array is not empty
             if (axo_errors.length > 0) {
                 outputDiv.textContent = "";
@@ -146,7 +62,7 @@
                     outputDiv.textContent += `${error}`;
                 });
                 axo_errors = [];
-                return; // Skip the Piston API call
+                return;
             }
 
             try {
@@ -181,77 +97,47 @@
             }
         }
 
+        function shareCode() {
+            const editorContent = document.getElementById('editor').value;
+            const encodedCode = encodeURIComponent(editorContent);
+            const currentUrl = window.location.href.split('?')[0]; // Remove existing query parameters
+            const params = new URLSearchParams();
+            params.set('code', encodedCode);
+            const shareableURL = `${currentUrl}?${params.toString()}`;
 
-        document.getElementById('run-button').onclick = runCode;
-        document.getElementById('share-button').addEventListener('click', function() {
-            const code = getTextWithNewlines(document.getElementById('editor'));
-            const encodedCode = encodeURIComponent(code); // Properly encode the code
-            const baseURL = window.location.href.split('?')[0]; // Remove existing query parameters
-            const shareURL = `${baseURL}?code=${encodedCode}`;
-    
-            // Create a temporary textarea element to hold the share URL
-            const textArea = document.createElement('textarea');
-            textArea.value = shareURL;
-            document.body.appendChild(textArea);
-            textArea.select();
-    
-            let successful = false;
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = shareableURL;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            tempTextarea.setSelectionRange(0, 99999); // For mobile devices
 
-            // Attempt to use the Clipboard API
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(shareURL)
-                    .then(() => {
-                        successful = true;
-                        alert('Link copied to clipboard!');
-                    })
-                    .catch(err => {
-                        console.error('Failed to copy link with Clipboard API: ', err);
-                        // Fallback to execCommand if Clipboard API fails
-                        document.execCommand('copy');
-                    })
-                    .finally(() => {
-                        document.body.removeChild(textArea);
-                    });
-            } else {
-                // Fallback to execCommand if Clipboard API is not available
-                document.execCommand('copy');
-                successful = true;
-                document.body.removeChild(textArea);
-                alert('Link copied to clipboard!');
-            }
-
-            if (!successful) {
-                alert('Failed to copy link to clipboard.');
-            }
-        });
-        window.addEventListener('load', () => {
             try {
-                // Get the URL and search for the 'code' parameter
-                const url = window.location.href;
-                const codeParamMatch = url.match(/[?&]code=([^&#]*)/);
-        
-                if (codeParamMatch) {
-                    // Decode the code parameter value
-                    let encodedCode = codeParamMatch[1].replace(/\+/g, ' ');
-                    let decodedCode = decodeURIComponent(encodedCode);
-            
-                    // Find the editor element and set the code
-                    const editor = document.getElementById('editor');
-                    if (editor) {
-                        editor.textContent = decodedCode;
-                
-                        // Update the line numbers and syntax highlighting
-                        updateLineNumbersAndHighlight();
-                    } else {
-                        console.error('Editor element not found');
-                    }
-                } else {
-                    console.error('No code parameter found in the URL');
-                }
-            } catch (e) {
-                console.error('Failed to load the code from the URL:', e);
+                document.execCommand('copy');
+                alert('Link copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy link: ', err);
             }
-        });
+
+            document.body.removeChild(tempTextarea);
+        }
+
+        async function loadCodeFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            if (code) {
+                try {
+                    const decodedCode = decodeURIComponent(code);
+                    document.getElementById('editor').value = decodedCode;
+                    PrismLive.update();
+                } catch (err) {
+                    console.error('Failed to decode code from URL: ', err);
+                }
+            }
+        }
+
+        loadCodeFromURL();
+        document.getElementById('share-button').onclick = shareCode;
+        document.getElementById('run-button').onclick = runCode;
     </script>
-</body>
+  </body>
 </html>
