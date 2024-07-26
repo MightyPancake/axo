@@ -1,0 +1,73 @@
+module(
+	name: "maps"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Simple hashmap ported from: https://github.com/tidwall/hashmap.c"
+)
+
+#include "./hashmap.h"
+#source "./hashmap.c"
+
+#typ struct map (
+		(@none fn size_t) malloc,
+		(@none fn @none, size_t) realloc,
+		(fn @none) free,
+    size_t elsize,
+    size_t cap,
+    u64 seed0,
+    u64 seed1,
+		(u64 fn const @none, u64, u64) hash,
+		(int fn const @none, const @none, @none) compare,
+		(fn @none) elfree,
+		@none udata,
+    size_t bucketsz,
+    size_t nbuckets,
+    size_t count,
+    size_t mask,
+    size_t growat,
+    size_t shrinkat,
+		//This was originallu uint8_t
+    byte loadfactor,
+    byte growpower,
+    bool oom,
+    @none buckets,
+    @none spare,
+    @none edata
+)
+
+//Hashing algos
+#provided (u64 fn const @none, size_t, u64, u64) hashmap_murmur
+
+//Hashmaps
+#provided (map fn size_t, size_t, u64, u64,
+	(u64 fn const @none, u64, u64), //hash
+  (int fn const @none, @none, @none), //compare
+	(fn @none), //elfree
+	@byte //udata
+	) hashmap_new
+#provided (const @none fn map, const @none) hashmap_get
+#provided (const @none fn map, const @none) hashmap_set
+
+int fn maps.cmp_str(const @none a, const @none b, @none udata){
+	ret strcmp(a.(@byte), b.(@byte))
+}
+
+u64 fn maps.hash_str(const @none item, u64 seed0, u64 seed1){
+	ret hashmap_murmur(item, strlen(item.(@byte)), seed0, seed1)
+}
+
+fn maps.new((u64 fn const @none, u64, u64) hash=maps^hash_str, (int fn const @none, const @none, @none) comp=maps^cmp_str, size_t elem_sz=sz_of(null).(size_t), (fn @none) elfree=free){
+	ret hashmap_new(elem_sz, (0).(size_t), (0).(u64), (0).(u64), hash, comp, elfree, null)
+}
+
+fn map:set(@none item){
+	ret hashmap_set($., item)
+}
+
+fn map:get(@none item){
+	ret hashmap_get($., item)
+}
+

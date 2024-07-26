@@ -122,6 +122,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "enum" {ret_null; return ENUM_KWRD; }
 "ret" {ret_null; return RET_KWRD; }
 "const" {ret_null; return CONST_KWRD; }
+"volatile" {ret_null; return VOLATILE_KWRD; }
 "break" {ret_null; return BREAK_KWRD; }
 "continue" {ret_null; return CONTINUE_KWRD; }
 "fn" {ret_null; return FN_KWRD; }

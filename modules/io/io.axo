@@ -61,13 +61,13 @@ struct file (
 
 file fn io.open(@byte filename, @byte mode="r", @error errptr){
   f = file{file=fopen(filename, mode)}
-  errptr$get_c()
+  errptr:get_c()
   ret f
 }
 
 fn error:oops(){
-  if !(self^.code) ret;
-	printf("%sError: %s%s\n", aesc.red, self^.msg, aesc.reset)
-	exit(self^.code)
+  if !($..code) ret;
+	printf("%sError: %s%s\n", aesc^red, $..msg, aesc^reset)
+	exit($..code)
 }
 

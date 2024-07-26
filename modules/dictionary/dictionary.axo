@@ -1,0 +1,50 @@
+module(
+	name: "dictionary"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Implementation for a dictionary using standard maps module"
+)
+
+struct dict(
+	map map
+)
+
+struct dict_key_val(
+	@byte	key,
+	@none value
+)
+
+fn dictionary.cmp(const @none a, const @none b, @none udata){
+	ret strcmp(a.(@dict_key_val)..key, b.(@dict_key_val)..key)
+}
+
+fn dictionary.hash(const @none item, u64 seed0, u64 seed1){
+	ret hashmap_murmur(item.(@dict_key_val)..key, strlen(item.(@dict_key_val)..key), seed0, seed1)
+}
+
+fn dictionary.new(){
+	ret dict{maps.new(dictionary.hash, dictionary.cmp)}
+}
+
+fn dict:set(@byte key, @none val){
+	res = dict_key_val{key, val}
+	printf("Setting key: %s and value: %s\n", key, val)
+	ptr = mem.alc(sz_of(res)).(@dict_key_val)
+	ptr. = res
+	printf("set: %s, %s\n\n", ptr.key, ptr..value)
+	$.map:set(ptr)
+	printf("before ret: %s\n", $.map:get(ptr).(@dict_key_val)..value)
+}
+
+fn dict:get(@byte key){
+	res = dict_key_val{key}
+	ptr = mem.alc(sz_of(res)).(@dict_key_val)
+	ptr. = res
+	a = $.map:get(ptr).(@dict_key_val)..value
+	printf("returning: %s\n", a)
+	ret a
+}
+

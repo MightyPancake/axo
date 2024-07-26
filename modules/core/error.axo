@@ -9,23 +9,23 @@ struct error (
 )
 
 fn error:get_c(){
-	self^.code = errno
-	self^.msg = strerror(errno)
-	ret self
+	$..code = errno
+	$..msg = strerror(errno)
+	ret $
 }
 
 fn error:set(int code, @byte msg){
-	self^.code = code
-	self^.msg = msg
-	ret self
+	$..code = code
+	$..msg = msg
+	ret $
 }
 
 fn error:ok(){
-  ret !(self^.code.(bool))
+  ret !($..code.(bool))
 }
 
 fn error:reset(){
-	self^.code = 0
+	$..code = 0
 }
 
 {

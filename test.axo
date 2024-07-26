@@ -1,10 +1,18 @@
 use std
 use io
+use maps
 
-fn main([][]byte args) {
-    for arg each [i] in args {
-        printf("arg #%d: %s\n", i, arg.data)
-    }
+fn main([][]byte args){
+    e = error{}
+    e.msg = "hello"
+    
+    e_ptr = e@
+    e_ptr.msg
+    
+    e_ptr2 = e_ptr@
+    e_ptr2.msg
+
+    printf("%s\n", e_ptr2.msg)
+    
     ret 0
 }
-

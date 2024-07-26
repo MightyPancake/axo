@@ -69,7 +69,8 @@ typedef enum axo_typ_kind{
     axo_c_arg_list_kind,
     axo_map_kind,
     axo_none_kind,
-    axo_module_kind
+    axo_module_kind,
+    axo_literal_kind
 }axo_typ_kind;
 
 #define axo_subtyp(T) ((axo_typ*)(T.subtyp))
@@ -113,6 +114,8 @@ typedef struct axo_typ {
         void*           module;
     };
     void*              def;
+    bool               is_const;
+    bool               is_volatile;
 }axo_typ;
 
 #define axo_no_typ ((axo_typ){.kind=axo_no_kind, .def=NULL})
@@ -142,10 +145,10 @@ typedef enum axo_lval_kind{
 }axo_lval_kind;
 
 typedef struct axo_expr{
-    axo_expr_kind  kind;
-    axo_lval_kind  lval_kind;
-    char*          val;
-    axo_typ        typ;
+    axo_expr_kind          kind;
+    axo_lval_kind          lval_kind;
+    char*                  val;
+    axo_typ                typ;
 }axo_expr;
 
 typedef enum axo_identifier_kind{
@@ -193,6 +196,7 @@ typedef enum axo_statement_kind{
     axo_expr_statement_kind,
     axo_switch_statement_kind,
     axo_defer_statement_kind,
+    axo_empty_statement_kind,
     axo_no_statement_kind
 }axo_statement_kind;
 
@@ -240,10 +244,17 @@ typedef struct axo_scopes{
 }axo_scopes;
 
 typedef struct axo_var{
-    char*       name;
-    axo_typ     typ;
-    bool        is_const;
+    char*                  name;
+    axo_typ                typ;
 }axo_var;
+
+typedef enum axo_storage_qualifier {
+    axo_default_storage_qualifier,
+    axo_auto_storage_qualifier,
+    axo_register_storage_qualifier,
+    axo_static_storage_qualifier,
+    axo_extern_storage_qualifier
+}axo_storage_qualifier;
 
 typedef struct axo_simple_typ{
     char*        name;
@@ -333,6 +344,7 @@ typedef struct axo_state{
     int                    extra_c_sources_len; //Length of extra C sources
     char*                  input_str;           //Input string (defaults to NULL)
     int                    input_str_index;
+    map                    included_files;
 
     //Modules
     map                    modules;
@@ -606,7 +618,7 @@ axo_var* axo_set_var(axo_scope* sc, axo_var var);
 axo_var* axo_get_var(axo_scope* sc, char* name);
 axo_var* axo_del_var(axo_scope* sc, char* name);
 void axo_set_func(axo_state* st, axo_func fn);
-char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr);
+char* axo_get_var_decl_assign(YYLTYPE* pos, axo_var var, axo_expr expr);
 
 //Sources
 void axo_new_source(axo_state* st, char* path);
@@ -614,6 +626,7 @@ void axo_new_string_source(axo_state* st, char* code);
 void axo_pop_source(axo_state* st);
 void axo_switch_source(axo_source* src);
 axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit);
+bool axo_was_file_included(axo_state* st, char* path);
 void axo_set_input_string(const char *str);
 
 //Modules
@@ -630,6 +643,8 @@ axo_decl axo_add_module(axo_state* st, axo_module mod);
 axo_decl axo_func_decl_to_decl(axo_func func);
 axo_decl axo_func_def_to_decl(axo_func func);
 axo_expr axo_call_to_expr(axo_func_call cl);
+axo_func_call axo_method_call(axo_state* st, axo_scope* sc, YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* name_pos, axo_expr expr, char* name, bool rval_now);
+axo_expr axo_expr_dot_field(axo_state* st, YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* field_pos, axo_expr passed_expr, char* field);
 
 //Structures
 int axo_get_struct_field_index(axo_struct* structure, char* name);
@@ -659,6 +674,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2); //FIX!
 bool axo_is_no_typ(axo_typ typ);
 bool is_simple_typ_eq(axo_typ t1, char* t2);
 const char* axo_identifier_kind_to_str(axo_identifier_kind kind);
+axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q);
 
 //Loops
 char* axo_for_loop_to_str(axo_for_loop lp);
@@ -682,6 +698,7 @@ bool axo_dir_exists(char* dirname) ;
 char* fmt_str(char* dest, const char fmt[], ...);
 char* fmtstr(const char fmt[], ...);
 char* axo_bool_to_str(bool a, axo_color_support_kind col_sup);
+const char* axo_identifier_kind_to_str(axo_identifier_kind iden);
 char* axo_cc_to_str(axo_cc_kind cc);
 char* axo_color_support_to_str(axo_color_support_kind col_sup);
 int axo_color_count(axo_color_support_kind col_sup);

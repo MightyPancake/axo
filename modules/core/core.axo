@@ -9,7 +9,6 @@ module(
 	description: "This file is used in every axo program to provide basic functionality that C itself just lacks by default. It also includes some (hopefully light) C headers."
 )
 
-#typ size_t
 #typ va_list
 
 #provided (fn int) exit

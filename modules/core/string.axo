@@ -1,4 +1,14 @@
-//Basic string functionalities
+module(
+	name: "string"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Basic string functionality"
+)
+use mem
+
 #include <string.h>
 
 #provided (@byte fn @byte, int, size_t) memchr
@@ -23,4 +33,10 @@
 #provided (@byte fn @byte, @byte) strstr
 #provided (@byte fn @byte, @byte) strtok
 #provided (size_t fn @byte, @byte, size_t) strxfrm
+
+fn string.alc(@byte str){
+  res = mem^alc(strlen(str)+1.(size_t)).(@byte)
+  strcpy(res, str)
+  ret res
+}
 
