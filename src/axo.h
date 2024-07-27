@@ -111,7 +111,6 @@ typedef struct axo_typ {
         void*           structure;
         void*           arr;
         void*           map;
-        void*           module;
     };
     void*              def;
     bool               is_const;
@@ -134,7 +133,6 @@ typedef struct axo_types_list{
 typedef enum axo_expr_kind{
     axo_expr_normal_kind,
     axo_expr_enum_typ_kind,
-    axo_expr_module_kind,
     axo_expr_assigned_declaration_kind
 }axo_expr_kind;
 

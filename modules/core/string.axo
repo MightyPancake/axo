@@ -1,5 +1,5 @@
 module(
-	name: "string"
+	name: "str"
 	version: "0.0.1"
 	author: "mightypancake"
 	website: "https://axolang.com"
@@ -34,9 +34,13 @@ use mem
 #provided (@byte fn @byte, @byte) strtok
 #provided (size_t fn @byte, @byte, size_t) strxfrm
 
-fn string.alc(@byte str){
+fn str.alc(@byte str){
   res = mem^alc(strlen(str)+1.(size_t)).(@byte)
   strcpy(res, str)
   ret res
+}
+
+fn byte:cpy(){
+	ret str^alc($)
 }
 

@@ -55,6 +55,9 @@ char* axo_get_typ_default(axo_typ typ){
     axo_typ err_t;
     if (typ.def != NULL) return (char*)(typ.def);
     switch(typ.kind){
+        case axo_simple_kind:
+            return "0";
+            break;
         case axo_arr_kind:
             return "AXO_NULL_ARR";
             break;
@@ -84,7 +87,8 @@ char* axo_file_to_str(char* path){
         fseek (file, 0, SEEK_SET);
         str = (char*)malloc((len+1)*sizeof(char));
         if (str){
-            fread(str, sizeof(char), len, file);
+            if (fread(str, sizeof(char), len, file) < len)
+                fprintf(stderr, "Error at %s:%d\n", __FILE__, __LINE__);
         }
         fclose(file);
     }
@@ -689,7 +693,7 @@ void axo_lolprintf(axo_color_support_kind col_sup, int seed, const char* fmt, ..
         case axo_full_color_support_kind:
         case axo_limited_color_support_kind:
             va_start(args, fmt);
-            vasprintf(&str, fmt, args);
+            if (vasprintf(&str, fmt, args)<0) fprintf(stderr, "vasprintf error at %s:%d\n", __FILE__, __LINE__);
             va_end(args);
             len = strlen(str);
             col_count = axo_color_count(col_sup);
@@ -719,7 +723,9 @@ char* axo_lolsprintf(axo_color_support_kind col_sup, int seed, char* dest, const
         case axo_full_color_support_kind:
         case axo_limited_color_support_kind:
             va_start(args, fmt);
-            vasprintf(&str, fmt, args);
+            if (vasprintf(&str, fmt, args) < 0){
+                fprintf(stderr, "error in vasprintf %s:%d\n", __FILE__, __LINE__);
+            }
             va_end(args);
             len = strlen(str);
             col_count = axo_color_count(col_sup);
@@ -1068,8 +1074,9 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
 }
 
 axo_var* axo_set_var(axo_scope* sc, axo_var var){
+    if (var.typ.kind==axo_literal_kind) var.typ.kind=axo_simple_kind;
     if (sc->to_global) return axo_set_var(sc->to_global, var);
-    // printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
+    // printf("'%s' of type %s->'%s'\n", var.name, axo_typ_kind_to_str(var.typ.kind), axo_typ_to_str(var.typ));
     new_ptr_one(ptr, axo_var);
     *ptr = var;
     hashmap_set(sc->variables, ptr);
@@ -1111,7 +1118,8 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
     axo_statement ret = (axo_statement){.kind=axo_scope_statement_kind};
     ret.val = sc->defer_used ? alloc_str("{Deferral") : alloc_str("{");
     for (int i = 0; i<sc->statements_len; i++){
-        asprintf(&(ret.val), "%s\n%s", ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
+        strapnd(&ret.val, "\n");
+        strapnd(&ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
     }
     strapnd(&(ret.val), "\n}");
     return ret;
@@ -1152,6 +1160,7 @@ char* axo_type_str(axo_typ typ, char* ret){
     int i;
     char dim_stars[128];
     switch (typ.kind){
+        case axo_literal_kind:
         case axo_simple_kind:
             return typ.simple.name;
             break;
@@ -1220,6 +1229,7 @@ char* axo_c_arr_of_typ(axo_typ typ, char* inside){
 
 bool axo_is_typ_prim(axo_typ t){
     switch(t.kind){
+        case axo_literal_kind:
         case axo_simple_kind:
         case axo_struct_kind:
         case axo_enum_kind:
@@ -1237,6 +1247,7 @@ bool axo_is_typ_prim(axo_typ t){
 char* axo_prim_typ_to_c_str(axo_typ t){
     switch(t.kind){
         case axo_simple_kind:
+        case axo_literal_kind:
             return t.simple.cname; break;
         case axo_struct_kind:
             return ((axo_struct*)(t.structure))->name; break;
@@ -1260,6 +1271,8 @@ char** axo_typ_to_strings(axo_typ typ, char** dest){
     char* right = empty_str;
     
     axo_typ cur_typ = typ;
+    // typ.is_const = false;
+    // typ.is_volatile = false;
     bool was_left = false;
     while(1){
         if (axo_is_typ_prim(cur_typ))
@@ -1386,6 +1399,10 @@ bool axo_typ_valid_arr_index(axo_typ typ, axo_state* st){
 axo_typ axo_clean_typ(axo_typ typ){
     axo_typ new_typ = typ;
     switch(typ.kind){
+        case axo_literal_kind:
+            typ.kind=axo_simple_kind;
+            return typ;
+            break;
         case axo_func_kind:
             new_typ.func_typ = alloc_one(axo_func_typ);
             memcpy(new_typ.func_typ, typ.func_typ, sizeof(axo_func_typ));
@@ -1598,6 +1615,7 @@ axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q){
 
 char* axo_typ_kind_to_str(axo_typ_kind tk){
     switch(tk){
+        case axo_literal_kind: return "literal"; break;
         case axo_simple_kind: return "simple"; break;
         case axo_func_kind: return "function"; break;
         case axo_c_arg_list_kind: return "C arg list"; break;
@@ -1736,14 +1754,14 @@ void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_e
         return;
     }else{
         dest->typ = val1.typ;
-        asprintf(&(dest->val), "%s%s%s", val1.val, op, val2.val);
+        dest->val = fmtstr("%s%s%s", val1.val, op, val2.val);
         dest->kind = axo_expr_normal_kind;
     }
 }
 
 void set_val(axo_expr* dest, axo_typ typ, char* val){
     dest->typ = typ;
-    asprintf(&(dest->val), "%s", val);
+    dest->val = fmtstr("%s", val);
 }
 
 
@@ -1847,7 +1865,7 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
             asprintf(&ret, "%s" "%s\n", ret, &(code[last_i]));
         else{
             line_num=itoa_spaced(line);
-            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));   
+            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
             free(line_num);
         }
         last_i = i+1;

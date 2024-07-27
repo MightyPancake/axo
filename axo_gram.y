@@ -482,19 +482,34 @@ incr_decr_op : expr INCR_OP {
 
 //String literal should be a pointer!
 expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
-  | INTEGER_LITERAL {set_val(&$$, axo_int_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | INTEGER_LITERAL {
+    // set_val(&$$, axo_int_typ(state), $1);
+    // $$.kind=axo_expr_normal_kind;
+    // $$.lval_kind = axo_not_lval_kind;
+    $$ = (axo_expr){
+      .kind=axo_expr_normal_kind,
+      .lval_kind=axo_not_lval_kind,
+      .val=alloc_str($1),
+      .typ=axo_int_typ(state)
+    };
+    $$.typ.kind=axo_literal_kind;
+  }
   | FLOAT_LITERAL {set_val(&$$, axo_float_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | BYTE_LITERAL {set_val(&$$, axo_byte_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | "null" {
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
-      .val="((char*)(NULL))",
+      .val="NULL",
       .typ=axo_str_typ(state)
     };
   }
   | IDEN '^' IDEN {
       axo_module* mod = axo_get_module(state, $1);
+      if (!mod){
+        yyerror(&@1, "Module '%s'is not loaded. Forgot to did you use it?", $1);
+        YYERROR;
+      }
       axo_var* var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $3));
       if (var == NULL && rval_now)
         yyerror(&@2, "Module '%s' doesn't have variable '%s'.", mod->name, $3);
@@ -754,11 +769,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     };
   }
   | "type_sz" '(' val_typ ')' {
-    const axo_typ_def* lu_def = axo_get_typ_def(state, "u64");
+    const axo_typ_def* lu_def = axo_get_typ_def(state, "size_t");
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
       .lval_kind = axo_not_lval_kind,
-      .val = fmtstr("sizeof(%s)", axo_typ_to_str($val_typ)),
+      .val = fmtstr("sizeof(%s)", axo_typ_to_c_str($val_typ)),
       .typ = lu_def->typ
     };
   }
@@ -792,6 +807,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     axo_validate_rval(&@1, $1);
     switch($1.typ.kind){
       case axo_simple_kind:
+      case axo_literal_kind:
         if ($val_typ.kind != axo_simple_kind)
           yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
         else
@@ -1529,12 +1545,17 @@ no_q_typ : IDEN {
   | func_typ
   | arr_typ
   | '.' '.' '.' {
-    $$.kind = axo_c_arg_list_kind;
-    $$.def = NULL;
+    $$ = (axo_typ){
+      .kind = axo_c_arg_list_kind,
+      .def = NULL,
+    };
   }
   ;
 
-val_typ: no_q_typ
+val_typ : no_q_typ {
+    $$.is_const=false;
+    $$.is_volatile=false;
+  }
   | type_qualifier no_q_typ {
     $$ = $2;
     $$.is_const=$1.is_const;

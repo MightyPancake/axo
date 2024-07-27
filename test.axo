@@ -1,18 +1,11 @@
 use std
 use io
-use maps
+use map
+use dict
 
 fn main([][]byte args){
-    e = error{}
-    e.msg = "hello"
-    
-    e_ptr = e@
-    e_ptr.msg
-    
-    e_ptr2 = e_ptr@
-    e_ptr2.msg
-
-    printf("%s\n", e_ptr2.msg)
-    
+    d = dict^new()    
+    d:set("hello", str^alc("world"))
+    printf("%s\n", d:get("hello").(@byte))
     ret 0
 }
