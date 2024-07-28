@@ -1438,7 +1438,7 @@ char* axo_get_code(axo_state* st){
 void* axo_safe_malloc(size_t n){
     void *p = malloc(n);
     if (p == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate %zu bytes.\n", n);
+        fprintf(stderr, "Fatal: failed to allocate %llu bytes.\n", n);
         abort();
     }
     return p;
@@ -2103,6 +2103,14 @@ char* axo_decode_easter(long long int* data){
 #endif
 
 #ifdef _WIN32
+char* axo_cwd(char* dest, size_t sz) {
+    if (GetCurrentDirectory((DWORD)sz, dest) == 0) {
+        DWORD errorMessageID = GetLastError();
+        fprintf(stderr, "axo_cwd() error: %lu\n", errorMessageID);
+        return NULL;
+    }
+    return dest;
+}
 
 #elif __linux
     char* axo_cwd(char* dest, size_t sz){
@@ -2115,7 +2123,6 @@ char* axo_decode_easter(long long int* data){
 
 #elif __EMSCRIPTEN__
 char* axo_cwd(char* dest, size_t sz) {
-    // JavaScript code to get the current working directory
     EM_ASM({
         var currentDir = FS.cwd();
         stringToUTF8(currentDir, $0, $1);

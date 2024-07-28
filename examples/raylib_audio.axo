@@ -2,29 +2,28 @@ use std
 use raylib
 
 fn main([][]byte args){
-    const w = 800
-    const h = 450
-    SetTraceLogLevel(2)
+    const w = 1200
+    const h = 1200
+    // SetTraceLogLevel(2)
     InitWindow(w, h, "Hello raylib!")
+    //Load image
+    image = LoadImage("resources/images/gangbusters_melody_club.png")
+    texture = LoadTextureFromImage(image)
+    UnloadImage(image)
     InitAudioDevice()
-    music = LoadMusicStream("./test.mp3")
+    music = LoadMusicStream("./resources/audio/portobello.mp3")
     SetMusicVolume(music, 1.0)
     SetMasterVolume(1.0)
     PlayMusicStream(music)
-    SetTargetFPS(30)
+    SetTargetFPS(60)
     while !WindowShouldClose() {
         //Update
-        if (IsMusicReady(music)){
-            UpdateMusicStream(music)
-        }else{
-           printf("Not ready\n")
-        }
+        UpdateMusicStream(music)
         timePlayed = GetMusicTimePlayed(music)/GetMusicTimeLength(music)
-        printf("time played: %f\n", timePlayed)
         //Draw
         BeginDrawing()
         ClearBackground(RAYWHITE)
-        DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY)
+        DrawTexture(texture, 0, 0, WHITE)
         EndDrawing()
     }
     UnloadMusicStream(music)
