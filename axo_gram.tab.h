@@ -111,16 +111,17 @@ extern int yydebug;
     LINE_TAG = 312,                /* "#line"  */
     COLUMN_TAG = 313,              /* "#column"  */
     FILE_TAG = 314,                /* "#file"  */
-    SOURCE_TAG = 315,              /* "#source"  */
-    CONST_KWRD = 316,              /* "const"  */
-    VOLATILE_KWRD = 317,           /* "volatile"  */
-    IDENTIFIER_PREC = 318,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 319,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 320,               /* LOOP_PREC  */
-    UMINUS = 321,                  /* UMINUS  */
-    CALL_PREC = 322,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 323,  /* STRUCT_LIT_NAMED_FIELD  */
-    TYPE_Q_PREC = 324              /* TYPE_Q_PREC  */
+    FLAG_TAG = 315,                /* "#flag"  */
+    SOURCE_TAG = 316,              /* "#source"  */
+    CONST_KWRD = 317,              /* "const"  */
+    VOLATILE_KWRD = 318,           /* "volatile"  */
+    IDENTIFIER_PREC = 319,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 320,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 321,               /* LOOP_PREC  */
+    UMINUS = 322,                  /* UMINUS  */
+    CALL_PREC = 323,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 324,  /* STRUCT_LIT_NAMED_FIELD  */
+    TYPE_Q_PREC = 325              /* TYPE_Q_PREC  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -129,7 +130,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 177 "axo_gram.y"
+#line 178 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -157,7 +158,7 @@ union YYSTYPE
   axo_switch switch_type;
   axo_var variable_type;
 
-#line 161 "axo_gram.tab.h"
+#line 162 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

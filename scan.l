@@ -116,6 +116,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "#line" {ret_null; return LINE_TAG; }
 "#column" {ret_null; return COLUMN_TAG; }
 "#file" {ret_null; return FILE_TAG; }
+"#flag" {ret_null; return FLAG_TAG; }
 "while" {ret_null; return WHILE_KWRD; }
 "switch" {ret_null; return SWITCH_KWRD; }
 "case" {ret_null; return CASE_KWRD; }
@@ -181,15 +182,15 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 
 }
 ([0-9]+\.[0-9]+|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
-[a-zA-Z][0-9a-zA-Z_]* {ret_def; return IDEN; }
-\.[a-zA-Z][0-9a-zA-Z_]* {
+[a-zA-Z_][0-9a-zA-Z_]* {ret_def; return IDEN; }
+\.[a-zA-Z_][0-9a-zA-Z_]* {
     yylloc->first_line=yylloc->last_line=axo_line(state);
     yylloc->first_column=axo_col(state);
     yylloc->last_column=axo_col(state)+=yyleng;
     yylval->str=alloc_str(&(yytext[1]));
     return DOT_FIELD;
 }
-[a-zA-Z][0-9a-zA-Z_]*\{ {
+[a-zA-Z_][0-9a-zA-Z_]*\{ {
   ret_def;
   yylval->str[yyleng-1] = '\0';
   //Super dirty! Changes needed to structure literals

@@ -1,0 +1,72 @@
+#provided (fn) InitAudioDevice
+#provided (fn) CloseAudioDevice
+#provided (bool fn) IsAudioDeviceReady
+#provided (fn f32) SetMasterVolume
+#provided (f32 fn) GetMasterVolume
+
+#provided (@Wave fn @byte) LoadWave
+#provided (@Wave fn @byte, @byte, int) LoadWaveFromMemory
+#provided (bool fn @Wave) IsWaveReady
+#provided (@Sound fn @byte) LoadSound
+#provided (@Sound fn @Wave) LoadSoundFromWave
+#provided (@Sound fn @Sound) LoadSoundAlias
+#provided (bool fn @Sound) IsSoundReady
+#provided (fn @Sound, @byte, int) UpdateSound
+#provided (fn @Wave) UnloadWave
+#provided (fn @Sound) UnloadSound
+#provided (fn @Sound) UnloadSoundAlias
+#provided (bool fn @Wave, @byte) ExportWave
+#provided (bool fn @Wave, @byte) ExportWaveAsCode
+
+#provided (fn @Sound) PlaySound
+#provided (fn @Sound) StopSound
+#provided (fn @Sound) PauseSound
+#provided (fn @Sound) ResumeSound
+#provided (bool fn @Sound) IsSoundPlaying
+#provided (fn @Sound, f32) SetSoundVolume
+#provided (fn @Sound, f32) SetSoundPitch
+#provided (fn @Sound, f32) SetSoundPan
+#provided (@Wave fn @Wave) WaveCopy
+#provided (fn @Wave, int, int) WaveCrop
+#provided (fn @Wave, int, int, int) WaveFormat
+#provided (@f32 fn @Wave) LoadWaveSamples
+#provided (fn @f32) UnloadWaveSamples
+
+#provided (Music fn @byte) LoadMusicStream
+#provided (Music fn @byte, @byte, int) LoadMusicStreamFromMemory
+#provided (bool fn Music) IsMusicReady
+#provided (fn Music) UnloadMusicStream
+#provided (fn Music) PlayMusicStream
+#provided (bool fn Music) IsMusicStreamPlaying
+#provided (fn Music) UpdateMusicStream
+#provided (fn Music) StopMusicStream
+#provided (fn Music) PauseMusicStream
+#provided (fn Music) ResumeMusicStream
+#provided (fn Music, f32) SeekMusicStream
+#provided (fn Music, f32) SetMusicVolume
+#provided (fn Music, f32) SetMusicPitch
+#provided (fn Music, f32) SetMusicPan
+#provided (f32 fn Music) GetMusicTimeLength
+#provided (f32 fn Music) GetMusicTimePlayed
+
+#provided (@AudioStream fn u32, u32, u32) LoadAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamReady
+#provided (fn @AudioStream) UnloadAudioStream
+#provided (fn @AudioStream, @byte, int) UpdateAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamProcessed
+#provided (fn @AudioStream) PlayAudioStream
+#provided (fn @AudioStream) PauseAudioStream
+#provided (fn @AudioStream) ResumeAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamPlaying
+#provided (fn @AudioStream) StopAudioStream
+#provided (fn @AudioStream, f32) SetAudioStreamVolume
+#provided (fn @AudioStream, f32) SetAudioStreamPitch
+#provided (fn @AudioStream, f32) SetAudioStreamPan
+#provided (fn int) SetAudioStreamBufferSizeDefault
+#provided (fn @AudioStream, @AudioCallback) SetAudioStreamCallback
+
+#provided (fn @AudioStream, @AudioCallback) AttachAudioStreamProcessor
+#provided (fn @AudioStream, @AudioCallback) DetachAudioStreamProcessor
+
+#provided (fn @AudioCallback) AttachAudioMixedProcessor
+#provided (fn @AudioCallback) DetachAudioMixedProcessor

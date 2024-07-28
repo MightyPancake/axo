@@ -50,6 +50,7 @@ struct YYLTYPE
 #define axo_switch_expr_list_cap 16
 #define axo_cases_cap 16
 #define axo_c_sources_cap 16
+#define axo_cc_flags_len 16
 
 #ifdef __WIN32
     #define AXO_BIN_EXT ".exe"
@@ -119,6 +120,7 @@ typedef struct axo_typ {
 
 #define axo_no_typ ((axo_typ){.kind=axo_no_kind, .def=NULL})
 #define axo_none_typ ((axo_typ){.kind=axo_none_kind, .def=NULL})
+#define axo_none_ptr_typ ((axo_typ){.kind=axo_ptr_kind, .subtyp=&axo_none_typ,.def=NULL})
 
 typedef struct axo_arr_typ{
     axo_typ    subtyp;
@@ -353,6 +355,8 @@ typedef struct axo_state{
     //Misc
     bool                   silenced;
     bool                   run;
+    char**                 cc_flags;
+    int                    cc_flags_len;
 }axo_state;
 
 #define axo_col_sup(ST) (ST->config.color_support)

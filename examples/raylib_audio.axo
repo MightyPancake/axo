@@ -1,0 +1,35 @@
+use std
+use raylib
+
+fn main([][]byte args){
+    const w = 800
+    const h = 450
+    SetTraceLogLevel(2)
+    InitWindow(w, h, "Hello raylib!")
+    InitAudioDevice()
+    music = LoadMusicStream("./test.mp3")
+    SetMusicVolume(music, 1.0)
+    SetMasterVolume(1.0)
+    PlayMusicStream(music)
+    SetTargetFPS(30)
+    while !WindowShouldClose() {
+        //Update
+        if (IsMusicReady(music)){
+            UpdateMusicStream(music)
+        }else{
+           printf("Not ready\n")
+        }
+        timePlayed = GetMusicTimePlayed(music)/GetMusicTimeLength(music)
+        printf("time played: %f\n", timePlayed)
+        //Draw
+        BeginDrawing()
+        ClearBackground(RAYWHITE)
+        DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY)
+        EndDrawing()
+    }
+    UnloadMusicStream(music)
+    CloseAudioDevice()
+    CloseWindow()
+    ret 0
+}
+

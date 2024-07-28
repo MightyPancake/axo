@@ -21,6 +21,5 @@ module(
 include "./mod.axo"
 include "./test.axo"
 #include "./main.h"
-include "./string.axo"
 include "./error.axo"
 

@@ -55,6 +55,9 @@ char* axo_get_typ_default(axo_typ typ){
     axo_typ err_t;
     if (typ.def != NULL) return (char*)(typ.def);
     switch(typ.kind){
+        case axo_none_kind:
+            return "none_defult";
+            break;
         case axo_simple_kind:
             return "0";
             break;
@@ -147,6 +150,8 @@ axo_state* axo_new_state(char* root_path){
     //Misc
     st->silenced = false;
     st->run = false;
+    st->cc_flags = NULL;
+    st->cc_flags_len = 0;
     return st;
 }
 
@@ -1615,16 +1620,17 @@ axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q){
 
 char* axo_typ_kind_to_str(axo_typ_kind tk){
     switch(tk){
-        case axo_literal_kind: return "literal"; break;
         case axo_simple_kind: return "simple"; break;
         case axo_func_kind: return "function"; break;
-        case axo_c_arg_list_kind: return "C arg list"; break;
         case axo_arr_kind: return "array"; break;
+        case axo_c_arg_list_kind: return "C arg list"; break;
         case axo_ptr_kind: return "pointer"; break;
         case axo_enum_kind: return "enum";
         case axo_no_kind: return "no type"; break;
         case axo_struct_kind: return "struct"; break;
+        case axo_none_kind: return "none"; break;
         case axo_module_kind: return "module"; break;
+        case axo_literal_kind: return "literal"; break;
         default: return "unknown_kind"; break;
     }
     return "undefined kind";

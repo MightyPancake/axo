@@ -1,5 +1,8 @@
 //Include some error related C header?
 #include <errno.h>
+#include <string.h>
+
+#provided (@byte fn int) strerror
 
 #provided int errno
 
@@ -9,23 +12,23 @@ struct error (
 )
 
 fn error:get_c(){
-	$..code = errno
-	$..msg = strerror(errno)
+	$.code = errno
+	$.msg = strerror(errno)
 	ret $
 }
 
 fn error:set(int code, @byte msg){
-	$..code = code
-	$..msg = msg
+	$.code = code
+	$.msg = msg
 	ret $
 }
 
 fn error:ok(){
-  ret !($..code.(bool))
+  ret !($.code.(bool))
 }
 
 fn error:reset(){
-	$..code = 0
+	$.code = 0
 }
 
 {

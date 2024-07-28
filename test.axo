@@ -1,11 +1,7 @@
 use std
-use io
-use map
-use dict
 
 fn main([][]byte args){
-    d = dict^new()    
-    d:set("hello", str^alc("world"))
-    printf("%s\n", d:get("hello").(@byte))
+    printf("Hello world!\n")
     ret 0
 }
+

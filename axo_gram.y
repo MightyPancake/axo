@@ -123,6 +123,7 @@
 %token<str> LINE_TAG "#line"
 %token<str> COLUMN_TAG "#column"
 %token<str> FILE_TAG "#file"
+%token<str> FLAG_TAG "#flag"
 %token<str> SOURCE_TAG "#source"
 %token<str> CONST_KWRD "const"
 %token<str> VOLATILE_KWRD "volatile"
@@ -166,9 +167,9 @@
 %left '*' '/' '%'
 %left "in" LOOP_PREC
 %left '.'
+%left '!'
 %left '(' ':'
 %left UMINUS '@' '^'
-%left '!'
 %left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
 %left IF_KWRD
@@ -374,6 +375,13 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
     $$ = (axo_decl){.val=fmtstr("//sourced %s", res)};
   }
+  | "#flag" STRING_LITERAL {
+    char* res = alloc_str(&($STRING_LITERAL[1]));
+    res[strlen($STRING_LITERAL)-2] = '\0';
+    resize_dyn_arr_if_needed(char*, state->cc_flags, state->cc_flags_len, axo_cc_flags_len);
+    state->cc_flags[state->cc_flags_len++] = alloc_str(res);
+    $$ = (axo_decl){.val=fmtstr("//flag %s", res)};
+  }
   ;
 
 global_code_scope_start : '{' {
@@ -501,13 +509,13 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
       .val="NULL",
-      .typ=axo_str_typ(state)
+      .typ=axo_none_ptr_typ
     };
   }
   | IDEN '^' IDEN {
       axo_module* mod = axo_get_module(state, $1);
       if (!mod){
-        yyerror(&@1, "Module '%s'is not loaded. Forgot to did you use it?", $1);
+        yyerror(&@1, "Module '%s'is not loaded. Did you forget to use it?", $1);
         YYERROR;
       }
       axo_var* var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $3));
@@ -2195,6 +2203,10 @@ int compile(int argc, char** argv) {
             for (int i=0; i<state->extra_c_sources_len; i++){
               strapnd(&compiler_cmd, " ");
               strapnd(&compiler_cmd, state->extra_c_sources[i]);
+            }
+            for (int i=0; i<state->cc_flags_len; i++){
+              strapnd(&compiler_cmd, " ");
+              strapnd(&compiler_cmd, state->cc_flags[i]);
             }
             printf("Compiling command:\n%s\n", compiler_cmd);
             res = system(compiler_cmd) >> 8;

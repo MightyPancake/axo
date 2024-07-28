@@ -3,7 +3,7 @@ module(
   author: "mightypancake"
   description: "I/O module"
 )
-
+  
 #include <stdio.h>
 
 #typ FILE
@@ -66,8 +66,8 @@ file fn io.open(@byte filename, @byte mode="r", @error errptr){
 }
 
 fn error:oops(){
-  if !($..code) ret;
+  if !($.code) ret;
 	printf("%sError: %s%s\n", aesc^red, $..msg, aesc^reset)
-	exit($..code)
+	exit($.code)
 }
 

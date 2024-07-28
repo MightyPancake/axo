@@ -1,0 +1,28 @@
+module(
+	name: "raylib"
+	version: "5.0.0"
+	author: "Raysan5"
+	website: "https://www.raylib.com"
+	license_name: "zlib/libpng"
+	license: "https://www.raylib.com/license.html"
+	description: "Raylib"
+)
+
+#include <raylib.h>
+
+#flag "-lraylib"
+#flag "-lGL"
+#flag "-lm"
+#flag "-lpthread"
+#flag "-ldl"
+#flag "-lrt"
+#flag "-lX11"
+
+include "./types.axo"
+include "./core.axo"
+include "./shapes.axo"
+include "./textures.axo"
+include "./text.axo"
+include "./models.axo"
+include "./audio.axo"
+
