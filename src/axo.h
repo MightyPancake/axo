@@ -219,7 +219,9 @@ typedef enum axo_decl_kind{
     axo_assign_decl_kind,
     axo_is_decl_kind,
     axo_typ_def_decl_kind,
-    axo_other_decl_kind
+    axo_other_decl_kind,
+    axo_c_code_decl_kind,
+    axo_typedef_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -734,5 +736,13 @@ char* axo_get_parent_dir(char* path);
 
 //Deprecated/shouldn't be used (will have to replace them)
 void set_val(axo_expr* dest, axo_typ typ, char* val);
+
+//Free
+void axo_free_state(axo_state* st);
+void axo_free_scope(axo_scope* sc);
+void axo_free_source(axo_source s);
+void axo_free_variables(map vars);
+void axo_free_func(axo_func fn);
+void axo_free_func_typ(axo_func_typ ft);
 
 #endif

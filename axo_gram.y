@@ -125,14 +125,16 @@
 %token<str> FILE_TAG "#file"
 %token<str> FLAG_TAG "#flag"
 %token<str> SOURCE_TAG "#source"
+%token<str> C_TAG "#C"
 %token<str> CONST_KWRD "const"
+%token<str> MODULE_ACCESS "::"
 %token<str> VOLATILE_KWRD "volatile"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
-%type<expression> expr incr_decr_op if_condition assignment special_assignment call_error_assignment arr_literal
+%type<expression> expr incr_decr_op if_condition assignment special_assignment arr_literal
 %type<declaration_type> declaration
-%type<str> statements declarations while_loop_base
+%type<str> statements declarations while_loop_base c_code
 %type<typ_type> func_def_ret_typ val_typ no_q_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args type_qualifier typ_q
 %type<function_argument> func_arg
 %type<for_loop_type> for_loop_start for_loop_init for_loop_base
@@ -170,9 +172,9 @@
 %left '!'
 %left '(' ':'
 %left UMINUS '@' '^'
+%left IF_KWRD
 %left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
-%left IF_KWRD
 %left STRUCT_LIT_NAMED_FIELD TYPE_Q_PREC
 
 %union {
@@ -208,6 +210,7 @@
 declarations : /* EMPTY */ {}
   | declarations func_def {
     axo_add_decl(state, axo_func_def_to_decl($2));
+    axo_free_func($2);
   }
   | declarations C_INCLUDE {
     if ($C_INCLUDE[0] == '<'){
@@ -274,8 +277,10 @@ declaration : struct_def { //Fix! Make this use realloc less
     strapnd(&decl, $struct_def.name);
     strapnd(&decl, "{\n");
     for (int i=0; i<$struct_def.fields_len; i++){
-      strapnd(&decl, axo_name_typ_decl(strct->fields[i].name, strct->fields[i].typ));
+      char* ntd = axo_name_typ_decl(strct->fields[i].name, strct->fields[i].typ);
+      strapnd(&decl, ntd);
       strapnd(&decl, ";\n");
+      free(ntd);
     }
     strapnd(&decl, "}");
     strapnd(&decl, $struct_def.name);
@@ -322,6 +327,7 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
     fn.f_typ.ret_typ = ($func_def_ret_typ.kind==axo_no_kind) ? axo_none_typ : $func_def_ret_typ;
     $$ = axo_func_decl_to_decl(fn);
+    axo_free_func(fn);
     strapnd(&($$.val), ";");
   }
   | "#provided" val_typ IDEN {
@@ -381,6 +387,31 @@ declaration : struct_def { //Fix! Make this use realloc less
     resize_dyn_arr_if_needed(char*, state->cc_flags, state->cc_flags_len, axo_cc_flags_len);
     state->cc_flags[state->cc_flags_len++] = alloc_str(res);
     $$ = (axo_decl){.val=fmtstr("//flag %s", res)};
+  }
+  | c_code {
+    $$ = (axo_decl){
+      .kind=axo_c_code_decl_kind,
+      .val=$c_code
+    };
+  }
+  | IDEN "->" val_typ {
+    axo_typ_def td = (axo_typ_def){
+      .name=alloc_str($IDEN),
+      .typ=$val_typ
+    };
+    td.typ.simple.name=td.typ.simple.cname=td.name;
+    axo_set_typ_def(&@$, state, td);
+    $$ = (axo_decl){
+      .kind=axo_typedef_decl_kind,
+      .val=fmtstr("typedef %s %s;", axo_typ_to_c_str($val_typ), $IDEN)
+    };
+  }
+  ;
+
+c_code : "#C" STRING_LITERAL {
+    char* ret = alloc_str(&($STRING_LITERAL[1]));
+    ret[strlen(ret)-1] = '\0';
+    $$ = ret;
   }
   ;
 
@@ -491,13 +522,10 @@ incr_decr_op : expr INCR_OP {
 //String literal should be a pointer!
 expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
   | INTEGER_LITERAL {
-    // set_val(&$$, axo_int_typ(state), $1);
-    // $$.kind=axo_expr_normal_kind;
-    // $$.lval_kind = axo_not_lval_kind;
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
-      .val=alloc_str($1),
+      .val=$1,
       .typ=axo_int_typ(state)
     };
     $$.typ.kind=axo_literal_kind;
@@ -512,7 +540,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ=axo_none_ptr_typ
     };
   }
-  | IDEN '^' IDEN {
+  | IDEN "::" IDEN {
       axo_module* mod = axo_get_module(state, $1);
       if (!mod){
         yyerror(&@1, "Module '%s'is not loaded. Did you forget to use it?", $1);
@@ -520,7 +548,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       }
       axo_var* var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $3));
       if (var == NULL && rval_now)
-        yyerror(&@2, "Module '%s' doesn't have variable '%s'.", mod->name, $3);
+        yyerror(&@$, "Module '%s' doesn't have variable '%s'.", mod->name, $3);
       $$ = (axo_expr){
         .val = fmtstr("%s%s", mod->prefix, $3),
         .typ=(var ? var->typ : axo_no_typ),
@@ -534,7 +562,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   | expr '*' expr {parse_operator(&@2, &$$, $1, "*", $3); }
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
-  | '(' expr ')' {$$.val = fmtstr("(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
+  | '(' expr ')' {
+    $$.val = fmtstr("(%s)", $2.val);
+    $$.typ = $2.typ;
+    $$.kind = $2.kind == axo_expr_assigned_declaration_kind?axo_expr_assigned_declaration_kind:axo_expr_normal_kind;
+  }
   | expr '@' { //Referencing
     if ($1.lval_kind == axo_not_lval_kind)
       yyerror(&@1, "Cannot reference a non l-value.");
@@ -554,7 +586,6 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   }
   | assignment
   | special_assignment
-  | call_error_assignment
   | identifier {
     char* var_name = "";
     axo_typ_def td;
@@ -913,9 +944,11 @@ empty_arr_dims : arr_lit_start INTEGER_LITERAL {
       .dim_count=1
     };
     $$.len[0] = atoi($2);
+    free($INTEGER_LITERAL);
   }
   | empty_arr_dims '|' INTEGER_LITERAL {
     $$.len[$$.dim_count++] = atoi($3);
+    free($INTEGER_LITERAL);
   }
   ;
 
@@ -1062,6 +1095,7 @@ matching_statement : expr {
   }
   | code_scope {
     $$ = axo_scope_to_statement($code_scope);
+    axo_free_scope($code_scope);
   }
   | expr '=' "none"  val_typ {
     if ($expr.lval_kind == axo_var_lval_kind){
@@ -1441,11 +1475,6 @@ special_assignment : expr "+=" expr {
   }
   ;
 
-call_error_assignment : expr "?=" func_call '!' {
-    $$ = axo_parse_error_assignment(&@1, &@2, &@3, $1, $func_call);
-  }
-  ;
-
 arr_multidim_typ : '[' '|' {
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
@@ -1710,13 +1739,13 @@ func_def_name : IDEN {
       .args_names=NULL
     };
   }
-  | IDEN DOT_FIELD {
-    axo_module* mod = axo_get_module(state, $IDEN);
+  | IDEN "::" IDEN {
+    axo_module* mod = axo_get_module(state, $1);
     if (!mod)
-      yyerror(&@IDEN, "Module doesn't exist.");
+      yyerror(&@1, "Module doesn't exist.");
     else
       $$ = (axo_func){
-        .name=fmtstr("%s%s", mod->prefix, $DOT_FIELD),
+        .name=fmtstr("%s%s", mod->prefix, $3),
         .args_names=NULL
       };
   }
@@ -1732,6 +1761,7 @@ func_def_name : IDEN {
       case axo_simple_kind:
       case axo_struct_kind:
       case axo_enum_kind:
+      case axo_none_kind:
         $$ = (axo_func){
           .name=fmtstr("met_%s_%s", axo_typ_to_str($val_typ), $IDEN),
           .args_names = (char**)malloc(sizeof(char*)),
@@ -1803,7 +1833,8 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
       .func_typ=alloc_one(axo_func_typ)
     };
     *((axo_func_typ*)(typ.func_typ)) = $$.f_typ;
-    top_scope->parent_func = axo_set_var(state->global_scope, (axo_var){.name=$$.name, .typ=typ});
+    axo_set_var(state->global_scope, (axo_var){.name=$$.name, .typ=typ});
+    top_scope->parent_func = axo_get_var(state->global_scope, $$.name);
   }
   ;
 
@@ -2248,7 +2279,9 @@ int main(int argc, char** argv){
   #ifdef __EMSCRIPTEN__
     return 0;
   #else
-    return compile(argc, argv);
+    int ret = compile(argc, argv);
+    axo_free_state(state);
+    return ret;
   #endif
 }
 

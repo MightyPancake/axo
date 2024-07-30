@@ -1,7 +1,14 @@
 use std
 
+my_int -> int
+
 fn main([][]byte args){
-    printf("Hello world!\n")
+    if args.len[0]<2 panic("Provide a valid path to file!")
+    buf = [60]byte.data;
+    f = io::open(args[1].data):to_str(buf):close()
+    err:oops()
+    a = none my_int
+    printf("%s\n", buf)
     ret 0
 }
 

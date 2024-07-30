@@ -36,7 +36,7 @@ use str
 #provided (int fn none) clearenv
 
 // Sorting and searching
-#provided (none fn @none, size_t, size_t, @int) qsort
+#provided (none fn @none, size_t, size_t, (int fn const @none, const @none)) qsort
 #provided (@none fn @none, @none, size_t, size_t, @int) bsearch
 
 // Pseudo-random number generation
@@ -90,13 +90,18 @@ use str
 #provided (int fn @byte) realpath
 #provided (int fn @byte, @byte, int, int) mkfifo
 
-fn std.seed_rand(u32 seed=time^now().(u32)){
+fn std::seed_rand(u32 seed=time::now().(u32)){
 	srand(seed)
 	ret 0
 }
 
-fn std.rand(){
+fn std::rand(){
 	ret rand()
+}
+
+fn panic(@byte msg, int exit_code=1){
+	fprintf(stderr, "%s%s%s\n", aesc::red, msg, aesc::reset)
+	exit(exit_code)
 }
 
 fn print_module(axo_module mod){
@@ -105,6 +110,3 @@ fn print_module(axo_module mod){
 	ret 0
 }
 
-//Include common modules
-use aesc
-use mem

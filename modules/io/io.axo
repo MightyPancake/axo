@@ -55,19 +55,27 @@ module(
 #provided @FILE stdin
 #provided @FILE stdout
 
-struct file (
-  @FILE    file
-)
+fn error:oops(){
+  if $:ok() ret;
+	printf("%sError: %s%s\n", aesc::red, $..msg, aesc::reset)
+	exit($.code)
+}
 
-file fn io.open(@byte filename, @byte mode="r", @error errptr){
-  f = file{file=fopen(filename, mode)}
+fn io::open(@byte filename, @byte mode="r", @error ep){
+  ep:oops()
+  f = fopen(filename, mode)
   errptr:get_c()
   ret f
 }
 
-fn error:oops(){
-  if !($.code) ret;
-	printf("%sError: %s%s\n", aesc^red, $..msg, aesc^reset)
-	exit($.code)
+fn FILE:to_str(@byte o, size_t r_sz=1024, @error ep){
+  ep:oops()
+  while (fread(o, 1, r_sz, $) == r_sz) ;
+  ep:get_c()
+  ret $
 }
 
+fn FILE:close(@error ep){
+  ep:oops()
+  ret fclose($)
+}

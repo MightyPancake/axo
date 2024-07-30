@@ -10,12 +10,17 @@ module(
 
 #provided (@none fn size_t) malloc
 #provided (fn @none) free
+#provided (@none fn @none, size_t) realloc
 
-fn mem.alc(size_t sz){
+fn mem::alc(size_t sz){
 	ret malloc(sz)
 }
 
-fn mem.free(@none ptr){
+fn none:rlc(size_t sz){
+	ret realloc($, sz)
+}
+
+fn mem::free(@none ptr){
 	free(ptr)
 	ret 0
 }

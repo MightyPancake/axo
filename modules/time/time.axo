@@ -10,11 +10,11 @@ module(
 #provided (time_t fn @time_t) time
 #provided (@byte fn const @time_t) ctime
 
-fn time.now(){
+fn time::now(){
   ret time()
 }
 
-fn time.str(){
-  t = time^now()
+fn time::str(){
+  t = time::now()
   ret ctime(t@)
 }

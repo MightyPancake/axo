@@ -11,30 +11,27 @@ struct error (
 	@byte		msg
 )
 
-fn error:get_c(){
-	$.code = errno
-	$.msg = strerror(errno)
-	ret $
-}
-
 fn error:set(int code, @byte msg){
 	$.code = code
 	$.msg = msg
 	ret $
 }
 
+fn error:get_c(){
+	ret $:set(errno, strerror(errno))
+}
+
 fn error:ok(){
   ret !($.code.(bool))
 }
 
-fn error:reset(){
+fn error:clear(){
 	$.code = 0
+	$.msg = ""
 }
 
 {
 	err = error{0, "No error"}
 	errptr = err@
 }
-// err:=error{code=0, msg="No error"}
-// errptr:=err@
 

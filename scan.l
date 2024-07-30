@@ -117,6 +117,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "#column" {ret_null; return COLUMN_TAG; }
 "#file" {ret_null; return FILE_TAG; }
 "#flag" {ret_null; return FLAG_TAG; }
+"#C" {ret_null; return C_TAG; }
 "while" {ret_null; return WHILE_KWRD; }
 "switch" {ret_null; return SWITCH_KWRD; }
 "case" {ret_null; return CASE_KWRD; }
@@ -164,6 +165,7 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "*=" {ret_null; return ASSIGN_MUL; }
 "/=" {ret_null; return ASSIGN_DIV; }
 "/=" {ret_null; return ASSIGN_MOD; }
+"::" {ret_null; return MODULE_ACCESS; }
 "?=" {ret_null; return ASSIGN_AND_CALL_ERROR; }
 
 \"([^"\\]|\\.|\\\n)*\" {ret_def; return(STRING_LITERAL); }
@@ -173,11 +175,11 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   if (yyleng<=3 || yytext[1] != 'b'){
     return(INTEGER_LITERAL);
   }
-  //Here, I assume that every
-  ret_null;
   bin_to_hex_lit(&(yytext[2]), yyleng-2);
   yytext[1] = 'x';
+  char* prev = yylval->str;
   yylval->str=alloc_str(yytext);
+  free(prev);
   return(INTEGER_LITERAL);
 
 }

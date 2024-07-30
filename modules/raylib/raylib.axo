@@ -11,21 +11,25 @@ module(
 #include <raylib.h>
 #flag "-lraylib"
 
-//TODO: Add compile time macros/logic
-//Linux flags
-// #flag "-lGL"
-// #flag "-lm"
-// #flag "-lpthread"
-// #flag "-ldl"
-// #flag "-lrt"
-// #flag "-lX11"
+//TODO: Fix that :/
+//Linux libs
+// #C "#ifdef __linux__"
+#flag "-lGL"
+#flag "-lm"
+#flag "-lpthread"
+#flag "-ldl"
+#flag "-lrt"
+#flag "-lX11"
 
-//Windows flags
-#flag "-lopengl32"
-#flag "-lgdi32"
-#flag "-lwinmm"
-#flag "-lkernel32"
-#flag "-luser32"
+//Windows libs
+// #C "#elif __WIN32"
+// #flag "-lopengl32"
+// #flag "-lgdi32"
+// #flag "-lwinmm"
+// #flag "-lkernel32"
+// #flag "-luser32"
+
+// #C "#endif"
 
 include "./types.axo"
 include "./core.axo"

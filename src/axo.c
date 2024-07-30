@@ -155,6 +155,40 @@ axo_state* axo_new_state(char* root_path){
     return st;
 }
 
+void axo_free_state(axo_state* st){
+    for (int i=0; i<st->decls_len; i++)
+        free(st->decls[i].val);
+    //TODO: Free underlying types?
+    hashmap_free(st->types_def);
+    // free(st->orig_cwd);
+    // free(st->root_path);
+    for (int i=0; i<st->sources_len; i++)
+        axo_free_source(st->sources[i]);
+    free(st->sources);
+    free(st->entry_file);
+    free(st->entry_point);
+    free(st->output_file);
+    free(st->output_c_file);
+    for (int i=0; i<st->extra_c_sources_len; i++)
+        free(st->extra_c_sources[i]);
+    free(st->extra_c_sources);
+    if (st->input_str) free(st->input_str);
+    hashmap_free(st->included_files);
+    hashmap_free(st->modules);
+    for (int i=0; i<st->cc_flags_len; i++)
+        free(st->cc_flags[i]);
+    free(st->cc_flags);
+
+    
+    free(st);
+}
+
+void axo_free_source(axo_source s){
+    free(s.path);
+    free(s.parent_dir);
+    // if (s.file) free(s.file);
+}
+
 void axo_load_cfg(axo_state* st){
     #ifdef __EMSCRIPTEN__
         st->config = (axo_compiler_config){
@@ -508,8 +542,8 @@ axo_func_call axo_method_call(axo_state* st, axo_scope* sc, YYLTYPE* pos, YYLTYP
         }else{
           char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str(self_expr.typ), name);
           axo_var* var = axo_get_var(sc, fn_name);
-          if (var == NULL && rval_now)
-            yyerror(expr_pos, "Method '%s' undefined before usage.", name);
+          if (!var)
+            yyerror(name_pos, "Method '%s' undefined before usage.", name);
           else{
             if (var->typ.kind != axo_func_kind){
               yyerror(name_pos, "Attempted to call a non-function method. (Naming clash?)");  
@@ -889,6 +923,7 @@ void axo_new_string_source(axo_state* st, char* code){
 
 void axo_pop_source(axo_state* st){
     st->sources_len--;
+    axo_free_source(st->sources[st->sources_len]);
     if (st->sources_len>0){
         axo_source* src = &(st->sources[st->sources_len-1]);
         axo_switch_source(src);
@@ -998,6 +1033,7 @@ void axo_set_module(axo_state* st, axo_module mod){
     axo_module* ptr = alloc_one(axo_module);
     *ptr = mod;
     hashmap_set(st->modules, ptr);
+    free(ptr);
 }
 
 axo_module* axo_get_module(axo_state* st, char* name){
@@ -1080,13 +1116,25 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
 
 axo_var* axo_set_var(axo_scope* sc, axo_var var){
     if (var.typ.kind==axo_literal_kind) var.typ.kind=axo_simple_kind;
-    if (sc->to_global) return axo_set_var(sc->to_global, var);
+    if (sc->to_global){
+        axo_set_var(sc->to_global, var);
+        return;
+    }
     // printf("'%s' of type %s->'%s'\n", var.name, axo_typ_kind_to_str(var.typ.kind), axo_typ_to_str(var.typ));
-    new_ptr_one(ptr, axo_var);
-    *ptr = var;
-    hashmap_set(sc->variables, ptr);
-    return ptr;
+    hashmap_set(sc->variables, &var);
 }
+
+void axo_free_variables(map vars){
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(vars, &iter, &item)) {
+        axo_var* var = item;
+        free(var->name);
+        free(var);
+    }
+    hashmap_free(vars);
+}
+
 
 axo_var* axo_get_var(axo_scope* sc, char* name){
     if (sc==NULL || sc->variables==NULL) return NULL;
@@ -1123,11 +1171,36 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
     axo_statement ret = (axo_statement){.kind=axo_scope_statement_kind};
     ret.val = sc->defer_used ? alloc_str("{Deferral") : alloc_str("{");
     for (int i = 0; i<sc->statements_len; i++){
+        char* st = axo_scope_statement_to_str(sc, sc->statements[i]);
         strapnd(&ret.val, "\n");
-        strapnd(&ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
+        strapnd(&ret.val, st);
+        free(st);
     }
     strapnd(&(ret.val), "\n}");
     return ret;
+}
+
+void axo_free_scope(axo_scope* sc){
+    for (int i=0; i<sc->statements_len; i++)
+        free(sc->statements[i].val);
+    axo_free_variables(sc->variables);
+    free(sc);
+}
+
+void axo_free_func(axo_func fn){
+    // free(fn.name);
+    int args_len = fn.f_typ.args_len;
+    for (int i=0; i<args_len; i++)
+        free(fn.args_names[i]);
+    // axo_free_func_typ(fn.f_typ);
+    // axo_free_scope(fn.body);
+}
+
+void axo_free_func_typ(axo_func_typ ft){
+    for (int i=0; i<ft.args_len; i++){
+        if (ft.args_defs[i]) free(ft.args_defs[i]);
+    }
+    free(ft.args_types);
 }
 
 char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt){
@@ -1146,7 +1219,6 @@ char* axo_scope_code(axo_scope* sc){
     for (int i = 0; i<sc->statements_len; i++){
         if (i>0) strapnd(&ret, "\n");
         strapnd(&ret, sc->statements[i].val);
-        free(sc->statements[i].val);
     }
     return ret;
 }
@@ -1214,6 +1286,7 @@ char* axo_c_arr_of_typ(axo_typ typ, char* inside){
     char* ret = NULL;
     axo_func_typ fnt;
     switch(typ.kind){
+        case axo_literal_kind:
         case axo_simple_kind: return fmtstr("%s[%s]", typ.simple.cname, inside); break;
         case axo_arr_kind: return fmtstr("axo__arr[%s]", inside); break;
         case axo_func_kind:
@@ -1364,7 +1437,9 @@ axo_decl axo_func_decl_to_decl(axo_func func){
 
 axo_decl axo_func_def_to_decl(axo_func func){
     axo_decl ret = axo_func_decl_to_decl(func);
-    strapnd(&(ret.val), axo_scope_to_statement(func.body).val);
+    char* sc_str = axo_scope_to_statement(func.body).val;
+    strapnd(&(ret.val), sc_str);
+    free(sc_str);
     ret.kind = axo_func_def_decl_kind;
     for (int i = 0; i<func.f_typ.args_len; i++)
         axo_del_var(func.body, func.args_names[i]);
@@ -1423,8 +1498,6 @@ axo_typ axo_clean_typ(axo_typ typ){
 }
 
 char* axo_get_code(axo_state* st){
-    //Generate rest of the code
-    //Load args
     char* ret = alloc_str("");
     st->decls[st->modules_decl].val = axo_generate_modules(st);
     // strapnd(&ret, "axo_load_args(args);\n");
@@ -1438,7 +1511,7 @@ char* axo_get_code(axo_state* st){
 void* axo_safe_malloc(size_t n){
     void *p = malloc(n);
     if (p == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate %llu bytes.\n", n);
+        fprintf(stderr, "Fatal: failed to allocate %lu bytes.\n",(long unsigned)n);
         abort();
     }
     return p;
@@ -1468,6 +1541,9 @@ axo_expr axo_call_to_expr(axo_func_call cl){
         strcat(str, cl.params[i].val);
     }
     strcat(str, ")");
+    for (int i=0;i<cl.params_len; i++)
+        free(cl.params[i].val);
+    free(cl.params);
     axo_expr ret = (axo_expr){
         .typ=fnt->ret_typ,
         .val=str,
@@ -1647,6 +1723,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     axo_typ* subtyp2;
     switch(t1.kind){
         case axo_none_kind: return true; break;
+        case axo_literal_kind:
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return !(strcmp(((axo_struct*)(t1.structure))->name, ((axo_struct*)(t2.structure))->name)); break;
@@ -1703,51 +1780,6 @@ axo_expr axo_parse_special_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YY
                 .val=fmtstr("%s%s%s", lval.val, assign_op, val.val),
                 .typ=lval.typ
             };
-        }
-        break;
-    }
-    return (axo_expr){};
-}
-
-axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, axo_func_call fcall){
-    axo_expr val = axo_call_to_expr(fcall);
-    switch(lval.lval_kind){
-        case axo_not_lval_kind:
-            yyerror(lval_loc, "Error assignments need the lval to be declared before.");
-            break;
-        case axo_var_lval_kind:
-            if (lval.typ.kind == axo_no_kind){
-                yyerror(lval_loc, "Error assignments need the lval to be declared before.");
-                break;
-            }
-        default:
-        if (!axo_typ_eq(lval.typ, ((axo_func_typ*)(fcall.typ.func_typ))->ret_typ)){
-            yyerror(val_loc, "Type missmatch, expected type '%s' for the error assignment, but the call returns a different type.", axo_typ_to_str(lval.typ));
-        }else{
-            axo_typ t = (axo_typ){
-                .kind=axo_ptr_kind,
-                .subtyp=&(axo_typ){
-                    .kind=axo_struct_kind,
-                    .structure=&(axo_struct){
-                        .name="error"
-                    }
-                }
-            };
-            axo_expr err_ptr = (axo_expr){.typ=axo_no_typ};
-            for (int i = fcall.params_len-1; i>=0; i--){
-                if (axo_typ_eq(t, fcall.params[i].typ)){
-                    err_ptr = fcall.params[i];
-                }
-            }
-            if (err_ptr.typ.kind == axo_no_kind)
-                yyerror(val_loc, "The called function doesn't take an error pointer as any of its parameters.");
-            return (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .lval_kind=err_ptr.lval_kind,
-                .val=fmtstr("({%s=%s; %s;})", lval.val, val.val, err_ptr.val),
-                .typ=err_ptr.typ
-            };
-            // printf("Resulting typ: %s\n", axo_typ_to_str(err_ptr.typ));
         }
         break;
     }
@@ -1882,6 +1914,7 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     }
     free(msg);
     strapnd(&ret, axo_reset_style);
+    free(code);
     return ret;
 }
 

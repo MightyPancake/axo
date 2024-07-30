@@ -34,13 +34,17 @@ use mem
 #provided (@byte fn @byte, @byte) strtok
 #provided (size_t fn @byte, @byte, size_t) strxfrm
 
-fn str.alc(@byte str){
-  res = mem^alc(strlen(str)+1.(size_t)).(@byte)
+fn str::alc(@byte str){
+  res = mem::alc(strlen(str)+1.(size_t)).(@byte)
   strcpy(res, str)
   ret res
 }
 
 fn byte:cpy(){
-	ret str^alc($)
+	ret str::alc($)
+}
+
+fn byte:to_arr(){
+	res = [?0]byte
 }
 
