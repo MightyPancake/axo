@@ -210,7 +210,7 @@
 declarations : /* EMPTY */ {}
   | declarations func_def {
     axo_add_decl(state, axo_func_def_to_decl($2));
-    axo_free_func($2);
+    axo_free_func($func_def);
   }
   | declarations C_INCLUDE {
     if ($C_INCLUDE[0] == '<'){
@@ -327,12 +327,17 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
     fn.f_typ.ret_typ = ($func_def_ret_typ.kind==axo_no_kind) ? axo_none_typ : $func_def_ret_typ;
     $$ = axo_func_decl_to_decl(fn);
-    axo_free_func(fn);
+    //SAVE
+    axo_free_func($func_args);
+    axo_free_scope(top_scope);
+    // axo_free_func(fn);
     strapnd(&($$.val), ";");
   }
   | "#provided" val_typ IDEN {
     axo_set_var(state->global_scope, (axo_var){.typ = $val_typ, .name = alloc_str($IDEN)});
-    $$ = (axo_decl){.val=fmtstr("//provided %s", axo_name_typ_decl($IDEN, $val_typ))};
+    char* ntd = axo_name_typ_decl($IDEN, $val_typ);
+    $$ = (axo_decl){.val=fmtstr("//provided %s", ntd)};
+    free(ntd);
   }
   | "use" IDEN {
     $$ = axo_use_module(state, &@2, $IDEN);
@@ -368,6 +373,7 @@ declaration : struct_def { //Fix! Make this use realloc less
   }
   | global_code_scope {
     $$ = (axo_decl){.val=axo_scope_code($global_code_scope)};
+    axo_free_scope($global_code_scope);
   }
   | "#source" STRING_LITERAL {
       char* res = alloc_str(&($STRING_LITERAL[1]));
@@ -474,10 +480,14 @@ module_info : '(' {
   ;
 
 statements : /* EMPTY */ { }
-  | statements statement {axo_add_statement(top_scope, $statement);}
+  | statements statement {
+    // printf("Adding statement to %p\n", top_scope);
+    axo_add_statement(top_scope, $statement);
+  }
   ;
 
 index_access : '[' expr {
+    //TODO: Dynamic?
     axo_validate_rval(&@expr, $expr);
     $$ = (axo_index_access){
       .index_count=1,
@@ -566,15 +576,17 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     $$.val = fmtstr("(%s)", $2.val);
     $$.typ = $2.typ;
     $$.kind = $2.kind == axo_expr_assigned_declaration_kind?axo_expr_assigned_declaration_kind:axo_expr_normal_kind;
+    free($2.val);
   }
   | expr '@' { //Referencing
     if ($1.lval_kind == axo_not_lval_kind)
       yyerror(&@1, "Cannot reference a non l-value.");
     $$.typ.kind = axo_ptr_kind;
     $$.typ.subtyp = malloc(sizeof(axo_typ));
-    *axo_subtyp($$.typ) = $1.typ;
     $$.val = fmtstr("&%s", $1.val);
     $$.lval_kind = axo_not_lval_kind;
+    *axo_subtyp($$.typ) = $1.typ;
+    free($1.val);
   }
   | expr '.' { //Dereferencing
     axo_validate_rval(&@1, $1);
@@ -583,6 +595,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     $$.typ = *axo_subtyp($1.typ);
     $$.lval_kind=$1.lval_kind;
     $$.val=fmtstr("(*(%s))", $1.val);
+    free($1.val);
   }
   | assignment
   | special_assignment
@@ -633,6 +646,9 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
           .val=fmtstr("(%s?%s:%s)", $1.val, $3.val, $5.val),
           .typ=$3.typ
         };
+        free($1.val);
+        free($3.val);
+        free($5.val);
       }else{
         yyerror(&@$, "Ternary expression cannot return both '%s' and '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str($5.typ));
       }
@@ -647,6 +663,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s<%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr '>' expr {
     axo_validate_rval(&@1, $1);
@@ -656,6 +674,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s>%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "==" expr {
     axo_validate_rval(&@1, $1);
@@ -665,6 +685,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s==%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "!=" expr {
     axo_validate_rval(&@1, $1);
@@ -674,6 +696,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s!=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr ">=" expr {
     axo_validate_rval(&@1, $1);
@@ -683,6 +707,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s>=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "<=" expr {
     axo_validate_rval(&@1, $1);
@@ -692,29 +718,28 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s<=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "||" expr {
     axo_validate_rval(&@1, $1);
     axo_validate_rval(&@3, $3);
-    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
-      $$ = (axo_expr){
-        .kind = axo_expr_normal_kind,
-        .typ = axo_bool_typ(state),
-        .val = fmtstr("%s||%s", $1.val, $3.val)
-      };
-    }
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .typ = axo_bool_typ(state),
+      .val = fmtstr("%s||%s", $1.val, $3.val)
+    };
   }
   | '!' expr {
-    if (axo_validate_rval(&@2, $2)) {
-      $$ = (axo_expr){
-        .kind = axo_expr_normal_kind,
-        .typ = axo_bool_typ(state),
-        .val = fmtstr("!(%s)", $2.val),
-        .lval_kind = axo_not_lval_kind
-      };
-      if ($2.typ.kind != axo_simple_kind)
-        yyerror(&@2, "Negation can only be used on primitive types (byte, int etc.)");
-    }
+    axo_validate_rval(&@2, $2);
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .typ = axo_bool_typ(state),
+      .val = fmtstr("!(%s)", $2.val),
+      .lval_kind = axo_not_lval_kind
+    };
+    if ($2.typ.kind != axo_simple_kind)
+      yyerror(&@2, "Negation can only be used on primitive types (byte, int etc.)");
   }
   | expr "&&" expr {
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
@@ -793,6 +818,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         break;
     }
     $$.kind=axo_expr_normal_kind;
+    axo_free_index_access($index_access);
   }
   | expr DOT_FIELD {
     axo_validate_rval(&@1, $1);
@@ -1075,9 +1101,10 @@ matching_statement : expr {
     }else{
       yyerror(&@1, "Couldn't return outside of a function body.");
     }
+    free($expr.val);
   }
   | "ret" ';' {
-    $$.val=fmtstr("return;");
+    $$.val=alloc_str("return;");
     $$.kind = axo_ret_statement_kind;
     axo_var* parent_func = (axo_var*)(top_scope->parent_func);
     if (parent_func){
@@ -1099,28 +1126,30 @@ matching_statement : expr {
   }
   | expr '=' "none"  val_typ {
     if ($expr.lval_kind == axo_var_lval_kind){
+      char* ntd = axo_name_typ_decl($expr.val, $val_typ);
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
-        .val=axo_name_typ_decl($expr.val, $val_typ)
+        .val=ntd
       };
       strapnd(&($$.val), ";");
       axo_set_var(top_scope, (axo_var){.name=$expr.val, .typ=axo_clean_typ($val_typ)});
     }else{
       yyerror(&@expr, "Cannot declare non-variable value '%s'.", $expr.val);
     }
+    free($expr.val);
   }
   | "continue" {
     if (in_loop_count<=0) yyerror(&@1, "No loop/switch to continue from.");
     $$ = (axo_statement){
       .kind = axo_continue_statement_kind,
-      .val = "continue;"
+      .val = alloc_str("continue;")
     };
   }
   | "break" {
     if (in_loop_count<=0) yyerror(&@1, "No loop/switch to break out of.");
     $$ = (axo_statement){
       .kind = axo_break_statement_kind,
-      .val = "break;"
+      .val = alloc_str("break;")
     };
   }
   | switch_statement {
@@ -1132,6 +1161,7 @@ matching_statement : expr {
       .kind=axo_defer_statement_kind,
       .val=fmtstr("Defer({%s});", $2.val)
     };
+    free($2.val);
   }
   | type_qualifier identifier '=' expr {
     axo_typ typ = axo_merge_type_with_qualifiers($expr.typ, $type_qualifier);
@@ -1818,6 +1848,8 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
         $$.f_typ.args_types[$$.f_typ.args_len] = $func_args.f_typ.args_types[i];
         $$.f_typ.args_defs[$$.f_typ.args_len++] = $func_args.f_typ.args_defs[i];
       }
+    //Free func_args
+    free($func_args.f_typ.args_types);
     }else{
       $$.args_names = $func_args.args_names;
       $$.f_typ.args_defs = $func_args.f_typ.args_defs;

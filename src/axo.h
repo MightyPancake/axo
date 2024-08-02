@@ -618,7 +618,7 @@ axo_scope* axo_scopes_top(axo_scopes* scopes);
 void axo_push_scope(axo_scopes* scopes, axo_scope* sc);
 
 //Variables
-axo_var* axo_set_var(axo_scope* sc, axo_var var);
+void axo_set_var(axo_scope* sc, axo_var var);
 axo_var* axo_get_var(axo_scope* sc, char* name);
 axo_var* axo_del_var(axo_scope* sc, char* name);
 void axo_set_func(axo_state* st, axo_func fn);
@@ -744,5 +744,6 @@ void axo_free_source(axo_source s);
 void axo_free_variables(map vars);
 void axo_free_func(axo_func fn);
 void axo_free_func_typ(axo_func_typ ft);
+void axo_free_index_access(axo_index_access ia);
 
 #endif

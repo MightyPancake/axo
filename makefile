@@ -62,10 +62,27 @@ show:
 
 clean:
 	@$(RM_CMD) axo$(TARGET_EXT)
-	@$(RM_CMD) test.c
-	@$(RM_CMD) test$(TARGET_EXT)
 	
 debug_test:
 	@make -s build
 	valgrind --track-origins=yes axo test.axo
 
+dbg:
+	@clear
+	@make -s
+	valgrind axo run test.axo
+
+dbgf:
+	@clear
+	@make -s
+	valgrind --leak-check=full axo run test.axo
+
+push:
+	@clear
+	@echo [96mPushing the changes...[0m
+	@make -s
+	@make -s clean
+	# @make -s wasm
+	git add .
+	@echo [96mDone! Name the commit and push it.[0m
+	

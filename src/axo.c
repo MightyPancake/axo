@@ -162,8 +162,9 @@ void axo_free_state(axo_state* st){
     hashmap_free(st->types_def);
     // free(st->orig_cwd);
     // free(st->root_path);
-    for (int i=0; i<st->sources_len; i++)
+    for (int i=0; i<st->sources_len; i++){
         axo_free_source(st->sources[i]);
+    }
     free(st->sources);
     free(st->entry_file);
     free(st->entry_point);
@@ -181,12 +182,6 @@ void axo_free_state(axo_state* st){
 
     
     free(st);
-}
-
-void axo_free_source(axo_source s){
-    free(s.path);
-    free(s.parent_dir);
-    // if (s.file) free(s.file);
 }
 
 void axo_load_cfg(axo_state* st){
@@ -804,10 +799,12 @@ void axo_print_config(axo_state* st){
     int col_count = axo_color_count(col_sup);
     int seed = rand() % col_count;
     printf("%s", axo_get_color_esc(28, col_sup));
+    int axo_moji_res;
     if (col_sup == axo_no_color_support_kind)
-        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
+        axo_moji_res = system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
     else
-        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printcolmoji"AXO_BIN_EXT, st->root_path));
+        axo_moji_res = system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printcolmoji"AXO_BIN_EXT, st->root_path));
+    if (axo_moji_res != 0) printf("Error printing cfg\n");
     printf("  v.%s\n", AXO_VERSION);
     printf(axo_reset_style"cc: %s\n", axo_lolsprintf(col_sup, seed, (char[64]){}, axo_cc_to_str(cfg.cc)));
     printf("keep_c: %s\n", axo_bool_to_str(cfg.keep_c, col_sup));
@@ -891,7 +888,7 @@ void axo_new_source(axo_state* st, char* path){
     axo_source* src = &(st->sources[st->sources_len]);
     src->path = alloc_str(path);
     //ERROR
-    src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
+    src->parent_dir = axo_get_parent_dir(axo_resolve_path(path));
     src->file = fopen(src->path, "rb");
     src->index = 0;
     src->pos = 0;
@@ -906,6 +903,15 @@ void axo_new_source(axo_state* st, char* path){
     }
 }
 
+void axo_free_source(axo_source s){
+    free(s.path);
+    free(s.parent_dir);
+}
+
+void axo_free_index_access(axo_index_access ia){
+    free(ia.indexes);
+}
+
 void axo_new_string_source(axo_state* st, char* code){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
@@ -917,7 +923,6 @@ void axo_new_string_source(axo_state* st, char* code){
     src->line = 1;
     src->col = 1;
     axo_chdir(src->parent_dir);
-    // yyrestart(src->file);
     st->sources_len++;
 }
 
@@ -957,9 +962,8 @@ axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_
       if (!axo_was_file_included(st, res_path)){
         hashmap_set(st->included_files, &res_path);
         axo_new_source(st, str);
-      }else{
-        free(res_path);
       }
+      free(res_path);
     }else{
       yyerror(loc, "Couldn't find '%s'.\n", str);
     }
@@ -1114,7 +1118,7 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
     sc->statements[sc->statements_len++] = s;
 }
 
-axo_var* axo_set_var(axo_scope* sc, axo_var var){
+void axo_set_var(axo_scope* sc, axo_var var){
     if (var.typ.kind==axo_literal_kind) var.typ.kind=axo_simple_kind;
     if (sc->to_global){
         axo_set_var(sc->to_global, var);
@@ -1123,18 +1127,6 @@ axo_var* axo_set_var(axo_scope* sc, axo_var var){
     // printf("'%s' of type %s->'%s'\n", var.name, axo_typ_kind_to_str(var.typ.kind), axo_typ_to_str(var.typ));
     hashmap_set(sc->variables, &var);
 }
-
-void axo_free_variables(map vars){
-    size_t iter = 0;
-    void *item;
-    while (hashmap_iter(vars, &iter, &item)) {
-        axo_var* var = item;
-        free(var->name);
-        free(var);
-    }
-    hashmap_free(vars);
-}
-
 
 axo_var* axo_get_var(axo_scope* sc, char* name){
     if (sc==NULL || sc->variables==NULL) return NULL;
@@ -1151,7 +1143,6 @@ axo_var* axo_del_var(axo_scope* sc, char* name){
 
 void axo_set_func(axo_state* st, axo_func fn){
     //FIX: Add error of re-declaration!
-    //FIX: Function should just be a variable
     new_ptr_one(fnt, axo_func_typ);
     *fnt = fn.f_typ;
     axo_var var = (axo_var){
@@ -1174,17 +1165,38 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
         char* st = axo_scope_statement_to_str(sc, sc->statements[i]);
         strapnd(&ret.val, "\n");
         strapnd(&ret.val, st);
-        free(st);
     }
     strapnd(&(ret.val), "\n}");
     return ret;
 }
 
 void axo_free_scope(axo_scope* sc){
+    // printf("Freeing %p\n", sc);
     for (int i=0; i<sc->statements_len; i++)
         free(sc->statements[i].val);
+    free(sc->statements);
+    //This produces an error!
     axo_free_variables(sc->variables);
     free(sc);
+}
+
+void axo_free_variables(map vars){
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(vars, &iter, &item)) {
+        axo_var* var = item;
+        axo_typ typ = var-> typ;
+        switch (typ.kind){
+            case axo_func_kind:
+                axo_free_func_typ(*((axo_func_typ*)(typ.func_typ)));
+                free(typ.func_typ);
+                break;
+            default: break;
+        }
+        // free(var->name);
+        // free(var);
+    }
+    hashmap_free(vars);
 }
 
 void axo_free_func(axo_func fn){
@@ -1192,15 +1204,14 @@ void axo_free_func(axo_func fn){
     int args_len = fn.f_typ.args_len;
     for (int i=0; i<args_len; i++)
         free(fn.args_names[i]);
-    // axo_free_func_typ(fn.f_typ);
-    // axo_free_scope(fn.body);
+    if (fn.body) axo_free_scope(fn.body);
 }
 
 void axo_free_func_typ(axo_func_typ ft){
     for (int i=0; i<ft.args_len; i++){
         if (ft.args_defs[i]) free(ft.args_defs[i]);
     }
-    free(ft.args_types);
+    if (ft.args_types) free(ft.args_types);
 }
 
 char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt){
@@ -1794,6 +1805,8 @@ void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_e
         dest->typ = val1.typ;
         dest->val = fmtstr("%s%s%s", val1.val, op, val2.val);
         dest->kind = axo_expr_normal_kind;
+        free(val1.val);
+        free(val2.val);
     }
 }
 
@@ -1872,14 +1885,14 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     char* ret;
     char website[] = "https://github.com/MightyPancake/axl/blob/main/errors/error_1.md";
     char* full_filepath = axo_resolve_path(axo_source(st)->path);
-    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
+    ret = fmtstr(axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
     while (line<=loc->last_line+down_lines){
       if (code[i] == '\0') break;
       else if (col == loc->first_column && line == loc->first_line){
         char c = code[i];
         code[i] = '\0';
         line_num = itoa_spaced(line);
-        asprintf(&ret, "%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
+        ret = fmtstr("%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
         last_i = i;
         code[i] = c;
         while (!(col==loc->last_column && line==loc->last_line)){
@@ -1894,16 +1907,16 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
         }
         c = code[i];
         code[i] = '\0';
-        asprintf(&ret, "%s" axo_red_bg axo_black_fg "%s" axo_reset_style, ret, &(code[last_i]));
+        ret = fmtstr("%s" axo_red_bg axo_black_fg "%s" axo_reset_style, ret, &(code[last_i]));
         code[i] = c;
         last_i = i;
       }else if (code[i] == '\n'){
         code[i] = '\0';
         if (line == loc->first_line)
-            asprintf(&ret, "%s" "%s\n", ret, &(code[last_i]));
+            ret = fmtstr("%s" "%s\n", ret, &(code[last_i]));
         else{
             line_num=itoa_spaced(line);
-            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
+            ret = fmtstr("%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
             free(line_num);
         }
         last_i = i+1;
