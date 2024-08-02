@@ -82,7 +82,6 @@ push:
 	@echo [96mPushing the changes...[0m
 	@make -s
 	@make -s clean
-	# @make -s wasm
 	git add .
 	@echo [96mDone! Name the commit and push it.[0m
 	
