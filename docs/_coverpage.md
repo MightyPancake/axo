@@ -2,5 +2,5 @@
 
 > **Write fast, run faster!**
 
-[Download](https://github.com/MightyPancake/axo)
-[Getting Started](install)
+[Github](https://github.com/MightyPancake/axo)
+[Getting Started](how_to_start/is_axo_for_me)

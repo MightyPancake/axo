@@ -6,7 +6,6 @@ Axo is a statically typed, general-purpose programming language that aims to be 
 ## Sample code
 ```axo
 use std
-use io
 
 fn main([][]byte args){
     printf("Hello world\n")
@@ -17,18 +16,8 @@ fn main([][]byte args){
     ret 0
 }
 ```
-
-Why don't you [try it out?](https://axolang.com/playground/editor.html?code=use%2520std%250Ause%2520io%250A%250Afn%2520main%28%255B%255D%255B%255Dbyte%2520args%29%257B%250A%2520%2520%2520%2520printf%28%2522Hello%2520world%255Cn%2522%29%250A%250A%2520%2520%2520%2520%252F%252FPrints%2520an%2520array%250A%2520%2520%2520%2520for%2520v%2520in%2520%255B0%252C1%252C2%252C3%252C4%252C5%255D%250A%2520%2520%2520%2520%2520%2520%2520%2520printf%28%2522%2525d%255Cn%2522%252C%2520v%29%250A%2520%2520%2520%2520ret%25200%250A%257D)
-
-```terminal
-    >|info|axo main.axo
-    |success|Compiled!
-    >|./main Hello world !
-    |Argument #0: ./main
-    |Argument #1: Hello
-    |Argument #2: world
-    |Argument #3: !
-```
+> [!TIP]
+> [Run this code online!](https://axolang.com/playground/editor.html?code=use%2520std%250Ause%2520io%250A%250Afn%2520main%28%255B%255D%255B%255Dbyte%2520args%29%257B%250A%2520%2520%2520%2520printf%28%2522Hello%2520world%255Cn%2522%29%250A%250A%2520%2520%2520%2520%252F%252FPrints%2520an%2520array%250A%2520%2520%2520%2520for%2520v%2520in%2520%255B0%252C1%252C2%252C3%252C4%252C5%255D%250A%2520%2520%2520%2520%2520%2520%2520%2520printf%28%2522%2525d%255Cn%2522%252C%2520v%29%250A%2520%2520%2520%2520ret%25200%250A%257D)
 
 <div style="text-align: center;">
     <img src="images/axo_coding.png" alt="axo playing with c" width="35%"/>
