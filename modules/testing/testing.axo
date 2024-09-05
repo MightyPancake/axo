@@ -20,7 +20,7 @@ struct test_batch (
 	u32							success_count
 )
 
-fn testing.new(@byte name){
+fn testing::new(@byte name){
 	r = test_batch{
 		name=name,
 		tests=[?0]tested_func,
@@ -30,22 +30,22 @@ fn testing.new(@byte name){
 }
 
 fn test_batch:add((int fn) func, @byte name){
-	self^.tests:push(tested_func{func=func, name=name})
+	$.tests:push(tested_func{func=func, name=name})
 	ret 0
 }
 
 fn test_batch:run(){
-	printf("%sTesting '%s':%s\n", aesc.blue, self^.name, aesc.reset)
-	for test in self^.tests {
+	printf("%sTesting '%s':%s\n", aesc::blue, $.name, aesc::reset)
+	for test in $.tests {
 		res = test.func()
 		if res == 0 {
-			self^.success_count++
-			printf("%s%s passed.%s\n", aesc.green, test.name, aesc.reset)
+			$.success_count++
+			printf("%s%s passed.%s\n", aesc::green, test.name, aesc::reset)
 		} else {
-			printf("%s%s failed, returned %d%s\n", aesc.red, test.name, res, aesc.reset)
+			printf("%s%s failed, returned %d%s\n", aesc::red, test.name, res, aesc::reset)
 		}
 	}
-	printf("%sTest results: %d/%d%s\n", aesc.blue, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
-	ret self^.success_count.(int) == self^.tests.len[0] ? 0 : 1
+	printf("%sTest results: %d/%d%s\n", aesc::blue, $.success_count.(int), $.tests.len[0],  aesc::reset)
+	ret $.success_count.(int) == $.tests.len[0] ? 0 : 1
 }
 

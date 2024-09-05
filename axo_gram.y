@@ -334,6 +334,7 @@ declaration : struct_def { //Fix! Make this use realloc less
     strapnd(&($$.val), ";");
   }
   | "#provided" val_typ IDEN {
+    // printf("providing '%s'\n", $IDEN);
     axo_set_var(state->global_scope, (axo_var){.typ = $val_typ, .name = alloc_str($IDEN)});
     char* ntd = axo_name_typ_decl($IDEN, $val_typ);
     $$ = (axo_decl){.val=fmtstr("//provided %s", ntd)};
@@ -438,11 +439,14 @@ struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
     axo_struct_field* fields = (axo_struct_field*)malloc($4.f_typ.args_len*sizeof(axo_struct_field));
     for (int i = 0; i<$4.f_typ.args_len; i++){
       fields[i] = (axo_struct_field){
-        .name = alloc_str($func_args.args_names[i]),
+        .name = $func_args.args_names[i],
         .typ = $func_args.f_typ.args_types[i],
         .def = $func_args.f_typ.args_defs[i]
       };
     }
+    free($func_args.args_names);
+    free($func_args.f_typ.args_types);
+    free($func_args.f_typ.args_defs);
     $$ = (axo_struct){
       .name=alloc_str($IDEN),
       .fields=fields,
@@ -1552,7 +1556,7 @@ func_typ_start : '(' val_typ FN_KWRD {
       .kind = axo_func_kind,
       .func_typ=func_typ
     };
-  } 
+  }
   | '(' FN_KWRD {
     axo_func_typ* func_typ = alloc_one(axo_func_typ);
     func_typ->args_len=0;
@@ -1586,8 +1590,8 @@ func_typ_args : func_typ_start val_typ {
   }
   ;
 
-func_typ : func_typ_start ')' {$$=$1;}
-  | func_typ_args ')' {$$=$1;}
+func_typ : func_typ_start ')'
+  | func_typ_args ')'
   ;
 
 no_q_typ : IDEN {
@@ -1677,7 +1681,7 @@ func_call_start : called_expr {
     axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
     if ($$.params_len<fnt->args_len){
       resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
-      $$.params[$$.params_len].val = fnt->args_defs[$$.params_len];
+      $$.params[$$.params_len].val = alloc_str(fnt->args_defs[$$.params_len]);
       $$.params_len++;
     }
   }
@@ -1723,7 +1727,7 @@ func_call_start : called_expr {
         yyerror(&@2, "Cannot generate a default param for '...'.");
     else if (i >= fnt->args_len)
         yyerror(&@2, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
-    $$.params[i].val = defaults[i];
+    $$.params[i].val = alloc_str(defaults[i]);
     $$.params_len++;
   }
   ;
@@ -1737,14 +1741,14 @@ func_call : func_call_start ')' {
       for (int i=$func_call_start.params_len; i<fnt->args_len-1; i++){ //Fill with defaults up until pre-last arg!
         // printf("arg #%d\n", i);
         // printf("%s\n", fnt->args_defs[i]);
-        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
+        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=alloc_str(fnt->args_defs[i])};
       }
       $$.params_len=fnt->args_len-1;
       int i = fnt->args_len-1;
       if (fnt->args_types[i].kind != axo_c_arg_list_kind){
         // printf("arg #%d\n", i);
         // printf("%s\n", fnt->args_defs[i]);
-        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
+        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=alloc_str(fnt->args_defs[i])};
         $$.params_len++;
       }
     }

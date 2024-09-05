@@ -12,6 +12,7 @@ module(
 #flag "-lraylib"
 
 //TODO: Fix that :/
+//This will require timecomp!
 //Linux libs
 // #C "#ifdef __linux__"
 #flag "-lGL"

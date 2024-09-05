@@ -2,8 +2,6 @@
 #include <errno.h>
 #include <string.h>
 
-#provided (@byte fn int) strerror
-
 #provided int errno
 
 struct error (
@@ -15,10 +13,6 @@ fn error:set(int code, @byte msg){
 	$.code = code
 	$.msg = msg
 	ret $
-}
-
-fn error:get_c(){
-	ret $:set(errno, strerror(errno))
 }
 
 fn error:ok(){

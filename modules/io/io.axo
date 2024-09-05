@@ -55,10 +55,16 @@ module(
 #provided @FILE stdin
 #provided @FILE stdout
 
+use aesc
+use str
+
+fn error:get_c(){
+	ret $:set(errno, strerror(errno))
+}
+
 fn error:oops(){
   if $:ok() ret;
-	printf("%sError: %s%s\n", aesc::red, $..msg, aesc::reset)
-	exit($.code)
+	fprintf(stderr, "%sError: %s%s\n", aesc::red, $..msg, aesc::reset)
 }
 
 fn io::open(@byte filename, @byte mode="r", @error ep){

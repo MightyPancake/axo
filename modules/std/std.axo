@@ -9,11 +9,6 @@ module(
 	description: "Axo standard library. This mostly reuses C stdlib."
 )
 
-use aesc
-use io
-use time
-use str
-
 #include <stdlib.h>
 #include <stdbool.h>
 #provided bool true
@@ -82,13 +77,15 @@ use str
 // Temporary files
 #provided (@byte fn @byte) mktemp
 #provided (int fn @byte) mkstemp
-#provided (@FILE fn @byte, @byte) tmpfile
 #provided (@byte fn @byte) tmpnam
 
 // Miscellaneous
 #provided (int fn) rand_r
 #provided (int fn @byte) realpath
 #provided (int fn @byte, @byte, int, int) mkfifo
+
+use io
+use time
 
 fn std::seed_rand(u32 seed=time::now().(u32)){
 	srand(seed)
@@ -102,6 +99,10 @@ fn std::rand(){
 fn panic(@byte msg, int exit_code=1){
 	fprintf(stderr, "%s%s%s\n", aesc::red, msg, aesc::reset)
 	exit(exit_code)
+}
+
+fn error:panic(){
+	panic($.msg, $.code)
 }
 
 fn print_module(axo_module mod){

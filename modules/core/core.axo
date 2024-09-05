@@ -11,8 +11,6 @@ module(
 
 #typ va_list
 
-#provided (fn int) exit
-
 //Include axo types, functions and macros
 #include <stdbool.h>
 #include "./defer/defer.h"

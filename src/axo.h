@@ -743,6 +743,7 @@ void axo_free_scope(axo_scope* sc);
 void axo_free_source(axo_source s);
 void axo_free_variables(map vars);
 void axo_free_func(axo_func fn);
+void axo_free_typ(axo_typ t);
 void axo_free_func_typ(axo_func_typ ft);
 void axo_free_index_access(axo_index_access ia);
 

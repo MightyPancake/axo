@@ -9,6 +9,7 @@ pkgs.mkShell {
     pkgs.flex
     pkgs.valgrind
     pkgs.fish
+    pkgs.lua
   ];
 
   shellHook = ''

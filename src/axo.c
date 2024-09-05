@@ -174,14 +174,26 @@ void axo_free_state(axo_state* st){
         free(st->extra_c_sources[i]);
     free(st->extra_c_sources);
     if (st->input_str) free(st->input_str);
-    hashmap_free(st->included_files);
     hashmap_free(st->modules);
     for (int i=0; i<st->cc_flags_len; i++)
         free(st->cc_flags[i]);
     free(st->cc_flags);
+    axo_free_scope(st->global_scope);
 
+    size_t iter = 0;
+    void* item;
+    while (hashmap_iter(st->included_files, &iter, &item)) {
+        char** path = (char**)item;
+        // printf("Freeing path: %s\n", *path);
+        free(*path);
+    }
+    hashmap_free(st->included_files);
     
     free(st);
+}
+
+void axo_free_str_map(map hashmap){
+    
 }
 
 void axo_load_cfg(axo_state* st){
@@ -443,7 +455,7 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
         if (arr_typ.dim_count>3)
             yyerror(field_loc, "Field not yet supported for %dd arrays!");
     }else{
-        yyerror(field_loc, "Invalid array field.");
+        yyerror(field_loc, "Invalid array pseudo-field.");
     }
     return (axo_expr){};
 }
@@ -958,12 +970,13 @@ axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_
     //Check local first
     bool exists = axo_file_exists(str);
     if (exists){
-      char* res_path = axo_resolve_path(str);
-      if (!axo_was_file_included(st, res_path)){
-        hashmap_set(st->included_files, &res_path);
-        axo_new_source(st, str);
-      }
-      free(res_path);
+        char* res_path = axo_resolve_path(str);
+        if (!axo_was_file_included(st, res_path)){
+            hashmap_set(st->included_files, &res_path);
+            axo_new_source(st, str);
+        }else{
+            free(res_path);
+        }
     }else{
       yyerror(loc, "Couldn't find '%s'.\n", str);
     }
@@ -1125,6 +1138,10 @@ void axo_set_var(axo_scope* sc, axo_var var){
         return;
     }
     // printf("'%s' of type %s->'%s'\n", var.name, axo_typ_kind_to_str(var.typ.kind), axo_typ_to_str(var.typ));
+    if (axo_get_var(sc, var.name)){
+        yyerror(NULL, "Variable '%s' is already declared.", var.name);
+        return;
+    }
     hashmap_set(sc->variables, &var);
 }
 
@@ -1171,7 +1188,6 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
 }
 
 void axo_free_scope(axo_scope* sc){
-    // printf("Freeing %p\n", sc);
     for (int i=0; i<sc->statements_len; i++)
         free(sc->statements[i].val);
     free(sc->statements);
@@ -1185,33 +1201,43 @@ void axo_free_variables(map vars){
     void *item;
     while (hashmap_iter(vars, &iter, &item)) {
         axo_var* var = item;
-        axo_typ typ = var-> typ;
-        switch (typ.kind){
-            case axo_func_kind:
-                axo_free_func_typ(*((axo_func_typ*)(typ.func_typ)));
-                free(typ.func_typ);
-                break;
-            default: break;
-        }
-        // free(var->name);
-        // free(var);
+        axo_typ typ = var->typ;
+        // printf("Freeing %s\n", var->name);
+        axo_free_typ(typ);
     }
     hashmap_free(vars);
 }
 
+void axo_free_typ(axo_typ t){
+    switch(t.kind){
+        case axo_func_kind:
+            axo_free_func_typ(*(axo_func_typ*)(t.func_typ));
+            free(t.func_typ);
+            break;
+        case axo_ptr_kind:
+            axo_free_typ(*(axo_typ*)(t.subtyp));
+            break;
+        case axo_arr_kind:
+            free(t.arr);
+        default: break;
+    }
+}
+
 void axo_free_func(axo_func fn){
-    // free(fn.name);
     int args_len = fn.f_typ.args_len;
-    for (int i=0; i<args_len; i++)
+    for (int i=0; i<args_len; i++){
         free(fn.args_names[i]);
+    }
     if (fn.body) axo_free_scope(fn.body);
 }
 
 void axo_free_func_typ(axo_func_typ ft){
     for (int i=0; i<ft.args_len; i++){
         if (ft.args_defs[i]) free(ft.args_defs[i]);
+        axo_free_typ(ft.args_types[i]);
     }
     if (ft.args_types) free(ft.args_types);
+    if (ft.args_defs) free(ft.args_defs);
 }
 
 char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt){
@@ -1552,9 +1578,11 @@ axo_expr axo_call_to_expr(axo_func_call cl){
         strcat(str, cl.params[i].val);
     }
     strcat(str, ")");
+    //Free call params
     for (int i=0;i<cl.params_len; i++)
         free(cl.params[i].val);
     free(cl.params);
+    
     axo_expr ret = (axo_expr){
         .typ=fnt->ret_typ,
         .val=str,

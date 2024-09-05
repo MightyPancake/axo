@@ -1,11 +1,6 @@
 use std
 
 fn main([][]byte args){
-    if args.len[0]<2 panic("Provide a valid path to file!")
-    buf = [60]byte.data;
-    f = io::open(args[1].data):to_str(buf):close()
-    err:oops()
-    printf("%s\n", buf)
+    ~print("Hello ", ~os)
     ret 0
 }
-
