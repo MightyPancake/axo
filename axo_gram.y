@@ -327,10 +327,8 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
     fn.f_typ.ret_typ = ($func_def_ret_typ.kind==axo_no_kind) ? axo_none_typ : $func_def_ret_typ;
     $$ = axo_func_decl_to_decl(fn);
-    //SAVE
     axo_free_func($func_args);
     axo_free_scope(top_scope);
-    // axo_free_func(fn);
     strapnd(&($$.val), ";");
   }
   | "#provided" val_typ IDEN {
@@ -385,6 +383,7 @@ declaration : struct_def { //Fix! Make this use realloc less
       state->extra_c_sources[state->extra_c_sources_len++] = resolved;
     }else{
       yyerror(&@2, "File '%s' doesn't exist.", res);
+      YYERROR;
     }
     $$ = (axo_decl){.val=fmtstr("//sourced %s", res)};
   }
@@ -477,9 +476,10 @@ module_info : '(' {
       $$.license = str_val;
     }else if (strcmp($IDEN, "description") == 0){
       $$.description = str_val;
-    }else
+    }else{
       yyerror(&@2, "Not a valid module information field.");
-    // printf("Setting %s to %s\n", $IDEN, $STRING_LITERAL);
+      YYERROR;
+    }
   }
   ;
 
@@ -534,7 +534,8 @@ incr_decr_op : expr INCR_OP {
   ;
 
 //String literal should be a pointer!
-expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
+expr : STRING_LITERAL {set_val(&$$, axo_deep_copy_typ(axo_str_typ(state)), $1); $$.kind=axo_expr_normal_kind;}
+// expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
   | INTEGER_LITERAL {
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,
@@ -1053,7 +1054,6 @@ arr_literal : stat_arr_literal {
       if (i>0) strapnd(&dims_str, ",");
       strapnd(&dims_str, fmt_str((char[16]){}, "%d", $1.len[i]));
     }
-    strapnd(&dims_str, "");
     axo_typ typ = (axo_typ){
       .kind=axo_arr_kind,
       .arr=malloc(sizeof(axo_arr_typ)),
@@ -1071,6 +1071,7 @@ arr_literal : stat_arr_literal {
           : fmtstr("axo_arr_new_stat((%s){}, ((axo_arr_dim_t[]){%s}))", axo_c_arr_of_typ($val_typ, sz_str), dims_str),
       .typ=typ
     };
+    free(dims_str);
   }
   ;
 
@@ -2116,32 +2117,33 @@ int playground(){
 
 void yyerror(YYLTYPE* loc, const char * fmt, ...){
   if (prog_return==0)
-    fprintf(stderr,"Click an error to learn more.\n");
+    axo_err_printf("Click an error to learn more.\n");
   prog_return = 1;
   axo_raise_error;
   va_list args;
   if (loc==NULL){
-    fprintf(stderr, axo_red_fg "Error: ");
+    axo_err_printf(axo_red_fg "Error: ");
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    axo_err_vprintf(fmt, args);
     va_end(args);
     printf(axo_reset_style"\n");
   }else{
     va_start(args, fmt);
     char* msg = NULL;
     if (vasprintf(&msg, fmt, args) < 0)
-      fprintf(stderr, "Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
+      axo_err_printf("Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
     #ifdef __EMSCRIPTEN__
-      printf("error %d:%d: %s\n", loc->first_line, loc->first_column, msg);
+      axo_err_printf("error %d:%d: %s\n", loc->first_line, loc->first_column, msg);
       free(msg);
       return;
     #endif
     char* err_msg = axo_error_with_loc(state, loc, msg);
     va_end(args);
-    fprintf(stderr, "%s\n", err_msg);
+    axo_err_printf("%s\n", err_msg);
     free(err_msg);
     free(msg);
   }
+  // exit(1);
 }
 
 int compile(int argc, char** argv) {
@@ -2214,6 +2216,7 @@ int compile(int argc, char** argv) {
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
     //Set entry point
+    //empty_str should just be null to prevent leaks?
     axo_add_decl(state, (axo_decl){
       .kind=axo_other_decl_kind,
       .val=empty_str

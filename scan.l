@@ -181,7 +181,6 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   yylval->str=alloc_str(yytext);
   free(prev);
   return(INTEGER_LITERAL);
-
 }
 ([0-9]+\.[0-9]+|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z_][0-9a-zA-Z_]* {ret_def; return IDEN; }

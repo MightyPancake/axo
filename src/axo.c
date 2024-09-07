@@ -523,6 +523,7 @@ axo_expr axo_expr_dot_field(axo_state* st,YYLTYPE* pos, YYLTYPE* expr_pos, YYLTY
         }
         break;
     }
+    free(field);
     return ret;
 }
 
@@ -1022,7 +1023,6 @@ axo_module axo_new_module(){
         .license_name = NULL,
         .license = NULL,
         .description = NULL,
-        .scope = axo_new_scope(NULL)
     };
 }
 
@@ -1208,6 +1208,19 @@ void axo_free_variables(map vars){
     hashmap_free(vars);
 }
 
+axo_typ axo_deep_copy_typ(axo_typ t){
+    axo_typ* s;
+    axo_typ res = t;
+    switch(t.kind){
+        case axo_ptr_kind:
+            s = alloc_one(axo_typ);
+            *s = axo_deep_copy_typ(*((axo_typ*)(t.subtyp)));
+            res.subtyp = s;
+        default: break;
+    }
+    return res;
+}
+
 void axo_free_typ(axo_typ t){
     switch(t.kind){
         case axo_func_kind:
@@ -1216,6 +1229,7 @@ void axo_free_typ(axo_typ t){
             break;
         case axo_ptr_kind:
             axo_free_typ(*(axo_typ*)(t.subtyp));
+            // free(t.subtyp);
             break;
         case axo_arr_kind:
             free(t.arr);
@@ -1228,6 +1242,7 @@ void axo_free_func(axo_func fn){
     for (int i=0; i<args_len; i++){
         free(fn.args_names[i]);
     }
+    if (fn.args_names) free(fn.args_names);
     if (fn.body) axo_free_scope(fn.body);
 }
 
@@ -1894,7 +1909,18 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     //Produce the error string from fmt and args
     char* line_num;
     //Add position and context to the error message
+    char cwd[1024];
+    axo_cwd(cwd, 1024);
+    if (st->sources_len==1){
+        axo_chdir(st->orig_cwd);
+    }else{
+        axo_chdir(st->sources[st->sources_len-1].parent_dir);
+    }
     char* code = axo_file_to_str(axo_source(st)->path);
+    if (!code){
+        fprintf(stderr, "Error while getting code from src! Null string from file '%s' while in '%s'.\n", axo_source(st)->path, axo_cwd((char[512]){}, 512));
+        return alloc_str("Couldn't get an error message");
+    }
     int up_lines = 2;
     int down_lines = 2;
     int i = 0;
@@ -1956,6 +1982,7 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     free(msg);
     strapnd(&ret, axo_reset_style);
     free(code);
+    axo_chdir(cwd);
     return ret;
 }
 
@@ -2225,3 +2252,13 @@ char* axo_get_parent_dir(char* path) {
     return path;
 }
 
+void axo_err_vprintf(const char* fmt, va_list vargs){
+    vfprintf(stderr, fmt, vargs);
+}
+
+void axo_err_printf(const char* fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    axo_err_vprintf(fmt, args);
+    va_end(args);
+}

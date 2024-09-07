@@ -1,5 +1,4 @@
-#include <stdio.h>
-#register int printf(char*, ...)
+use std
 
 fn main(){
     a = 2
@@ -11,7 +10,7 @@ fn main(){
     
     if a<2 printf("if\n")
     else if a==2 printf("else if\n")
-    else printf("else\n")
+    else printf("else\n")+
     
     ret 0
 }

@@ -1,6 +1,6 @@
 use std
 
 fn main([][]byte args){
-    ~print("Hello ", ~os)
+    printf("Hello world\n")
     ret 0
 }

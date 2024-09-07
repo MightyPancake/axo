@@ -312,7 +312,6 @@ typedef struct axo_module{
     char*        license_name;
     char*        license;
     char*        description;
-    axo_scope*   scope;
 }axo_module;
 
 typedef struct axo_state{
@@ -679,6 +678,7 @@ bool axo_is_no_typ(axo_typ typ);
 bool is_simple_typ_eq(axo_typ t1, char* t2);
 const char* axo_identifier_kind_to_str(axo_identifier_kind kind);
 axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q);
+axo_typ axo_deep_copy_typ(axo_typ t);
 
 //Loops
 char* axo_for_loop_to_str(axo_for_loop lp);
@@ -718,6 +718,8 @@ void* axo_safe_malloc(size_t n);
 
 //Errors
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg);
+void axo_err_printf(const char* fmt, ...);
+void axo_err_vprintf(const char* fmt, va_list vargs);
 
 //Unknown
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2);
