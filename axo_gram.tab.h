@@ -117,13 +117,16 @@ extern int yydebug;
     CONST_KWRD = 318,              /* "const"  */
     MODULE_ACCESS = 319,           /* "::"  */
     VOLATILE_KWRD = 320,           /* "volatile"  */
-    IDENTIFIER_PREC = 321,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 322,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 323,               /* LOOP_PREC  */
-    UMINUS = 324,                  /* UMINUS  */
-    CALL_PREC = 325,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 326,  /* STRUCT_LIT_NAMED_FIELD  */
-    TYPE_Q_PREC = 327              /* TYPE_Q_PREC  */
+    COMPTIME_VAR = 321,            /* COMPTIME_VAR  */
+    COMPTIME_CALL = 322,           /* COMPTIME_CALL  */
+    MACRO_GLUE = 323,              /* MACRO_GLUE  */
+    IDENTIFIER_PREC = 324,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 325,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 326,               /* LOOP_PREC  */
+    UMINUS = 327,                  /* UMINUS  */
+    CALL_PREC = 328,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 329,  /* STRUCT_LIT_NAMED_FIELD  */
+    TYPE_Q_PREC = 330              /* TYPE_Q_PREC  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -132,7 +135,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 180 "axo_gram.y"
+#line 183 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -160,7 +163,7 @@ union YYSTYPE
   axo_switch switch_type;
   axo_var variable_type;
 
-#line 164 "axo_gram.tab.h"
+#line 167 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

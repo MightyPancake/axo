@@ -129,10 +129,12 @@
 %token<str> CONST_KWRD "const"
 %token<str> MODULE_ACCESS "::"
 %token<str> VOLATILE_KWRD "volatile"
+%token<str> COMPTIME_VAR COMPTIME_CALL
+%token<str> MACRO_GLUE
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
-%type<expression> expr incr_decr_op if_condition assignment special_assignment arr_literal
+%type<expression> expr incr_decr_op if_condition assignment special_assignment arr_literal comptime_expr
 %type<declaration_type> declaration
 %type<str> statements declarations while_loop_base c_code
 %type<typ_type> func_def_ret_typ val_typ no_q_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args type_qualifier typ_q
@@ -176,6 +178,7 @@
 %left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
 %left STRUCT_LIT_NAMED_FIELD TYPE_Q_PREC
+%left MACRO_GLUE
 
 %union {
   char* str;
@@ -533,6 +536,21 @@ incr_decr_op : expr INCR_OP {
   }
   ;
 
+comptime_expr : COMPTIME_VAR {
+    // printf("got comptime: %s\n", &($1[1]));
+    char* lua_input = fmtstr("return axo.get(%s)", &($1[1]));
+    // printf("Running Lua: %s\n", lua_input);
+    bool ok = false;
+    const char* res = axo_lua_dostring(state, lua_input, &ok);
+    if (!ok){
+      yyerror(&@$, "Macro error: %s\n", res);
+      YYERROR;
+    }
+    $$ = (axo_expr){.val=alloc_str(res)};
+    free(lua_input);
+  }
+  ;
+
 //String literal should be a pointer!
 expr : STRING_LITERAL {set_val(&$$, axo_deep_copy_typ(axo_str_typ(state)), $1); $$.kind=axo_expr_normal_kind;}
 // expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
@@ -546,6 +564,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_deep_copy_typ(axo_str_typ(state)), $1); 
     $$.typ.kind=axo_literal_kind;
   }
   | FLOAT_LITERAL {set_val(&$$, axo_float_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | comptime_expr
   | BYTE_LITERAL {set_val(&$$, axo_byte_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | "null" {
     $$ = (axo_expr){
@@ -2141,7 +2160,7 @@ void yyerror(YYLTYPE* loc, const char * fmt, ...){
     va_end(args);
     axo_err_printf("%s\n", err_msg);
     free(err_msg);
-    free(msg);
+    if (msg) free(msg);
   }
   // exit(1);
 }
@@ -2155,10 +2174,13 @@ int compile(int argc, char** argv) {
   if (test_playground) return playground();
   
   //Get the root path (the path where the axo compiler lays)
-  char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
+  char full_exec_path[1024] = "";
+  char root_p[1024] = "";
+  axo_get_parent_dir(root_p, axo_get_exec_path(full_exec_path, sizeof(full_exec_path)));
   // printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
+  axo_test_lua(state);
   //Save the original working dir
   state->orig_cwd = axo_cwd((char[axo_max_path_len]){}, axo_max_path_len);
   // printf("orig_cwd: %s\n", orig_cwd);
@@ -2278,7 +2300,7 @@ int compile(int argc, char** argv) {
               strapnd(&compiler_cmd, " ");
               strapnd(&compiler_cmd, state->cc_flags[i]);
             }
-            printf("Compiling command:\n%s\n", compiler_cmd);
+            // printf("Compiling command:\n%s\n", compiler_cmd);
             res = system(compiler_cmd) >> 8;
             break;
           default:

@@ -152,6 +152,9 @@ axo_state* axo_new_state(char* root_path){
     st->run = false;
     st->cc_flags = NULL;
     st->cc_flags_len = 0;
+    //Lua
+    st->lua_state = luaL_newstate();
+    luaL_openlibs(st->lua_state);
     return st;
 }
 
@@ -899,15 +902,17 @@ int axo_set_cmd(axo_state* st, int argc, char** argv){
 void axo_new_source(axo_state* st, char* path){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
-    src->path = alloc_str(path);
-    //ERROR
-    src->parent_dir = axo_get_parent_dir(axo_resolve_path(path));
+    src->name = alloc_str(path);
+    src->kind = axo_file_source_kind;
+    src->path = axo_resolve_path(path);
+    // printf("parent dir: %s\n", src->path);
     src->file = fopen(src->path, "rb");
     src->index = 0;
     src->pos = 0;
     src->line = 1;
     src->col = 1;
-    axo_chdir(src->parent_dir);
+    
+    axo_chdir(axo_get_parent_dir(axo_tmp_path_str, path));
     yyrestart(src->file);
     st->sources_len++;
     if (!(src->file)){
@@ -917,8 +922,14 @@ void axo_new_source(axo_state* st, char* path){
 }
 
 void axo_free_source(axo_source s){
-    free(s.path);
-    free(s.parent_dir);
+    free(s.name);
+    switch(s.kind){
+        case axo_file_source_kind:
+            free(s.path);
+            break;
+        case axo_string_source_kind:
+        break;
+    }
 }
 
 void axo_free_index_access(axo_index_access ia){
@@ -928,14 +939,16 @@ void axo_free_index_access(axo_index_access ia){
 void axo_new_string_source(axo_state* st, char* code){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
-    src->path = alloc_str(code);
+    printf("Switching to: %s\n", code);
+    src->name = alloc_str("string source");
+    src->path = alloc_str(axo_src_path(st));
+    src->str = alloc_str(code);
     src->index = 0;
-    src->parent_dir = alloc_str(axo_cwd((char[1024]){}, 1024));
-    src->file = NULL;
     src->pos = 0;
     src->line = 1;
     src->col = 1;
-    axo_chdir(src->parent_dir);
+    src->kind = axo_string_source_kind;
+    // axo_chdir(src->parent_dir);
     st->sources_len++;
 }
 
@@ -951,12 +964,17 @@ void axo_pop_source(axo_state* st){
 }
 
 void axo_switch_source(axo_source* src){
-    axo_chdir(src->parent_dir);
-    if (src->file){
-        fseek(src->file, src->pos, SEEK_SET);
-        yyrestart(src->file);
-    }else{
-        src->index = src->pos;
+    switch (src->kind){
+        case axo_string_source_kind:
+            src->index = src->pos;
+            break;
+        case axo_file_source_kind:
+            fseek(src->file, src->pos, SEEK_SET);
+            yyrestart(src->file);
+            char* dir = axo_get_parent_dir(axo_tmp_path_str, src->path);
+            // printf("Switching chdir to %s\n", dir);
+            axo_chdir(dir);
+            break;
     }
 }
 
@@ -1005,10 +1023,19 @@ axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name){
         strcat(path, axo_dir_sep);
         strcat(path, name);
         strcat(path, ".axo");
-        if (axo_file_exists(path))
+        if (axo_file_exists(path)){
             axo_include_file(st, loc, path, false);
-        else
+            char* lua_path = axo_swap_file_extension(path, ".lua");
+            if (axo_file_exists(lua_path)){
+                bool ok;
+                const char* res = axo_lua_dofile(st, lua_path, &ok);
+                if (!ok){
+                    axo_err_printf("Lua error: %s\n", res);
+                }
+            }
+        }else{
             yyerror(loc, "No entry file for module. Missing '%s.axo' in module directory?", name);
+        }
     }
     return (axo_decl){.val=fmtstr("//use %s", name), .kind=axo_use_decl_kind};
 }
@@ -1913,12 +1940,14 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     axo_cwd(cwd, 1024);
     if (st->sources_len==1){
         axo_chdir(st->orig_cwd);
-    }else{
-        axo_chdir(st->sources[st->sources_len-1].parent_dir);
+    }else if (axo_get_source(st)->kind == axo_file_source_kind){
+        axo_chdir(axo_get_parent_dir(axo_tmp_path_str, st->sources[st->sources_len-1].path));
     }
-    char* code = axo_file_to_str(axo_source(st)->path);
+    char* code = axo_get_source(st)->kind == axo_string_source_kind ?
+    axo_get_source(st)->str
+    : axo_file_to_str(axo_src_path(st));
     if (!code){
-        fprintf(stderr, "Error while getting code from src! Null string from file '%s' while in '%s'.\n", axo_source(st)->path, axo_cwd((char[512]){}, 512));
+        fprintf(stderr, "Error while getting code from src! Null string from file '%s' while in '%s'.\n", axo_src_path(st), axo_cwd((char[512]){}, 512));
         return alloc_str("Couldn't get an error message");
     }
     int up_lines = 2;
@@ -1938,8 +1967,8 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     line = line > 1 ? line : 1;
     char* ret;
     char website[] = "https://github.com/MightyPancake/axl/blob/main/errors/error_1.md";
-    char* full_filepath = axo_resolve_path(axo_source(st)->path);
-    ret = fmtstr(axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
+    char* full_filepath = axo_resolve_path(axo_src_path(st));
+    ret = fmtstr(axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_src_path(st), axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
     while (line<=loc->last_line+down_lines){
       if (code[i] == '\0') break;
       else if (col == loc->first_column && line == loc->first_line){
@@ -1979,7 +2008,6 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
       }else col++;
       i++;
     }
-    free(msg);
     strapnd(&ret, axo_reset_style);
     free(code);
     axo_chdir(cwd);
@@ -2114,7 +2142,7 @@ char* axo_decode_easter(long long int* data){
     // printf("realpath: %s\n", filename);
     char* res = realpath(filename, ret);
     if (res == NULL) {
-        printf("ERROR IN REALPATH\n");
+        axo_err_printf("Couldn't get realpath for '%s'. cwd: '%s'\n", filename, axo_cwd(axo_tmp_path_str, 1024));
         free(ret);
         return NULL;
     }
@@ -2234,22 +2262,23 @@ char* axo_cwd(char* dest, size_t sz) {
     
 #endif
 
-char* axo_get_parent_dir(char* path) {
+char* axo_get_parent_dir(char* dest, char* path) {
+    strcpy(dest, path);
     char *last_slash;
     #ifdef _WIN32
         /* Replace all '\' with '/' for Windows paths */
-        for (char *p = path; *p != '\0'; p++) {
+        for (char *p = dest; *p != '\0'; p++) {
             if (*p == '\\') {
                 *p = '/';
             }
         }
     #endif
 
-    last_slash = strrchr(path, '/');
+    last_slash = strrchr(dest, '/');
     if (last_slash != NULL) {
         *last_slash = '\0';  /* Null-terminate the path at the last slash */
     }
-    return path;
+    return dest;
 }
 
 void axo_err_vprintf(const char* fmt, va_list vargs){
@@ -2261,4 +2290,41 @@ void axo_err_printf(const char* fmt, ...){
     va_start(args, fmt);
     axo_err_vprintf(fmt, args);
     va_end(args);
+}
+
+//Returns error string or null if everything went correctly
+const char* axo_lua_dofile(axo_state* st, const char* lua_file, bool* ok){
+    *ok = false;
+    lua_State* L = st->lua_state;
+    if (luaL_dofile(L, lua_file)) {
+        return lua_tostring(L, -1);
+    }
+    *ok = true;
+    return NULL;
+}
+
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok){
+    *ok = false;
+    lua_State* L = st->lua_state;
+    if (luaL_dostring(L, lua_code)) {
+        return lua_tostring(L, -1);
+    }
+    if (lua_isstring(L, -1)) {
+        *ok = true;
+        return lua_tostring(L, -1);
+    }else{
+        //error! Expected string
+        lua_pop(L, 1);
+        return "Returned a non-string value!";
+    }
+}
+
+void axo_test_lua(axo_state* st){
+    // bool ok;
+    // const char* res = axo_lua_dostring(st, "\"hello\"", &ok);
+    // if (ok){
+    //     printf("Lua says: %s\n", res);
+    // }else{
+    //     axo_err_printf("Lua error: %s\n", res);
+    // }
 }

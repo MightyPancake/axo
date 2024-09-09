@@ -21,6 +21,11 @@ typedef struct hashmap* map;
 #include <time.h>
 #include <stdio.h>
 
+//Include Lua
+#include "./lua/src/lua.h"
+#include "./lua/src/lualib.h"
+#include "./lua/src/lauxlib.h"
+
 //Define YYLTYPE
 typedef struct YYLTYPE YYLTYPE;
 struct YYLTYPE
@@ -31,6 +36,7 @@ struct YYLTYPE
   int last_column;
 };
 #define axo_max_path_len 2048
+#define axo_tmp_path_str ((char[axo_max_path_len]){'\0'})
 
 //Memory management values
 #define axo_scopes_cap 32
@@ -284,23 +290,34 @@ typedef struct axo_compiler_config{
     bool                      extended_ascii;
 }axo_compiler_config;
 
+typedef enum axo_source_kind{
+    axo_string_source_kind,
+    axo_file_source_kind
+}axo_source_kind;
+
 typedef struct axo_source{
-    char*            path;
-    char*            parent_dir;
-    FILE*            file;
+    char*            name;    //What gets displayed in error messages
+    axo_source_kind  kind;
+    union {
+        FILE*        file;
+        char*        str;
+    };
+    //File related
+    char*            path;        //Aboslute path to source file
+    //General
     long             pos;
     int              line;
     int              col;
     int              index;
 }axo_source;
 
-#define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
-#define axo_line(ST) (axo_source(ST)->line)
-#define axo_col(ST) (axo_source(ST)->col)
-#define axo_pos(ST) (axo_source(ST)->pos)
-#define axo_src_path(ST) (axo_source(ST)->path)
-#define axo_src_file(ST) (axo_source(ST)->file)
-#define axo_src_index(ST) (axo_source(ST)->index)
+#define axo_get_source(ST) (&(ST->sources[ST->sources_len-1]))
+#define axo_line(ST) (axo_get_source(ST)->line)
+#define axo_col(ST) (axo_get_source(ST)->col)
+#define axo_pos(ST) (axo_get_source(ST)->pos)
+#define axo_src_path(ST) (axo_get_source(ST)->path)
+#define axo_src_file(ST) (axo_get_source(ST)->file)
+#define axo_src_index(ST) (axo_get_source(ST)->index)
 
 typedef struct axo_module{
     char*        name;
@@ -358,6 +375,8 @@ typedef struct axo_state{
     bool                   run;
     char**                 cc_flags;
     int                    cc_flags_len;
+    //Lua (comptime)
+    lua_State*             lua_state;
 }axo_state;
 
 #define axo_col_sup(ST) (ST->config.color_support)
@@ -713,6 +732,11 @@ void axo_color_printf(int index, axo_color_support_kind col_sup, const char* fmt
 char* itoa_spaced(int a);
 unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii);
 
+//Lua
+void axo_test_lua(axo_state* st);
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok);
+const char* axo_lua_dofile(axo_state* st, const char* lua_path, bool* ok);
+
 //Memory related
 void* axo_safe_malloc(size_t n);
 
@@ -734,7 +758,7 @@ char* axo_resolve_path(char* filename);
 int axo_chdir(char* path);
 char* axo_get_exec_path(char* buf, int sz) ;
 char* axo_cwd(char* dest, size_t sz);
-char* axo_get_parent_dir(char* path);
+char* axo_get_parent_dir(char* dest, char* path);
 
 //Deprecated/shouldn't be used (will have to replace them)
 void set_val(axo_expr* dest, axo_typ typ, char* val);

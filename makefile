@@ -15,17 +15,18 @@ endif
 default: build
 
 compile:
-	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
+	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g -L./src/lua/src -llua -lm
 	@echo [92mCompiler built![0m
 
 gen:
 	@echo [96mGenerating lexer...[0m
-	@flex -l scan.l
+	@flex scan.l
 	@echo [96mGenerating parser...[0m
 	@bison -v --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
 	@echo [94mBuilding the compiler... [0m
 
 build:
+	@make lua -s
 	@make -s gen
 	@make -s compile
 
@@ -37,7 +38,6 @@ wasm:
 	@mv ./playground.wasm.map docs/playground/playground.wasm.map
 	@mv ./playground.data docs/playground/playground.data
 	@cp -r ./modules ./docs/playground/modules
-	
 
 clear_wasm:
 	rm playground.js
@@ -61,6 +61,7 @@ show:
 	@$(SHOW_FILE_CMD) test.c
 
 clean:
+	@make clean_lua -s
 	@$(RM_CMD) axo$(TARGET_EXT)
 	
 debug_test:
@@ -77,9 +78,20 @@ dbgf:
 	@make -s
 	valgrind --leak-check=full axo run test.axo
 
-push:
+lua:
+	@echo [95mBuilding local lua...[0m
+	@cd src/lua/src && make
+	@echo [95mLua built sucessfully![0m
+
+clean_lua:
+	@echo [95mDeleting local lua[0m
+	@cd src/lua/src && make clean -s
+	@echo [95mLua deleted![0m
+
+
+commit:
 	@clear
-	@echo [96mPushing the changes...[0m
+	@echo [96mPreparing commit...[0m
 	@make -s
 	@make -s clean
 	git add .

@@ -1,6 +1,7 @@
 use std
 
 fn main([][]byte args){
-    printf("Hello world\n")
+    printf("Hello from %s\n", ~os_str)
     ret 0
 }
+

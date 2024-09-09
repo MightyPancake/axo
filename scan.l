@@ -21,26 +21,25 @@
       yy_switch_to_buffer(yy_scan_string(state->input_str));
   }
 
-    #define YY_INPUT(buf, result, max_size) \
-    { \
-        char* str = axo_src_path(state); \
-        if (axo_src_file(state)) { \
-            if ((result = fread(buf, 1, max_size, yyin)) < 0) \
-              YY_FATAL_ERROR("input in flex scanner failed"); \
-        } else { \
-            if (!str) { \
-                YY_FATAL_ERROR("input string not properly initialized"); \
-                result = YY_NULL; \
-            } else { \
-                int LEN = strlen(str + axo_src_index(state)); \
-                result = max_size > LEN ? LEN : max_size; \
-                if (result>0){ \
-                  memcpy(buf, str + axo_src_index(state), result); \
-                } \
-                axo_src_index(state) += result; \
-            } \
-        } \
-  }
+#define YY_INPUT(buf, result, max_size) \
+{ \
+  axo_source* src = axo_get_source(state); \
+  switch(src->kind){ \
+    case axo_string_source_kind: \
+      char* str = src->str; \
+      int LEN = strlen(str + axo_src_index(state)); \
+      result = max_size > LEN ? LEN : max_size; \
+      if (result>0){ \
+        memcpy(buf, str + axo_src_index(state), result); \
+      } \
+      axo_src_index(state) += result; \
+      break; \
+    case axo_file_source_kind: \
+      if ((result = fread(buf, 1, max_size, yyin)) < 0) \
+        YY_FATAL_ERROR("input in flex scanner failed"); \
+      break; \
+  } \
+}
 
   void bin_to_hex_lit(char *bin, int len) {
     char hex_char[17] = "0123456789ABCDEF";
@@ -181,6 +180,10 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   yylval->str=alloc_str(yytext);
   free(prev);
   return(INTEGER_LITERAL);
+}
+\~[a-zA-Z][0-9a-zA-Z_]* {
+  ret_def;
+  return COMPTIME_VAR;
 }
 ([0-9]+\.[0-9]+|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z_][0-9a-zA-Z_]* {ret_def; return IDEN; }
