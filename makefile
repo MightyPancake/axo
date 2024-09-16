@@ -5,11 +5,13 @@ ifeq ($(OS), Windows_NT)
 	CLEAR_CMD = cls
 	RM = del
 	TARGET_EXT = .exe
+	LUA_TARGET = mingw
 else
 	SHOW_FILE_CMD = bat
 	CLEAR_CMD = clear
 	RM = rm
 	TARGET_EXT = 
+	LUA_TARGET = 
 endif
 
 default: build
@@ -84,7 +86,7 @@ dbgf:
 
 lua:
 	@echo [95mBuilding local lua...[0m
-	@cd src/lua/src && make
+	@cd src/lua/src && make $(LUA_TARGET)
 	@echo [95mLua built sucessfully![0m
 
 clean_lua:
