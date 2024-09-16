@@ -11,26 +11,13 @@ module(
 #include <raylib.h>
 #flag "-lraylib"
 
-//TODO: Fix that :/
-//This will require timecomp!
-//Linux libs
-// #C "#ifdef __linux__"
-#flag "-lGL"
-#flag "-lm"
-#flag "-lpthread"
-#flag "-ldl"
-#flag "-lrt"
-#flag "-lX11"
-
-//Windows libs
-// #C "#elif __WIN32"
-// #flag "-lopengl32"
-// #flag "-lgdi32"
-// #flag "-lwinmm"
-// #flag "-lkernel32"
-// #flag "-luser32"
-
-// #C "#endif"
+~~
+local libs = {
+    Windows = {"-lopengl32", "-lgdi32", "-lwinmm", "-lkernel32", "-luser32"},
+    Linux = {"-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11"}
+}
+return axo.setFlags(libs[axo.os])
+~~
 
 include "./types.axo"
 include "./core.axo"

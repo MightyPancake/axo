@@ -3,29 +3,30 @@ CC = gcc
 ifeq ($(OS), Windows_NT)
 	SHOW_FILE_CMD = type
 	CLEAR_CMD = cls
-	RM_CMD = del
+	RM = del
 	TARGET_EXT = .exe
 else
 	SHOW_FILE_CMD = bat
 	CLEAR_CMD = clear
-	RM_CMD = rm
+	RM = rm
 	TARGET_EXT = 
 endif
 
 default: build
 
 compile:
-	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g
+	$(CC) axo_gram.tab.c lex.yy.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c -o axo$(TARGET_EXT) -Wall -g -L./src/lua/src -llua -lm
 	@echo [92mCompiler built![0m
 
 gen:
 	@echo [96mGenerating lexer...[0m
-	@flex -l scan.l
+	@flex --header-file=lex.yy.h -o lex.yy.c -d -R scan.l
 	@echo [96mGenerating parser...[0m
-	@bison -v --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	@bison -v --defines -d axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
 	@echo [94mBuilding the compiler... [0m
 
 build:
+	@make lua -s
 	@make -s gen
 	@make -s compile
 
@@ -37,13 +38,12 @@ wasm:
 	@mv ./playground.wasm.map docs/playground/playground.wasm.map
 	@mv ./playground.data docs/playground/playground.data
 	@cp -r ./modules ./docs/playground/modules
-	
 
 clear_wasm:
-	rm playground.js
-	rm playground.wasm
-	rm playground.wasm.map
-	rm playground.data
+	$(RM) playground.js
+	$(RM) playground.wasm
+	$(RM) playground.wasm.map
+	$(RM) playground.data
 
 run:
 	$(CLEAR_CMD)
@@ -61,7 +61,12 @@ show:
 	@$(SHOW_FILE_CMD) test.c
 
 clean:
-	@$(RM_CMD) axo$(TARGET_EXT)
+	@make clean_lua -s
+	@$(RM) axo_gram.tab.c
+	@$(RM) axo_gram.tab.h
+	@$(RM) lex.yy.c
+	@$(RM) lex.yy.h
+	@$(RM) axo$(TARGET_EXT)
 	
 debug_test:
 	@make -s build
@@ -77,9 +82,20 @@ dbgf:
 	@make -s
 	valgrind --leak-check=full axo run test.axo
 
-push:
+lua:
+	@echo [95mBuilding local lua...[0m
+	@cd src/lua/src && make
+	@echo [95mLua built sucessfully![0m
+
+clean_lua:
+	@echo [95mDeleting local lua[0m
+	@cd src/lua/src && make clean -s
+	@echo [95mLua deleted![0m
+
+
+commit:
 	@clear
-	@echo [96mPushing the changes...[0m
+	@echo [96mPreparing commit...[0m
 	@make -s
 	@make -s clean
 	git add .

@@ -12,7 +12,7 @@ fn main([][]byte args){
     chdir(args[0].data)
     cwd = [1024]byte
     getcwd(cwd.data, cwd.len[0].(size_t))
-    printf("%scwd: %s%s\n", aesc::blue, cwd.data, aesc::reset)
+    printf("%scwd: %s%s\n", aesc::blue, cwd.data.(@byte), aesc::reset)
 
     InitWindow(screenWidth, screenHeight, "raylib [models] example - loading gltf animations")
 
