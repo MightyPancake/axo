@@ -15,4 +15,4 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Build compiler
-      run: make compile
+      run: make
