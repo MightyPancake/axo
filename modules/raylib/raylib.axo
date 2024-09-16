@@ -13,7 +13,7 @@ module(
 
 ~~
 local libs = {
-    Windows = {"-lopengl32", "-llgdi32", "-lwinmm", "-lkernel32", "-luser32"},
+    Windows = {"-lopengl32", "-lgdi32", "-lwinmm", "-lkernel32", "-luser32"},
     Linux = {"-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11"}
 }
 return axo.setFlags(libs[axo.os])

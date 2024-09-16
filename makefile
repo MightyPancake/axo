@@ -3,12 +3,12 @@ CC = gcc
 ifeq ($(OS), Windows_NT)
 	SHOW_FILE_CMD = type
 	CLEAR_CMD = cls
-	RM_CMD = del
+	RM = del
 	TARGET_EXT = .exe
 else
 	SHOW_FILE_CMD = bat
 	CLEAR_CMD = clear
-	RM_CMD = rm
+	RM = rm
 	TARGET_EXT = 
 endif
 
@@ -40,10 +40,10 @@ wasm:
 	@cp -r ./modules ./docs/playground/modules
 
 clear_wasm:
-	rm playground.js
-	rm playground.wasm
-	rm playground.wasm.map
-	rm playground.data
+	$(RM) playground.js
+	$(RM) playground.wasm
+	$(RM) playground.wasm.map
+	$(RM) playground.data
 
 run:
 	$(CLEAR_CMD)
@@ -62,11 +62,11 @@ show:
 
 clean:
 	@make clean_lua -s
-	@$(RM_CMD) axo_gram.tab.c
-	@$(RM_CMD) axo_gram.tab.h
-	@$(RM_CMD) lex.yy.c
-	@$(RM_CMD) lex.yy.h
-	@$(RM_CMD) axo$(TARGET_EXT)
+	@$(RM) axo_gram.tab.c
+	@$(RM) axo_gram.tab.h
+	@$(RM) lex.yy.c
+	@$(RM) lex.yy.h
+	@$(RM) axo$(TARGET_EXT)
 	
 debug_test:
 	@make -s build
