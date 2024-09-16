@@ -14,11 +14,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Homebrew
+    - name: Install Homebrew and Bison
       run: |
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         brew update
         brew install bison
+
+    # Explicitly set the PATH to use the Homebrew-installed version of bison
+    - name: Set PATH for Bison
+      run: |
+        echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> $GITHUB_ENV
         echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
         source ~/.zshrc
 
