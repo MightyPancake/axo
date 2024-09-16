@@ -1,0 +1,51 @@
+#provided (Font fn) GetFontDefault
+#provided (Font fn @byte) LoadFont
+#provided (Font fn @byte, int, @int, int) LoadFontEx
+#provided (Font fn Image, Color, int) LoadFontFromImage
+#provided (Font fn @byte, @byte, int, int, @int, int) LoadFontFromMemory
+#provided (bool fn Font) IsFontReady
+#provided (@GlyphInfo fn @byte, int, int, @int, int, int) LoadFontData
+#provided (Image fn @GlyphInfo, @Rectangle, int, int, int, int) GenImageFontAtlas
+#provided (fn @GlyphInfo, int) UnloadFontData
+#provided (fn Font) UnloadFont
+#provided (bool fn Font, @byte) ExportFontAsCode
+
+#provided (fn int, int) DrawFPS
+#provided (fn @byte, int, int, int, Color) DrawText
+#provided (fn Font, @byte, Vector2, f32, f32, Color) DrawTextEx
+#provided (fn Font, @byte, Vector2, Vector2, f32, f32, f32, Color) DrawTextPro
+#provided (fn Font, int, Vector2, f32, Color) DrawTextCodepoint
+#provided (fn Font, @int, int, Vector2, f32, f32, Color) DrawTextCodepoints
+
+#provided (fn int) SetTextLineSpacing
+#provided (int fn @byte, int) MeasureText
+#provided (Vector2 fn Font, @byte, f32, f32) MeasureTextEx
+#provided (int fn Font, int) GetGlyphIndex
+#provided (GlyphInfo fn Font, int) GetGlyphInfo
+#provided (Rectangle fn Font, int) GetGlyphAtlasRec
+
+#provided (@byte fn @int, int) LoadUTF8
+#provided (fn @byte) UnloadUTF8
+#provided (@int fn @byte, @int) LoadCodepoints
+#provided (fn @int) UnloadCodepoints
+#provided (int fn @byte) GetCodepointCount
+#provided (int fn @byte, @int) GetCodepoint
+#provided (int fn @byte, @int) GetCodepointNext
+#provided (int fn @byte, @int) GetCodepointPrevious
+#provided (@byte fn int, @int) CodepointToUTF8
+
+#provided (int fn @byte, @byte) TextCopy
+#provided (bool fn @byte, @byte) TextIsEqual
+#provided (u32 fn @byte) TextLength
+#provided (@byte fn @byte, ...) TextFormat
+#provided (@byte fn @byte, int, int) TextSubtext
+#provided (@byte fn @byte, @byte, @byte) TextReplace
+#provided (@byte fn @byte, @byte, int) TextInsert
+#provided (@byte fn @byte, int, @byte) TextJoin
+#provided (@byte fn @byte, byte, @int) TextSplit
+#provided (fn @byte, @byte, @int) TextAppend
+#provided (int fn @byte, @byte) TextFindIndex
+#provided (@byte fn @byte) TextToUpper
+#provided (@byte fn @byte) TextToLower
+#provided (@byte fn @byte) TextToPascal
+#provided (int fn @byte) TextToInteger

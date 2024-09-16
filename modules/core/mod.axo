@@ -1,0 +1,14 @@
+struct axo_module (
+	@byte name,
+	@byte prefix,
+	@byte version,
+	@byte author,
+	@byte website,
+	@byte license_name,
+	@byte license,
+	@byte description
+)
+
+{
+	modules = none []axo_module
+}

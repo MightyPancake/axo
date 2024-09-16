@@ -1,12 +1,9 @@
-#include <stdio.h>
-#register i32 printf(@byte, ...)
-
-include "libs/core/core.axo"
-
-include "./mod/file.axo"
-use stdlib
+use std
 
 fn main([][]byte args){
-    a = add(1,2)*sub(5,3)
+    name = "David"
+    age = 21
+    ~print("My name is ", name, " and I am ", age, " years old.")
     ret 0
 }
+

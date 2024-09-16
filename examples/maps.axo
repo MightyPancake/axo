@@ -1,0 +1,11 @@
+use std
+use io
+// use maps
+
+fn main() {
+    a = 123
+    b = 123.456
+    printf("%lu\n", a._sz)
+    ret 0
+}
+

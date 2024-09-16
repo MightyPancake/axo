@@ -1,0 +1,40 @@
+module(
+	name: "dict"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Implementation for a dictionary using standard maps module"
+)
+use map
+
+struct dict(
+	map map
+)
+
+struct dict_key_val(
+	@byte	key,
+	@none value
+)
+
+fn dict.cmp(const @none a, const @none b, @none udata){
+	ret strcmp(a.(@dict_key_val).key, b.(@dict_key_val).key)
+}
+
+fn dict.hash(const @none item, u64 seed0, u64 seed1){
+	ret hashmap_murmur(item.(@dict_key_val).key, strlen(item.(@dict_key_val).key), seed0, seed1)
+}
+
+fn dict.new(){
+	ret dict{map^new(dict^hash, dict^cmp, type_sz(dict_key_val))}
+}
+
+fn dict:set(@byte key, @none val){
+	ret $.map:set(dict_key_val{key:cpy(), val}@)
+}
+
+fn dict:get(@byte key){
+	ret $.map:get(dict_key_val{key}@).(@dict_key_val).value
+}
+

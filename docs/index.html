@@ -20,14 +20,16 @@
       color: #fc2f62;
   	}
     .token.number, .token.boolean {
-      color: #ff9729;
-      color: #8657a1;
+      color: #a473e6;
     }
     .token.function {
       color: #fe8f98;
     }
+    .token.punctuation {
+      color: #54b8e3;
+    }
     .token.string {
-      color: #20f5ce;
+      color: #15c0a6;
     }
     .h1 {
       color: #fe8f98;
@@ -38,6 +40,8 @@
   <div id="app">Loading, please wait...</div>
   <script>
     window.$docsify = {
+      //404
+      notFoundPage: '404.md',
       //Progress
       progress: {
         position: "top",
@@ -67,8 +71,13 @@
       plugins: [
         function(hook) {
           var footer = [
-            '<footer style="text-align: center;margin-top: 50px;">',
-            '<span> axo  &copy; 2024 </span>',
+            '<footer style="display: flex; justify-content: center; gap: 5%;">',
+                '<a href="https://discord.gg/y9AYGhjecU" target="_blank">',
+                    '<img src="images/discord.png" alt="Discord" width="50">',
+                '</a>',
+                '<a href="https://github.com/MightyPancake" target="_blank">',
+                    '<img src="images/gh.png" alt="GitHub" width="50" height="50">',
+                '</a>',
             '</footer>'
           ].join('');
 

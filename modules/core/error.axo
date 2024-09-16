@@ -1,0 +1,31 @@
+//Include some error related C header?
+#include <errno.h>
+#include <string.h>
+
+#provided int errno
+
+struct error (
+	int			code,
+	@byte		msg
+)
+
+fn error:set(int code, @byte msg){
+	$.code = code
+	$.msg = msg
+	ret $
+}
+
+fn error:ok(){
+  ret !($.code.(bool))
+}
+
+fn error:clear(){
+	$.code = 0
+	$.msg = ""
+}
+
+{
+	err = error{0, "No error"}
+	errptr = err@
+}
+

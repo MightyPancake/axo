@@ -1,0 +1,29 @@
+module(
+	name: "raylib"
+	version: "5.0.0"
+	author: "Raysan5"
+	website: "https://www.raylib.com"
+	license_name: "zlib/libpng"
+	license: "https://www.raylib.com/license.html"
+	description: "Raylib"
+)
+
+#include <raylib.h>
+#flag "-lraylib"
+
+~~
+local libs = {
+    Windows = {"-lopengl32", "-lgdi32", "-lwinmm", "-lkernel32", "-luser32"},
+    Linux = {"-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11"}
+}
+return axo.setFlags(libs[axo.os])
+~~
+
+include "./types.axo"
+include "./core.axo"
+include "./shapes.axo"
+include "./textures.axo"
+include "./text.axo"
+include "./models.axo"
+include "./audio.axo"
+

@@ -3,6 +3,8 @@
 [![Home](images/axo_think.png)]()
 
 
+
+- [Online playground](https://axolang.com/playground/playground.html)
 - Getting started
   - [Install](install)
   - ~First program~

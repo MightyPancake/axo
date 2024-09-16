@@ -1,0 +1,64 @@
+use std
+use raylib
+#include <unistd.h>
+
+#provided (@byte fn @byte, size_t) getcwd
+#provided (fn const @byte) chdir
+
+fn main([][]byte args){
+    const screenWidth = 800
+    const screenHeight = 450
+    model_path = "./resources/models/robot.glb"
+    chdir(args[0].data)
+    cwd = [1024]byte
+    getcwd(cwd.data, cwd.len[0].(size_t))
+    printf("%scwd: %s%s\n", aesc::blue, cwd.data.(@byte), aesc::reset)
+
+    InitWindow(screenWidth, screenHeight, "raylib [models] example - loading gltf animations")
+
+    camera = Camera{}
+    camera.position = Vector3{ 6.0, 6.0, 6.0 }
+    camera.target = Vector3{ 0.0, 2.0, 0.0 }
+    camera.up = Vector3{ 0.0, 1.0, 0.0 }
+    camera.fovy = 45.0
+    camera.projection = CAMERA_PERSPECTIVE
+
+    // Load gltf model
+    model = LoadModel(model_path)
+    position = Vector3{ 0.0, 0.0, 0.0 }
+    
+    // Load gltf model animations
+    animsCount = 0
+    animIndex = 0
+    animCurrentFrame = 0
+    modelAnimations = LoadModelAnimations(model_path, animsCount@)
+
+    SetTargetFPS(60)
+    // Main game loop
+    while !WindowShouldClose(){
+        UpdateCamera(camera@, CAMERA_ORBITAL)
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) animIndex = (animIndex + 1)%animsCount
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) animIndex = (animIndex + animsCount - 1)%animsCount
+
+        anim = modelAnimations[animIndex]
+        animCurrentFrame = (animCurrentFrame + 1)%anim.frameCount
+        UpdateModelAnimation(model, anim, animCurrentFrame)
+        BeginDrawing()
+
+            ClearBackground(RAYWHITE)
+
+            BeginMode3D(camera)
+                DrawModel(model, position, 1.0, WHITE)    // Draw animated model
+                DrawGrid(10, 1.0)
+            EndMode3D()
+
+            DrawText("Use the LEFT/RIGHT mouse buttons to switch animation", 10, 10, 20, GRAY)
+            DrawText(TextFormat("Animation: %s", anim.name), 10, GetScreenHeight() - 20, 10, DARKGRAY)
+
+        EndDrawing()
+    }
+    UnloadModel(model)
+    CloseWindow()
+    ret 0
+}
