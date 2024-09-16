@@ -2,7 +2,7 @@ CC = gcc
 RM = rm
 CLEAR_CMD = clear
 SHOW_FILE_CMD = cat
-BISON_FLAGS = -v --defines -d axo_gram.y
+BISON_FLAGS = -v --defines -d
 
 ifeq ($(OS), Windows_NT)
 	TARGET = Windows
@@ -17,7 +17,7 @@ else
 		TARGET = MacOS
 	else
 		TARGET = Linux
-		BISON_FLAGS = -v --defines -d axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+		BISON_FLAGS = -v --defines -d -Wcounterexamples -Wconflicts-rr -Wother
 	endif
 endif
 
@@ -32,7 +32,7 @@ gen:
 	@echo [96mGenerating lexer...[0m
 	@flex --header-file=lex.yy.h -o lex.yy.c -d -R scan.l
 	@echo [96mGenerating parser...[0m
-	@bison -v --defines -d axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	@bison -d axo_gram.y $(BISON_FLAGS)
 	@echo [94mBuilding the compiler... [0m
 
 build:
