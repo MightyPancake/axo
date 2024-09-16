@@ -26,6 +26,13 @@ typedef struct hashmap* map;
 #include "./lua/src/lualib.h"
 #include "./lua/src/lauxlib.h"
 
+//Lexer
+#define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc, yyscan_t yyscanner)
+#define YY_BUF_SIZE 16384
+// void *yyextra;
+typedef void* yyscan_t;
+#define YY_EXTRA (yyextra)
+
 //Define YYLTYPE
 typedef struct YYLTYPE YYLTYPE;
 struct YYLTYPE
@@ -57,6 +64,7 @@ struct YYLTYPE
 #define axo_cases_cap 16
 #define axo_c_sources_cap 16
 #define axo_cc_flags_len 16
+#define axo_comptime_params_cap 16
 
 #ifdef __WIN32
     #define AXO_BIN_EXT ".exe"
@@ -227,7 +235,8 @@ typedef enum axo_decl_kind{
     axo_typ_def_decl_kind,
     axo_other_decl_kind,
     axo_c_code_decl_kind,
-    axo_typedef_decl_kind
+    axo_typedef_decl_kind,
+    axo_comptime_block_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -377,6 +386,8 @@ typedef struct axo_state{
     int                    cc_flags_len;
     //Lua (comptime)
     lua_State*             lua_state;
+    //Scanner
+    yyscan_t               scanner;
 }axo_state;
 
 #define axo_col_sup(ST) (ST->config.color_support)
@@ -436,6 +447,12 @@ typedef struct axo_func_call{
     axo_expr*           params;        //Fix: should be just char**
     int                 params_len;
 }axo_func_call;
+
+typedef struct axo_comptime_call {
+    char*               name;
+    axo_expr*           params;
+    int                 params_len;
+}axo_comptime_call;
 
 typedef struct axo_for_loop{
     char*          start;
@@ -611,9 +628,9 @@ uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1);
 #include "../axo_gram.tab.h"
 
 //Yacc
-int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
-void yyerror(YYLTYPE*, const char *, ...);
-int yyparse(void);
+void axo_yyerror(YYLTYPE*, const char *, ...);
+void yyerror(yyscan_t scanner, YYLTYPE*, const char *, ...);
+
 int asprintf(char **strp, const char *format, ...);
 
 //State
@@ -646,7 +663,7 @@ char* axo_get_var_decl_assign(YYLTYPE* pos, axo_var var, axo_expr expr);
 void axo_new_source(axo_state* st, char* path);
 void axo_new_string_source(axo_state* st, char* code);
 void axo_pop_source(axo_state* st);
-void axo_switch_source(axo_source* src);
+void axo_switch_source(axo_state* st, axo_source* src);
 axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit);
 bool axo_was_file_included(axo_state* st, char* path);
 void axo_set_input_string(const char *str);
@@ -734,8 +751,11 @@ unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii);
 
 //Lua
 void axo_test_lua(axo_state* st);
+char* axo_typ_to_lua(axo_typ t);
 const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok);
 const char* axo_lua_dofile(axo_state* st, const char* lua_path, bool* ok);
+axo_expr axo_parse_string_for_expr(axo_state* st, const char* code);
+axo_decl axo_parse_string_for_decl(axo_state* st, const char* code);
 
 //Memory related
 void* axo_safe_malloc(size_t n);

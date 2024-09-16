@@ -1,9 +1,11 @@
+%option reentrant
+
 %{
-  #define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc)
-  #define YY_BUF_SIZE 16384
   #include "src/utils/utils.h"
   #include "src/axo.h"
-  YYLTYPE yylloc = (YYLTYPE){
+  #include "axo_gram.tab.h"
+  int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param, yyscan_t scanner);
+    YYLTYPE yylloc = (YYLTYPE){
     .first_line = 1,
     .first_column = 1,
     .last_line = 1,
@@ -14,12 +16,10 @@
   extern axo_state* state;
   void axo_pop_source(axo_state* st);
   void axo_add_decl(axo_state* st, axo_decl decl);
-  int yywrap(void);
-  int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
-  void yyerror(YYLTYPE* loc, const char * fmt, ...);
-  void axo_set_input_string(const char *str) {
-      yy_switch_to_buffer(yy_scan_string(state->input_str));
-  }
+  int yywrap();
+  // void axo_yyerror(YYLTYPE* loc, const char * fmt, ...);
+  //Reentrant scanner bs
+  // typedef struct yyguts_t *yyscan_t; // Ensure you have this typedef
 
 #define YY_INPUT(buf, result, max_size) \
 { \
@@ -88,6 +88,7 @@
 %x MULTI_LINE_COMMENT
 %x INCLUDE_MORE_ST
 %x INCLUDE_ST
+%x COMPTIME_LUA_ST
 
 ident_pat [a-zA-Z][0-9a-zA-Z_]*
 include_core_pat [0-9a-zA-Z\\_\/\.\-]+
@@ -107,8 +108,11 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 <INCLUDE_ST,INCLUDE_MORE_ST>[\r\n\t\f\v ]+ {adv_loc;}
 <INCLUDE_ST,INCLUDE_MORE_ST>. {
     adv_loc;
-    yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
+    axo_yyerror(yylloc, "Unexpected '%c' in a #include macro.", yytext[0]);
   }
+"~~" { BEGIN(COMPTIME_LUA_ST); }
+<COMPTIME_LUA_ST>([^~]|~[^~])+ {ret_def; return COMPTIME_LUA_BLOCK;}
+<COMPTIME_LUA_ST>"~~" {BEGIN(INITIAL); }
 "#source" {ret_null; return SOURCE_TAG; }
 "#provided" {ret_null; return PROVIDED_TAG; }
 "#typ" {ret_null; return TAG_TYP; }
@@ -142,6 +146,13 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 "sz_of" {ret_null; return SZ_OF_KWRD;}
 "type_sz" {ret_null; return TYPE_SZ_KWRD;}
 "defer" {ret_null; return DEFER_KWRD;}
+"__AXO_EXPR_AS_PARSE_RESULT" {
+  ret_null;
+  return AXO_EXPR_AS_PARSE_RESULT;
+}
+"__AXO_ARTIFICIAL_EOF_TOKEN" {
+  return 0;
+}
 
 "or" {ret_null; return BIT_OR_OP; }
 "and" {ret_null; return BIT_AND_OP; }
@@ -185,6 +196,10 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
   ret_def;
   return COMPTIME_VAR;
 }
+\~[a-zA-Z][0-9a-zA-Z_]*\( {
+  ret_def;
+  return COMPTIME_CALL;
+}
 ([0-9]+\.[0-9]+|[0-9]*\.[0-9]+) {ret_def; return FLOAT_LITERAL;}
 [a-zA-Z_][0-9a-zA-Z_]* {ret_def; return IDEN; }
 \.[a-zA-Z_][0-9a-zA-Z_]* {
@@ -215,11 +230,11 @@ include_path_pat (\<[0-9a-zA-Z\\_\/\.\-]+\>|\"[0-9a-zA-Z\\_\/\.\-]+\")
 [ \t]+ {axo_col(state)+=yyleng;}
 . { 
     ret_null;
-    yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
+    axo_yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
   }
 
 %%
-int yywrap(void) {
+int yywrap(yyscan_t scanner) {
   if (state->in_core){
     state->in_core = false;
     axo_add_decl(state, (axo_decl){.kind=axo_assign_decl_kind, .val=NULL});

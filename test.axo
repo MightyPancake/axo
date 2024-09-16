@@ -1,7 +1,9 @@
 use std
 
 fn main([][]byte args){
-    printf("Hello from %s\n", ~os_str)
+    name = "David"
+    age = 21
+    ~print("My name is ", name, " and I am ", age, " years old.")
     ret 0
 }
 

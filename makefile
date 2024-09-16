@@ -15,14 +15,14 @@ endif
 default: build
 
 compile:
-	$(CC) axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o axo$(TARGET_EXT) -Wall -g -L./src/lua/src -llua -lm
+	$(CC) axo_gram.tab.c lex.yy.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c -o axo$(TARGET_EXT) -Wall -g -L./src/lua/src -llua -lm
 	@echo [92mCompiler built![0m
 
 gen:
 	@echo [96mGenerating lexer...[0m
-	@flex scan.l
+	@flex --header-file=lex.yy.h -o lex.yy.c -d -R scan.l
 	@echo [96mGenerating parser...[0m
-	@bison -v --defines axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	@bison -v --defines -d axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
 	@echo [94mBuilding the compiler... [0m
 
 build:
@@ -62,6 +62,10 @@ show:
 
 clean:
 	@make clean_lua -s
+	@$(RM_CMD) axo_gram.tab.c
+	@$(RM_CMD) axo_gram.tab.h
+	@$(RM_CMD) lex.yy.c
+	@$(RM_CMD) lex.yy.h
 	@$(RM_CMD) axo$(TARGET_EXT)
 	
 debug_test:

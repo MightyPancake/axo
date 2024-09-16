@@ -119,14 +119,15 @@ extern int yydebug;
     VOLATILE_KWRD = 320,           /* "volatile"  */
     COMPTIME_VAR = 321,            /* COMPTIME_VAR  */
     COMPTIME_CALL = 322,           /* COMPTIME_CALL  */
-    MACRO_GLUE = 323,              /* MACRO_GLUE  */
-    IDENTIFIER_PREC = 324,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 325,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 326,               /* LOOP_PREC  */
-    UMINUS = 327,                  /* UMINUS  */
-    CALL_PREC = 328,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 329,  /* STRUCT_LIT_NAMED_FIELD  */
-    TYPE_Q_PREC = 330              /* TYPE_Q_PREC  */
+    AXO_EXPR_AS_PARSE_RESULT = 323, /* AXO_EXPR_AS_PARSE_RESULT  */
+    COMPTIME_LUA_BLOCK = 324,      /* "comptime lua block"  */
+    IDENTIFIER_PREC = 325,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 326,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 327,               /* LOOP_PREC  */
+    UMINUS = 328,                  /* UMINUS  */
+    CALL_PREC = 329,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 330,  /* STRUCT_LIT_NAMED_FIELD  */
+    TYPE_Q_PREC = 331              /* TYPE_Q_PREC  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -135,7 +136,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 183 "axo_gram.y"
+#line 188 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -145,6 +146,7 @@ union YYSTYPE
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
+  axo_comptime_call comptime_function_call;
   axo_typ typ_type;
   axo_for_loop for_loop_type;
   axo_till_loop till_loop_type;
@@ -163,7 +165,7 @@ union YYSTYPE
   axo_switch switch_type;
   axo_var variable_type;
 
-#line 167 "axo_gram.tab.h"
+#line 169 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -188,7 +190,7 @@ struct YYLTYPE
 
 
 
-int yyparse (void);
+int yyparse (yyscan_t scanner);
 
 
 #endif /* !YY_YY_AXO_GRAM_TAB_H_INCLUDED  */
