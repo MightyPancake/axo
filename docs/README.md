@@ -3,6 +3,7 @@
 Axo is a statically typed, general-purpose programming language that aims to be a modern take on writing (and using) C code thus making it a cool tool to have when it comes to writing code fast and keeping at from running slow.
 
 
+
 ## Sample code
 ```axo
 use std
@@ -26,7 +27,9 @@ fn main([][]byte args){
     |Argument #3: !
 ```
 
+
 Why don't you [try it out](https://axolang.com/playground/playground.html)?
+
 
 <div style="text-align: center;">
     <img src="images/axo_coding.png" alt="axo playing with c" width="35%"/>
@@ -42,6 +45,7 @@ One of axo's goals was to make an easy-to-learn and read language that is also f
 During development keeping the language as simple as possible was one of (if not **THE**) main features. Axo essentially emphasizes and tries to go with the idea of making things as simple as they should be. Write code and run it. That's what it's all about!
 
 It should be fun; no OOP, no keywords that rot in your brain that are not being used 99% of the time, and overcomplicated build and test systems. Just you, simple syntax, speed, and the wind blowing in your hair... (Unless you're bold, but the point remains).
+
 <div style="text-align: center;">
     <img src="images/axo_c.png" alt="axo playing with c" width="35%"/>
 </div>
@@ -57,6 +61,7 @@ Currently, the project is in its very early stages. There are a ton of bugs and 
 
 ## What axo *isn't*
 Keep in mind that axo doesn't claim to be faster or even on pair with C in terms of runtime speed. Altough most of the code should be really as fast as C. **Axo doesn't and will never claim to be faster/better.**
+
 
 ## Credits
 Axo language is almost enitrely made by Filip Król. I wouldn't be able to make it so far without some of my best buddies though, here's just some of them:
