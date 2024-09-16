@@ -1,18 +1,26 @@
 CC = gcc
+RM = rm
+CLEAR_CMD = clear
+SHOW_FILE_CMD = cat
+BISON_FLAGS = -v --defines -d axo_gram.y
 
 ifeq ($(OS), Windows_NT)
+	TARGET = Windows
 	SHOW_FILE_CMD = type
 	CLEAR_CMD = cls
 	RM = del
 	TARGET_EXT = .exe
 	LUA_TARGET = mingw
 else
-	SHOW_FILE_CMD = bat
-	CLEAR_CMD = clear
-	RM = rm
-	TARGET_EXT = 
-	LUA_TARGET = 
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S), Darwin)
+		TARGET = MacOS
+	else
+		TARGET = Linux
+		BISON_FLAGS = -v --defines -d axo_gram.y -Wcounterexamples -Wconflicts-rr -Wother
+	endif
 endif
+
 
 default: build
 
