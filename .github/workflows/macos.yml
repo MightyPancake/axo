@@ -14,5 +14,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install Homebrew
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        brew update
+        brew install bison
+        echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+        source ~/.zshrc
+
     - name: Build compiler
       run: make
