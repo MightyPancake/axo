@@ -465,7 +465,7 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
 }
 
 axo_expr axo_expr_dot_field(axo_state* st,YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* field_pos, axo_expr expr, char* field){
-    axo_expr ret;
+    axo_expr ret = (axo_expr){};
     axo_enum* enumerate;
     axo_struct* structure;
     while(expr.typ.kind==axo_ptr_kind){
@@ -509,8 +509,9 @@ axo_expr axo_expr_dot_field(axo_state* st,YYLTYPE* pos, YYLTYPE* expr_pos, YYLTY
                 break;
               }
             }
-            if (index<0) axo_yyerror(pos, "Struct '%s' doesn't have a field named '%s'.", structure->name, field);
-            else{
+            if (index<0){
+                axo_yyerror(pos, "Struct '%s' doesn't have a field named '%s'.", structure->name, field);
+            }else{
               ret = (axo_expr){
                 .kind=axo_expr_normal_kind,
                 .val=fmtstr("%s.%s", expr.val, field),
@@ -2246,16 +2247,12 @@ char* axo_cwd(char* dest, size_t sz) {
     }
     return dest;
 }
-
-#elif __linux
+#elif __linux || __APPLE__
     char* axo_cwd(char* dest, size_t sz){
         if (getcwd(dest, sz) == NULL)
             perror("axo_cwd() error");
         return dest;
     }
-
-#elif __APPLE__
-
 #elif __EMSCRIPTEN__
 char* axo_cwd(char* dest, size_t sz) {
     EM_ASM({
