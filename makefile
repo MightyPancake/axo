@@ -40,6 +40,10 @@ build:
 	@make -s gen
 	@make -s compile
 
+gh_build:
+	@make lua -s
+	@make compile -s
+
 wasm:
 	@make -s gen
 	emcc axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o playground.js -s WASM=1 --preload-file "modules" -gsource-map -s STACK_SIZE=20971520 -s INITIAL_MEMORY=33554432 -s EXPORTED_RUNTIME_METHODS='["cwrap", "stringToUTF8"]' -s EXPORTED_FUNCTIONS='["_axo_compile_to_c"]'
@@ -108,6 +112,7 @@ commit:
 	@echo [96mPreparing commit...[0m
 	@make -s
 	@make -s clean
+	@make gen
 	git add .
 	@echo [96mDone! Name the commit and push it.[0m
 	
