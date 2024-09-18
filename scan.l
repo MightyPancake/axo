@@ -16,7 +16,7 @@
   extern axo_state* state;
   void axo_pop_source(axo_state* st);
   void axo_add_decl(axo_state* st, axo_decl decl);
-  int yywrap();
+  int yywrap(yyscan_t yyscanner);
   // void axo_yyerror(YYLTYPE* loc, const char * fmt, ...);
   //Reentrant scanner bs
   // typedef struct yyguts_t *yyscan_t; // Ensure you have this typedef
@@ -24,9 +24,10 @@
 #define YY_INPUT(buf, result, max_size) \
 { \
   axo_source* src = axo_get_source(state); \
+  char* str; \
   switch(src->kind){ \
     case axo_string_source_kind: \
-      char* str = src->str; \
+      str = src->str; \
       int LEN = strlen(str + axo_src_index(state)); \
       result = max_size > LEN ? LEN : max_size; \
       if (result>0){ \
