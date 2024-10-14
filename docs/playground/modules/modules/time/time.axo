@@ -1,0 +1,20 @@
+module(
+  name: "time"
+  author: "mightypancake"
+  description: "Provides basic time functionality."
+)
+
+#include <time.h>
+#typ time_t
+
+#provided (time_t fn @time_t) time
+#provided (@byte fn const @time_t) ctime
+
+fn time::now(){
+  ret time()
+}
+
+fn time::str(){
+  t = time::now()
+  ret ctime(t@)
+}

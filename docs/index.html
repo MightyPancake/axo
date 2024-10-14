@@ -40,12 +40,6 @@
   <div id="app">Loading, please wait...</div>
   <script>
     window.$docsify = {
-      pagination: {
-        previousText: 'Previous',
-        nextText: 'Next',
-        crossChapter: false,
-        crossChapterText: true,
-      },
       //404
       notFoundPage: '404.md',
       //Progress
@@ -59,12 +53,21 @@
       alias: {
         '/.*/_sidebar.md': '/_sidebar.md',
       },
-      subMaxLevel: 0,
-      sidebarDisplayLevel: 0,
+      subMaxLevel: 3,
+      sidebarDisplayLevel: 1,
       //Search
       search: 'auto',
       coverpage: true,
       // name: 'axo',
+      search: {
+        noData: {
+          '/': 'No results!'
+        },
+        paths: 'auto',
+        placeholder: {
+          '/': 'Search'
+        }
+      },
       plugins: [
         function(hook) {
           var footer = [
@@ -134,12 +137,8 @@
     </script>
   <!-- Sidebar collapse -->
     <script src="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/docsify-sidebar-collapse.min.js"></script>
-  <!-- Pages -->
-    <script src="//unpkg.com/docsify-pagination/dist/docsify-pagination.min.js"></script>
   <!-- Pretty terminal -->
     <script src="https://cdn.jsdelivr.net/npm/docsify-terminal-block@1.0.3"></script>
-  <!-- Alert blocks -->
-    <script src="https://unpkg.com/docsify-plugin-flexible-alerts"></script>
   <!-- Custom syntax colors -->
     <script src="./axo-syntax-highlighting.js"></script>
 </body>

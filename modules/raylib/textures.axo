@@ -1,0 +1,120 @@
+// Image Loading Functions
+#provided (Image fn const @byte) LoadImage
+#provided (Image fn const @byte, int, int, int, int) LoadImageRaw
+#provided (Image fn const @byte, int, int) LoadImageSvg
+#provided (Image fn const @byte, @int) LoadImageAnim
+#provided (Image fn const @byte, const @byte, int) LoadImageFromMemory
+#provided (Image fn Texture2D) LoadImageFromTexture
+#provided (Image fn) LoadImageFromScreen
+#provided (bool fn Image) IsImageReady
+#provided (fn Image) UnloadImage
+#provided (bool fn Image, const @byte) ExportImage
+#provided (const @byte fn Image, const @byte, @int) ExportImageToMemory
+#provided (bool fn Image, const @byte) ExportImageAsCode
+
+// Image Generation Functions
+#provided (Image fn int, int, Color) GenImageColor
+#provided (Image fn int, int, int, Color, Color) GenImageGradientLinear
+#provided (Image fn int, int, f32, Color, Color) GenImageGradientRadial
+#provided (Image fn int, int, f32, Color, Color) GenImageGradientSquare
+#provided (Image fn int, int, int, int, Color, Color) GenImageChecked
+#provided (Image fn int, int, f32) GenImageWhiteNoise
+#provided (Image fn int, int, int, int, f32) GenImagePerlinNoise
+#provided (Image fn int, int, int) GenImageCellular
+#provided (Image fn int, int, const @byte) GenImageText
+
+// Image Manipulation Functions
+#provided (Image fn Image) ImageCopy
+#provided (Image fn Image, Rectangle) ImageFromImage
+#provided (Image fn const @byte, int, Color) ImageText
+#provided (Image fn Font, const @byte, f32, f32, Color) ImageTextEx
+#provided (fn @Image, int) ImageFormat
+#provided (fn @Image, Color) ImageToPOT
+#provided (fn @Image, Rectangle) ImageCrop
+#provided (fn @Image, f32) ImageAlphaCrop
+#provided (fn @Image, Color, f32) ImageAlphaClear
+#provided (fn @Image, Image) ImageAlphaMask
+#provided (fn @Image) ImageAlphaPremultiply
+#provided (fn @Image, int) ImageBlurGaussian
+#provided (fn @Image, int, int) ImageResize
+#provided (fn @Image, int, int) ImageResizeNN
+#provided (fn @Image, int, int, int, int, Color) ImageResizeCanvas
+#provided (fn @Image) ImageMipmaps
+#provided (fn @Image, int, int, int, int) ImageDither
+#provided (fn @Image) ImageFlipVertical
+#provided (fn @Image) ImageFlipHorizontal
+#provided (fn @Image, int) ImageRotate
+#provided (fn @Image) ImageRotateCW
+#provided (fn @Image) ImageRotateCCW
+#provided (fn @Image, Color) ImageColorTint
+#provided (fn @Image) ImageColorInvert
+#provided (fn @Image) ImageColorGrayscale
+#provided (fn @Image, f32) ImageColorContrast
+#provided (fn @Image, int) ImageColorBrightness
+#provided (fn @Image, Color, Color) ImageColorReplace
+#provided (@Color fn Image) LoadImageColors
+#provided (@Color fn Image, int, @int) LoadImagePalette
+#provided (fn @Color) UnloadImageColors
+#provided (fn @Color) UnloadImagePalette
+#provided (Rectangle fn Image, f32) GetImageAlphaBorder
+#provided (Color fn Image, int, int) GetImageColor
+
+// Image Drawing Functions
+#provided (fn @Image, Color) ImageClearBackground
+#provided (fn @Image, int, int, Color) ImageDrawPixel
+#provided (fn @Image, Vector2, Color) ImageDrawPixelV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawLine
+#provided (fn @Image, Vector2, Vector2, Color) ImageDrawLineV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawCircle
+#provided (fn @Image, Vector2, int, Color) ImageDrawCircleV
+#provided (fn @Image, int, int, int, Color) ImageDrawCircleLines
+#provided (fn @Image, Vector2, int, Color) ImageDrawCircleLinesV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawRectangle
+#provided (fn @Image, Vector2, Vector2, Color) ImageDrawRectangleV
+#provided (fn @Image, Rectangle, Color) ImageDrawRectangleRec
+#provided (fn @Image, Rectangle, int, Color) ImageDrawRectangleLines
+#provided (fn @Image, Image, Rectangle, Rectangle, Color) ImageDraw
+#provided (fn @Image, const @byte, int, int, int, Color) ImageDrawText
+#provided (fn @Image, Font, const @byte, Vector2, f32, f32, Color) ImageDrawTextEx
+
+// Texture Loading Functions
+#provided (Texture2D fn const @byte) LoadTexture
+#provided (Texture2D fn Image) LoadTextureFromImage
+#provided (TextureCubemap fn Image, int) LoadTextureCubemap
+#provided (RenderTexture2D fn int, int) LoadRenderTexture
+#provided (bool fn Texture2D) IsTextureReady
+#provided (fn Texture2D) UnloadTexture
+#provided (bool fn RenderTexture2D) IsRenderTextureReady
+#provided (fn RenderTexture2D) UnloadRenderTexture
+#provided (fn Texture2D, const @byte) UpdateTexture
+#provided (fn Texture2D, Rectangle, const @byte) UpdateTextureRec
+
+// Texture Configuration Functions
+#provided (fn @Texture2D) GenTextureMipmaps
+#provided (fn Texture2D, int) SetTextureFilter
+#provided (fn Texture2D, int) SetTextureWrap
+
+// Texture Drawing Functions
+#provided (fn Texture2D, int, int, Color) DrawTexture
+#provided (fn Texture2D, Vector2, Color) DrawTextureV
+#provided (fn Texture2D, Vector2, f32, f32, Color) DrawTextureEx
+#provided (fn Texture2D, Rectangle, Vector2, Color) DrawTextureRec
+#provided (fn Texture2D, Rectangle, Rectangle, Vector2, f32, Color) DrawTexturePro
+#provided (fn Texture2D, NPatchInfo, Rectangle, Vector2, f32, Color) DrawTextureNPatch
+
+// Color/Pixel Related Functions
+#provided (Color fn Color, f32) Fade
+#provided (int fn Color) ColorToInt
+#provided (Vector4 fn Color) ColorNormalize
+#provided (Color fn Vector4) ColorFromNormalized
+#provided (Vector3 fn Color) ColorToHSV
+#provided (Color fn f32, f32, f32) ColorFromHSV
+#provided (Color fn Color, Color) ColorTint
+#provided (Color fn Color, f32) ColorBrightness
+#provided (Color fn Color, f32) ColorContrast
+#provided (Color fn Color, f32) ColorAlpha
+#provided (Color fn Color, Color, Color) ColorAlphaBlend
+#provided (Color fn u32) GetColor
+#provided (Color fn @byte, int) GetPixelColor
+#provided (fn @byte, Color, int) SetPixelColor
+#provided (int fn int, int, int) GetPixelDataSize

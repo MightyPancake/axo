@@ -10,21 +10,21 @@ module(
 
 {
 	//Reset
-	aesc.reset = "\x1B[0m"
+	aesc::reset = "\x1B[0m"
 
 	//Styles
-	aesc.bold = "\x1B[1m"
-	aesc.inverse = "\x1B[7m"
+	aesc::bold = "\x1B[1m"
+	aesc::inverse = "\x1B[7m"
 
 	//Forground colors
-	aesc.black = "\x1B[30m"
-	aesc.red = "\x1B[31m"
-	aesc.green	= "\x1B[32m"
-	aesc.yellow = "\x1B[33m"
-	aesc.blue = "\x1B[34m"
-	aesc.magenta	= "\x1B[35m"
-	aesc.cyan = "\x1B[36m"
-	aesc.white	= "\x1B[37m"
+	aesc::black = "\x1B[30m"
+	aesc::red = "\x1B[31m"
+	aesc::green	= "\x1B[32m"
+	aesc::yellow = "\x1B[33m"
+	aesc::blue = "\x1B[34m"
+	aesc::magenta	= "\x1B[35m"
+	aesc::cyan = "\x1B[36m"
+	aesc::white	= "\x1B[37m"
 }
 #include "./arr.h"
 /*
@@ -149,10 +149,7 @@ module(
 	description: "This file is used in every axo program to provide basic functionality that C itself just lacks by default. It also includes some (hopefully light) C headers."
 )
 
-#typ size_t
 #typ va_list
-
-#provided (fn int) exit
 
 //Include axo types, functions and macros
 #include <stdbool.h>
@@ -162,7 +159,6 @@ module(
 include "./mod.axo"
 include "./test.axo"
 #include "./main.h"
-include "./string.axo"
 include "./error.axo"
 
 #include <stdlib.h>
@@ -187,6 +183,96 @@ include "./error.axo"
 //     return ret;
 // }
 
+
+axo = {}
+
+function _quote(v)
+  s = tostring(v)
+  if s then
+    return "\"" .. s .. "\""
+  end
+  error("Couldn't quote value.")
+end
+
+function axo.print(exprs)
+  res = "printf(\""
+  for _, e in ipairs(exprs) do
+    res = res .. "%" .. axo.getFmtString(e.typ)
+  end
+  res = res .. '\\n"'
+  for _, e in ipairs(exprs) do
+    res = res .. "," .. e.value
+  end
+  return res .. ")"
+end
+
+function axo.setFlags(libs)
+  local res = ""
+  for _, l in ipairs(libs) do
+    res = res .. "\n#flag " .. _quote(l)
+  end
+  return res
+end
+
+function axo.getFmtString(t)
+  local primitives_tab = {int = "d", byte = "c"}
+  if t.primitive then
+    return primitives_tab[t.primitive] or "d"
+  elseif t.pointer then
+    local st = t.pointer
+    if st.primitive == "byte" then
+      return "s"
+    else
+      return "x"
+    end
+  end
+end
+
+function axo.getOS()
+    -- Check for Windows environment variable
+    local os_name = os.getenv("OS")
+    if os_name and os_name:find("Windows") then
+        return "Windows"
+    end
+
+    -- Try using `uname` for Unix-like systems (Linux, macOS), but only if popen is supported
+    local ok, handle = pcall(io.popen, "uname -s 2>/dev/null")
+    if ok and handle then
+        local result = handle:read("*a")
+        handle:close()
+        if result and result:match("Linux") then
+            return "Linux"
+        elseif result and result:match("Darwin") then
+            return "macOS"
+        elseif result and result:match("%S") then
+            return result:gsub("\n", "")  -- trim newline and return the result
+        end
+    end
+
+    -- If popen is not supported or OS is unknown, return "unknown"
+    return "unknown"
+end
+
+axo.os = axo.getOS()
+os_str = _quote(axo.os)
+
+
+function axo.get(v)
+  local s = v
+  local t = type(v)
+  if t == "string" then
+    return v
+  elseif t == "function" then
+    s = v()
+    if type(s) == "string" then
+      return s
+    else
+      error("Macro function returned a non-string value.")
+    end
+  else
+    error("Macro doesn't return a string or a function that returns a string")
+  end
+end
 
 Copyright (c) 2020, Elijah Stone
 
@@ -285,6 +371,7 @@ jmp_buf _defer_return_loc = {0}, _deferrals[DEFER_MAX_DEFERRED_STATEMENTS] = {0}
 
 //Include some error related C header?
 #include <errno.h>
+#include <string.h>
 
 #provided int errno
 
@@ -293,32 +380,25 @@ struct error (
 	@byte		msg
 )
 
-fn error:get_c(){
-	self^.code = errno
-	self^.msg = strerror(errno)
-	ret self
-}
-
 fn error:set(int code, @byte msg){
-	self^.code = code
-	self^.msg = msg
-	ret self
+	$.code = code
+	$.msg = msg
+	ret $
 }
 
 fn error:ok(){
-  ret !(self^.code.(bool))
+  ret !($.code.(bool))
 }
 
-fn error:reset(){
-	self^.code = 0
+fn error:clear(){
+	$.code = 0
+	$.msg = ""
 }
 
 {
 	err = error{0, "No error"}
 	errptr = err@
 }
-// err:=error{code=0, msg="No error"}
-// errptr:=err@
 
 /*
 
@@ -347,7 +427,7 @@ int main(int argc, char** argv){
 struct axo_module (
 	@byte name,
 	@byte prefix,
-  @byte version,
+	@byte version,
 	@byte author,
 	@byte website,
 	@byte license_name,
@@ -413,6 +493,46 @@ struct axo_test (
     @byte name,        //Name of the given test
     (bool fn) func     //Function to be run to determine if it passes
 )
+
+module(
+	name: "dict"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Implementation for a dictionary using standard maps module"
+)
+use map
+
+struct dict(
+	map map
+)
+
+struct dict_key_val(
+	@byte	key,
+	@none value
+)
+
+fn dict.cmp(const @none a, const @none b, @none udata){
+	ret strcmp(a.(@dict_key_val).key, b.(@dict_key_val).key)
+}
+
+fn dict.hash(const @none item, u64 seed0, u64 seed1){
+	ret hashmap_murmur(item.(@dict_key_val).key, strlen(item.(@dict_key_val).key), seed0, seed1)
+}
+
+fn dict.new(){
+	ret dict{map^new(dict^hash, dict^cmp, type_sz(dict_key_val))}
+}
+
+fn dict:set(@byte key, @none val){
+	ret $.map:set(dict_key_val{key:cpy(), val}@)
+}
+
+fn dict:get(@byte key){
+	ret $.map:get(dict_key_val{key}@).(@dict_key_val).value
+}
 
 The MIT License (MIT)
 
@@ -1749,7 +1869,7 @@ module(
   author: "mightypancake"
   description: "I/O module"
 )
-
+  
 #include <stdio.h>
 
 #typ FILE
@@ -1801,20 +1921,1344 @@ module(
 #provided @FILE stdin
 #provided @FILE stdout
 
-struct file (
-  @FILE    file
-)
+use aesc
+use str
 
-file fn io.open(@byte filename, @byte mode="r", @error errptr){
-  f = file{file=fopen(filename, mode)}
-  errptr$get_c()
-  ret f
+fn error:get_c(){
+	ret $:set(errno, strerror(errno))
 }
 
 fn error:oops(){
-  if !(self^.code) ret;
-	printf("%sError: %s%s\n", aesc.red, self^.msg, aesc.reset)
-	exit(self^.code)
+  if $:ok() ret;
+	fprintf(stderr, "%sError: %s%s\n", aesc::red, $..msg, aesc::reset)
+}
+
+fn io::open(@byte filename, @byte mode="r", @error ep){
+  ep:oops()
+  f = fopen(filename, mode)
+  errptr:get_c()
+  ret f
+}
+
+fn FILE:to_str(@byte o, size_t r_sz=1024, @error ep){
+  ep:oops()
+  while (fread(o, 1, r_sz, $) == r_sz) ;
+  ep:get_c()
+  ret $
+}
+
+fn FILE:close(@error ep){
+  ep:oops()
+  ret fclose($)
+}
+The MIT License (MIT)
+
+Copyright (c) 2020 Joshua J Baker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright 2020 Joshua J Baker. All rights reserved.
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
+#include "hashmap.h"
+
+#define GROW_AT   0.60 /* 60% */
+#define SHRINK_AT 0.10 /* 10% */
+
+#ifndef HASHMAP_LOAD_FACTOR
+#define HASHMAP_LOAD_FACTOR GROW_AT
+#endif
+
+static void *(*__malloc)(size_t) = NULL;
+static void *(*__realloc)(void *, size_t) = NULL;
+static void (*__free)(void *) = NULL;
+
+// hashmap_set_allocator allows for configuring a custom allocator for
+// all hashmap library operations. This function, if needed, should be called
+// only once at startup and a prior to calling hashmap_new().
+void hashmap_set_allocator(void *(*malloc)(size_t), void (*free)(void*)) {
+    __malloc = malloc;
+    __free = free;
+}
+
+struct bucket {
+    uint64_t hash:48;
+    uint64_t dib:16;
+};
+
+// hashmap is an open addressed hash map using robinhood hashing.
+struct hashmap {
+    void *(*malloc)(size_t);
+    void *(*realloc)(void *, size_t);
+    void (*free)(void *);
+    size_t elsize;
+    size_t cap;
+    uint64_t seed0;
+    uint64_t seed1;
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1);
+    int (*compare)(const void *a, const void *b, void *udata);
+    void (*elfree)(void *item);
+    void *udata;
+    size_t bucketsz;
+    size_t nbuckets;
+    size_t count;
+    size_t mask;
+    size_t growat;
+    size_t shrinkat;
+    uint8_t loadfactor;
+    uint8_t growpower;
+    bool oom;
+    void *buckets;
+    void *spare;
+    void *edata;
+};
+
+void hashmap_set_grow_by_power(struct hashmap *map, size_t power) {
+    map->growpower = power < 1 ? 1 : power > 16 ? 16 : power;
+}
+
+static double clamp_load_factor(double factor, double default_factor) {
+    // Check for NaN and clamp between 50% and 90%
+    return factor != factor ? default_factor : 
+           factor < 0.50 ? 0.50 : 
+           factor > 0.95 ? 0.95 : 
+           factor;
+}
+
+void hashmap_set_load_factor(struct hashmap *map, double factor) {
+    factor = clamp_load_factor(factor, map->loadfactor / 100.0);
+    map->loadfactor = factor * 100;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0);
+}
+
+static struct bucket *bucket_at0(void *buckets, size_t bucketsz, size_t i) {
+    return (struct bucket*)(((char*)buckets)+(bucketsz*i));
+}
+
+static struct bucket *bucket_at(struct hashmap *map, size_t index) {
+    return bucket_at0(map->buckets, map->bucketsz, index);
+}
+
+static void *bucket_item(struct bucket *entry) {
+    return ((char*)entry)+sizeof(struct bucket);
+}
+
+static uint64_t clip_hash(uint64_t hash) {
+    return hash & 0xFFFFFFFFFFFF;
+}
+
+static uint64_t get_hash(struct hashmap *map, const void *key) {
+    return clip_hash(map->hash(key, map->seed0, map->seed1));
+}
+
+
+// hashmap_new_with_allocator returns a new hash map using a custom allocator.
+// See hashmap_new for more information information
+struct hashmap *hashmap_new_with_allocator(void *(*_malloc)(size_t), 
+    void *(*_realloc)(void*, size_t), void (*_free)(void*),
+    size_t elsize, size_t cap, uint64_t seed0, uint64_t seed1,
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1),
+    int (*compare)(const void *a, const void *b, void *udata),
+    void (*elfree)(void *item),
+    void *udata)
+{
+    _malloc = _malloc ? _malloc : __malloc ? __malloc : malloc;
+    _realloc = _realloc ? _realloc : __realloc ? __realloc : realloc;
+    _free = _free ? _free : __free ? __free : free;
+    size_t ncap = 16;
+    if (cap < ncap) {
+        cap = ncap;
+    } else {
+        while (ncap < cap) {
+            ncap *= 2;
+        }
+        cap = ncap;
+    }
+    size_t bucketsz = sizeof(struct bucket) + elsize;
+    while (bucketsz & (sizeof(uintptr_t)-1)) {
+        bucketsz++;
+    }
+    // hashmap + spare + edata
+    size_t size = sizeof(struct hashmap)+bucketsz*2;
+    struct hashmap *map = _malloc(size);
+    if (!map) {
+        return NULL;
+    }
+    memset(map, 0, sizeof(struct hashmap));
+    map->elsize = elsize;
+    map->bucketsz = bucketsz;
+    map->seed0 = seed0;
+    map->seed1 = seed1;
+    map->hash = hash;
+    map->compare = compare;
+    map->elfree = elfree;
+    map->udata = udata;
+    map->spare = ((char*)map)+sizeof(struct hashmap);
+    map->edata = (char*)map->spare+bucketsz;
+    map->cap = cap;
+    map->nbuckets = cap;
+    map->mask = map->nbuckets-1;
+    map->buckets = _malloc(map->bucketsz*map->nbuckets);
+    if (!map->buckets) {
+        _free(map);
+        return NULL;
+    }
+    memset(map->buckets, 0, map->bucketsz*map->nbuckets);
+    map->growpower = 1;
+    map->loadfactor = clamp_load_factor(HASHMAP_LOAD_FACTOR, GROW_AT) * 100;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0);
+    map->shrinkat = map->nbuckets * SHRINK_AT;
+    map->malloc = _malloc;
+    map->realloc = _realloc;
+    map->free = _free;
+    return map;  
+}
+
+// hashmap_new returns a new hash map. 
+// Param `elsize` is the size of each element in the tree. Every element that
+// is inserted, deleted, or retrieved will be this size.
+// Param `cap` is the default lower capacity of the hashmap. Setting this to
+// zero will default to 16.
+// Params `seed0` and `seed1` are optional seed values that are passed to the 
+// following `hash` function. These can be any value you wish but it's often 
+// best to use randomly generated values.
+// Param `hash` is a function that generates a hash value for an item. It's
+// important that you provide a good hash function, otherwise it will perform
+// poorly or be vulnerable to Denial-of-service attacks. This implementation
+// comes with two helper functions `hashmap_sip()` and `hashmap_murmur()`.
+// Param `compare` is a function that compares items in the tree. See the 
+// qsort stdlib function for an example of how this function works.
+// The hashmap must be freed with hashmap_free(). 
+// Param `elfree` is a function that frees a specific item. This should be NULL
+// unless you're storing some kind of reference data in the hash.
+struct hashmap *hashmap_new(size_t elsize, size_t cap, uint64_t seed0, 
+    uint64_t seed1,
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1),
+    int (*compare)(const void *a, const void *b, void *udata),
+    void (*elfree)(void *item),
+    void *udata)
+{
+    return hashmap_new_with_allocator(NULL, NULL, NULL, elsize, cap, seed0, 
+        seed1, hash, compare, elfree, udata);
+}
+
+static void free_elements(struct hashmap *map) {
+    if (map->elfree) {
+        for (size_t i = 0; i < map->nbuckets; i++) {
+            struct bucket *bucket = bucket_at(map, i);
+            if (bucket->dib) map->elfree(bucket_item(bucket));
+        }
+    }
+}
+
+// hashmap_clear quickly clears the map. 
+// Every item is called with the element-freeing function given in hashmap_new,
+// if present, to free any data referenced in the elements of the hashmap.
+// When the update_cap is provided, the map's capacity will be updated to match
+// the currently number of allocated buckets. This is an optimization to ensure
+// that this operation does not perform any allocations.
+void hashmap_clear(struct hashmap *map, bool update_cap) {
+    map->count = 0;
+    free_elements(map);
+    if (update_cap) {
+        map->cap = map->nbuckets;
+    } else if (map->nbuckets != map->cap) {
+        void *new_buckets = map->malloc(map->bucketsz*map->cap);
+        if (new_buckets) {
+            map->free(map->buckets);
+            map->buckets = new_buckets;
+        }
+        map->nbuckets = map->cap;
+    }
+    memset(map->buckets, 0, map->bucketsz*map->nbuckets);
+    map->mask = map->nbuckets-1;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0) ;
+    map->shrinkat = map->nbuckets * SHRINK_AT;
+}
+
+static bool resize0(struct hashmap *map, size_t new_cap) {
+    struct hashmap *map2 = hashmap_new_with_allocator(map->malloc, map->realloc, 
+        map->free, map->elsize, new_cap, map->seed0, map->seed1, map->hash, 
+        map->compare, map->elfree, map->udata);
+    if (!map2) return false;
+    for (size_t i = 0; i < map->nbuckets; i++) {
+        struct bucket *entry = bucket_at(map, i);
+        if (!entry->dib) {
+            continue;
+        }
+        entry->dib = 1;
+        size_t j = entry->hash & map2->mask;
+        while(1) {
+            struct bucket *bucket = bucket_at(map2, j);
+            if (bucket->dib == 0) {
+                memcpy(bucket, entry, map->bucketsz);
+                break;
+            }
+            if (bucket->dib < entry->dib) {
+                memcpy(map2->spare, bucket, map->bucketsz);
+                memcpy(bucket, entry, map->bucketsz);
+                memcpy(entry, map2->spare, map->bucketsz);
+            }
+            j = (j + 1) & map2->mask;
+            entry->dib += 1;
+        }
+    }
+    map->free(map->buckets);
+    map->buckets = map2->buckets;
+    map->nbuckets = map2->nbuckets;
+    map->mask = map2->mask;
+    map->growat = map2->growat;
+    map->shrinkat = map2->shrinkat;
+    map->free(map2);
+    return true;
+}
+
+static bool resize(struct hashmap *map, size_t new_cap) {
+    return resize0(map, new_cap);
+}
+
+// hashmap_set_with_hash works like hashmap_set but you provide your
+// own hash. The 'hash' callback provided to the hashmap_new function
+// will not be called
+const void *hashmap_set_with_hash(struct hashmap *map, const void *item,
+    uint64_t hash)
+{
+    hash = clip_hash(hash);
+    map->oom = false;
+    if (map->count >= map->growat) {
+        if (!resize(map, map->nbuckets*(1<<map->growpower))) {
+            map->oom = true;
+            return NULL;
+        }
+    }
+
+    struct bucket *entry = map->edata;
+    entry->hash = hash;
+    entry->dib = 1;
+    void *eitem = bucket_item(entry);
+    memcpy(eitem, item, map->elsize);
+
+    void *bitem;
+    size_t i = entry->hash & map->mask;
+    while(1) {
+        struct bucket *bucket = bucket_at(map, i);
+        if (bucket->dib == 0) {
+            memcpy(bucket, entry, map->bucketsz);
+            map->count++;
+            return NULL;
+        }
+        bitem = bucket_item(bucket);
+        if (entry->hash == bucket->hash && (!map->compare ||
+            map->compare(eitem, bitem, map->udata) == 0))
+        {
+            memcpy(map->spare, bitem, map->elsize);
+            memcpy(bitem, eitem, map->elsize);
+            return map->spare;
+        }
+        if (bucket->dib < entry->dib) {
+            memcpy(map->spare, bucket, map->bucketsz);
+            memcpy(bucket, entry, map->bucketsz);
+            memcpy(entry, map->spare, map->bucketsz);
+            eitem = bucket_item(entry);
+        }
+        i = (i + 1) & map->mask;
+        entry->dib += 1;
+    }
+}
+
+// hashmap_set inserts or replaces an item in the hash map. If an item is
+// replaced then it is returned otherwise NULL is returned. This operation
+// may allocate memory. If the system is unable to allocate additional
+// memory then NULL is returned and hashmap_oom() returns true.
+const void *hashmap_set(struct hashmap *map, const void *item) {
+    return hashmap_set_with_hash(map, item, get_hash(map, item));
+}
+
+// hashmap_get_with_hash works like hashmap_get but you provide your
+// own hash. The 'hash' callback provided to the hashmap_new function
+// will not be called
+const void *hashmap_get_with_hash(struct hashmap *map, const void *key, 
+    uint64_t hash)
+{
+    hash = clip_hash(hash);
+    size_t i = hash & map->mask;
+    while(1) {
+        struct bucket *bucket = bucket_at(map, i);
+        if (!bucket->dib) return NULL;
+        if (bucket->hash == hash) {
+            void *bitem = bucket_item(bucket);
+            if (!map->compare || map->compare(key, bitem, map->udata) == 0) {
+                return bitem;
+            }
+        }
+        i = (i + 1) & map->mask;
+    }
+}
+
+// hashmap_get returns the item based on the provided key. If the item is not
+// found then NULL is returned.
+const void *hashmap_get(struct hashmap *map, const void *key) {
+    return hashmap_get_with_hash(map, key, get_hash(map, key));
+}
+
+// hashmap_probe returns the item in the bucket at position or NULL if an item
+// is not set for that bucket. The position is 'moduloed' by the number of 
+// buckets in the hashmap.
+const void *hashmap_probe(struct hashmap *map, uint64_t position) {
+    size_t i = position & map->mask;
+    struct bucket *bucket = bucket_at(map, i);
+    if (!bucket->dib) {
+        return NULL;
+    }
+    return bucket_item(bucket);
+}
+
+// hashmap_delete_with_hash works like hashmap_delete but you provide your
+// own hash. The 'hash' callback provided to the hashmap_new function
+// will not be called
+const void *hashmap_delete_with_hash(struct hashmap *map, const void *key,
+    uint64_t hash)
+{
+    hash = clip_hash(hash);
+    map->oom = false;
+    size_t i = hash & map->mask;
+    while(1) {
+        struct bucket *bucket = bucket_at(map, i);
+        if (!bucket->dib) {
+            return NULL;
+        }
+        void *bitem = bucket_item(bucket);
+        if (bucket->hash == hash && (!map->compare ||
+            map->compare(key, bitem, map->udata) == 0))
+        {
+            memcpy(map->spare, bitem, map->elsize);
+            bucket->dib = 0;
+            while(1) {
+                struct bucket *prev = bucket;
+                i = (i + 1) & map->mask;
+                bucket = bucket_at(map, i);
+                if (bucket->dib <= 1) {
+                    prev->dib = 0;
+                    break;
+                }
+                memcpy(prev, bucket, map->bucketsz);
+                prev->dib--;
+            }
+            map->count--;
+            if (map->nbuckets > map->cap && map->count <= map->shrinkat) {
+                // Ignore the return value. It's ok for the resize operation to
+                // fail to allocate enough memory because a shrink operation
+                // does not change the integrity of the data.
+                resize(map, map->nbuckets/2);
+            }
+            return map->spare;
+        }
+        i = (i + 1) & map->mask;
+    }
+}
+
+// hashmap_delete removes an item from the hash map and returns it. If the
+// item is not found then NULL is returned.
+const void *hashmap_delete(struct hashmap *map, const void *key) {
+    return hashmap_delete_with_hash(map, key, get_hash(map, key));
+}
+
+// hashmap_count returns the number of items in the hash map.
+size_t hashmap_count(struct hashmap *map) {
+    return map->count;
+}
+
+// hashmap_free frees the hash map
+// Every item is called with the element-freeing function given in hashmap_new,
+// if present, to free any data referenced in the elements of the hashmap.
+void hashmap_free(struct hashmap *map) {
+    if (!map) return;
+    free_elements(map);
+    map->free(map->buckets);
+    map->free(map);
+}
+
+// hashmap_oom returns true if the last hashmap_set() call failed due to the 
+// system being out of memory.
+bool hashmap_oom(struct hashmap *map) {
+    return map->oom;
+}
+
+// hashmap_scan iterates over all items in the hash map
+// Param `iter` can return false to stop iteration early.
+// Returns false if the iteration has been stopped early.
+bool hashmap_scan(struct hashmap *map, 
+    bool (*iter)(const void *item, void *udata), void *udata)
+{
+    for (size_t i = 0; i < map->nbuckets; i++) {
+        struct bucket *bucket = bucket_at(map, i);
+        if (bucket->dib && !iter(bucket_item(bucket), udata)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// hashmap_iter iterates one key at a time yielding a reference to an
+// entry at each iteration. Useful to write simple loops and avoid writing
+// dedicated callbacks and udata structures, as in hashmap_scan.
+//
+// map is a hash map handle. i is a pointer to a size_t cursor that
+// should be initialized to 0 at the beginning of the loop. item is a void
+// pointer pointer that is populated with the retrieved item. Note that this
+// is NOT a copy of the item stored in the hash map and can be directly
+// modified.
+//
+// Note that if hashmap_delete() is called on the hashmap being iterated,
+// the buckets are rearranged and the iterator must be reset to 0, otherwise
+// unexpected results may be returned after deletion.
+//
+// This function has not been tested for thread safety.
+//
+// The function returns true if an item was retrieved; false if the end of the
+// iteration has been reached.
+bool hashmap_iter(struct hashmap *map, size_t *i, void **item) {
+    struct bucket *bucket;
+    do {
+        if (*i >= map->nbuckets) return false;
+        bucket = bucket_at(map, *i);
+        (*i)++;
+    } while (!bucket->dib);
+    *item = bucket_item(bucket);
+    return true;
+}
+
+
+//-----------------------------------------------------------------------------
+// SipHash reference C implementation
+//
+// Copyright (c) 2012-2016 Jean-Philippe Aumasson
+// <jeanphilippe.aumasson@gmail.com>
+// Copyright (c) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>
+//
+// To the extent possible under law, the author(s) have dedicated all copyright
+// and related and neighboring rights to this software to the public domain
+// worldwide. This software is distributed without any warranty.
+//
+// You should have received a copy of the CC0 Public Domain Dedication along
+// with this software. If not, see
+// <http://creativecommons.org/publicdomain/zero/1.0/>.
+//
+// default: SipHash-2-4
+//-----------------------------------------------------------------------------
+static uint64_t SIP64(const uint8_t *in, const size_t inlen, uint64_t seed0,
+    uint64_t seed1) 
+{
+#define U8TO64_LE(p) \
+    {  (((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) | \
+        ((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) | \
+        ((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) | \
+        ((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56)) }
+#define U64TO8_LE(p, v) \
+    { U32TO8_LE((p), (uint32_t)((v))); \
+      U32TO8_LE((p) + 4, (uint32_t)((v) >> 32)); }
+#define U32TO8_LE(p, v) \
+    { (p)[0] = (uint8_t)((v)); \
+      (p)[1] = (uint8_t)((v) >> 8); \
+      (p)[2] = (uint8_t)((v) >> 16); \
+      (p)[3] = (uint8_t)((v) >> 24); }
+#define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
+#define SIPROUND \
+    { v0 += v1; v1 = ROTL(v1, 13); \
+      v1 ^= v0; v0 = ROTL(v0, 32); \
+      v2 += v3; v3 = ROTL(v3, 16); \
+      v3 ^= v2; \
+      v0 += v3; v3 = ROTL(v3, 21); \
+      v3 ^= v0; \
+      v2 += v1; v1 = ROTL(v1, 17); \
+      v1 ^= v2; v2 = ROTL(v2, 32); }
+    uint64_t k0 = U8TO64_LE((uint8_t*)&seed0);
+    uint64_t k1 = U8TO64_LE((uint8_t*)&seed1);
+    uint64_t v3 = UINT64_C(0x7465646279746573) ^ k1;
+    uint64_t v2 = UINT64_C(0x6c7967656e657261) ^ k0;
+    uint64_t v1 = UINT64_C(0x646f72616e646f6d) ^ k1;
+    uint64_t v0 = UINT64_C(0x736f6d6570736575) ^ k0;
+    const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
+    for (; in != end; in += 8) {
+        uint64_t m = U8TO64_LE(in);
+        v3 ^= m;
+        SIPROUND; SIPROUND;
+        v0 ^= m;
+    }
+    const int left = inlen & 7;
+    uint64_t b = ((uint64_t)inlen) << 56;
+    switch (left) {
+    case 7: b |= ((uint64_t)in[6]) << 48; /* fall through */
+    case 6: b |= ((uint64_t)in[5]) << 40; /* fall through */
+    case 5: b |= ((uint64_t)in[4]) << 32; /* fall through */
+    case 4: b |= ((uint64_t)in[3]) << 24; /* fall through */
+    case 3: b |= ((uint64_t)in[2]) << 16; /* fall through */
+    case 2: b |= ((uint64_t)in[1]) << 8; /* fall through */
+    case 1: b |= ((uint64_t)in[0]); break;
+    case 0: break;
+    }
+    v3 ^= b;
+    SIPROUND; SIPROUND;
+    v0 ^= b;
+    v2 ^= 0xff;
+    SIPROUND; SIPROUND; SIPROUND; SIPROUND;
+    b = v0 ^ v1 ^ v2 ^ v3;
+    uint64_t out = 0;
+    U64TO8_LE((uint8_t*)&out, b);
+    return out;
+}
+
+//-----------------------------------------------------------------------------
+// MurmurHash3 was written by Austin Appleby, and is placed in the public
+// domain. The author hereby disclaims copyright to this source code.
+//
+// Murmur3_86_128
+//-----------------------------------------------------------------------------
+static uint64_t MM86128(const void *key, const int len, uint32_t seed) {
+#define	ROTL32(x, r) ((x << r) | (x >> (32 - r)))
+#define FMIX32(h) h^=h>>16; h*=0x85ebca6b; h^=h>>13; h*=0xc2b2ae35; h^=h>>16;
+    const uint8_t * data = (const uint8_t*)key;
+    const int nblocks = len / 16;
+    uint32_t h1 = seed;
+    uint32_t h2 = seed;
+    uint32_t h3 = seed;
+    uint32_t h4 = seed;
+    uint32_t c1 = 0x239b961b; 
+    uint32_t c2 = 0xab0e9789;
+    uint32_t c3 = 0x38b34ae5; 
+    uint32_t c4 = 0xa1e38b93;
+    const uint32_t * blocks = (const uint32_t *)(data + nblocks*16);
+    for (int i = -nblocks; i; i++) {
+        uint32_t k1 = blocks[i*4+0];
+        uint32_t k2 = blocks[i*4+1];
+        uint32_t k3 = blocks[i*4+2];
+        uint32_t k4 = blocks[i*4+3];
+        k1 *= c1; k1  = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
+        h1 = ROTL32(h1,19); h1 += h2; h1 = h1*5+0x561ccd1b;
+        k2 *= c2; k2  = ROTL32(k2,16); k2 *= c3; h2 ^= k2;
+        h2 = ROTL32(h2,17); h2 += h3; h2 = h2*5+0x0bcaa747;
+        k3 *= c3; k3  = ROTL32(k3,17); k3 *= c4; h3 ^= k3;
+        h3 = ROTL32(h3,15); h3 += h4; h3 = h3*5+0x96cd1c35;
+        k4 *= c4; k4  = ROTL32(k4,18); k4 *= c1; h4 ^= k4;
+        h4 = ROTL32(h4,13); h4 += h1; h4 = h4*5+0x32ac3b17;
+    }
+    const uint8_t * tail = (const uint8_t*)(data + nblocks*16);
+    uint32_t k1 = 0;
+    uint32_t k2 = 0;
+    uint32_t k3 = 0;
+    uint32_t k4 = 0;
+    switch(len & 15) {
+    case 15: k4 ^= tail[14] << 16; /* fall through */
+    case 14: k4 ^= tail[13] << 8; /* fall through */
+    case 13: k4 ^= tail[12] << 0;
+             k4 *= c4; k4  = ROTL32(k4,18); k4 *= c1; h4 ^= k4;
+             /* fall through */
+    case 12: k3 ^= tail[11] << 24; /* fall through */
+    case 11: k3 ^= tail[10] << 16; /* fall through */
+    case 10: k3 ^= tail[ 9] << 8; /* fall through */
+    case  9: k3 ^= tail[ 8] << 0;
+             k3 *= c3; k3  = ROTL32(k3,17); k3 *= c4; h3 ^= k3;
+             /* fall through */
+    case  8: k2 ^= tail[ 7] << 24; /* fall through */
+    case  7: k2 ^= tail[ 6] << 16; /* fall through */
+    case  6: k2 ^= tail[ 5] << 8; /* fall through */
+    case  5: k2 ^= tail[ 4] << 0;
+             k2 *= c2; k2  = ROTL32(k2,16); k2 *= c3; h2 ^= k2;
+             /* fall through */
+    case  4: k1 ^= tail[ 3] << 24; /* fall through */
+    case  3: k1 ^= tail[ 2] << 16; /* fall through */
+    case  2: k1 ^= tail[ 1] << 8; /* fall through */
+    case  1: k1 ^= tail[ 0] << 0;
+             k1 *= c1; k1  = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
+             /* fall through */
+    };
+    h1 ^= len; h2 ^= len; h3 ^= len; h4 ^= len;
+    h1 += h2; h1 += h3; h1 += h4;
+    h2 += h1; h3 += h1; h4 += h1;
+    FMIX32(h1); FMIX32(h2); FMIX32(h3); FMIX32(h4);
+    h1 += h2; h1 += h3; h1 += h4;
+    h2 += h1; h3 += h1; h4 += h1;
+    return (((uint64_t)h2)<<32)|h1;
+}
+
+//-----------------------------------------------------------------------------
+// xxHash Library
+// Copyright (c) 2012-2021 Yann Collet
+// All rights reserved.
+// 
+// BSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)
+//
+// xxHash3
+//-----------------------------------------------------------------------------
+#define XXH_PRIME_1 11400714785074694791ULL
+#define XXH_PRIME_2 14029467366897019727ULL
+#define XXH_PRIME_3 1609587929392839161ULL
+#define XXH_PRIME_4 9650029242287828579ULL
+#define XXH_PRIME_5 2870177450012600261ULL
+
+static uint64_t XXH_read64(const void* memptr) {
+    uint64_t val;
+    memcpy(&val, memptr, sizeof(val));
+    return val;
+}
+
+static uint32_t XXH_read32(const void* memptr) {
+    uint32_t val;
+    memcpy(&val, memptr, sizeof(val));
+    return val;
+}
+
+static uint64_t XXH_rotl64(uint64_t x, int r) {
+    return (x << r) | (x >> (64 - r));
+}
+
+static uint64_t xxh3(const void* data, size_t len, uint64_t seed) {
+    const uint8_t* p = (const uint8_t*)data;
+    const uint8_t* const end = p + len;
+    uint64_t h64;
+
+    if (len >= 32) {
+        const uint8_t* const limit = end - 32;
+        uint64_t v1 = seed + XXH_PRIME_1 + XXH_PRIME_2;
+        uint64_t v2 = seed + XXH_PRIME_2;
+        uint64_t v3 = seed + 0;
+        uint64_t v4 = seed - XXH_PRIME_1;
+
+        do {
+            v1 += XXH_read64(p) * XXH_PRIME_2;
+            v1 = XXH_rotl64(v1, 31);
+            v1 *= XXH_PRIME_1;
+
+            v2 += XXH_read64(p + 8) * XXH_PRIME_2;
+            v2 = XXH_rotl64(v2, 31);
+            v2 *= XXH_PRIME_1;
+
+            v3 += XXH_read64(p + 16) * XXH_PRIME_2;
+            v3 = XXH_rotl64(v3, 31);
+            v3 *= XXH_PRIME_1;
+
+            v4 += XXH_read64(p + 24) * XXH_PRIME_2;
+            v4 = XXH_rotl64(v4, 31);
+            v4 *= XXH_PRIME_1;
+
+            p += 32;
+        } while (p <= limit);
+
+        h64 = XXH_rotl64(v1, 1) + XXH_rotl64(v2, 7) + XXH_rotl64(v3, 12) + 
+            XXH_rotl64(v4, 18);
+
+        v1 *= XXH_PRIME_2;
+        v1 = XXH_rotl64(v1, 31);
+        v1 *= XXH_PRIME_1;
+        h64 ^= v1;
+        h64 = h64 * XXH_PRIME_1 + XXH_PRIME_4;
+
+        v2 *= XXH_PRIME_2;
+        v2 = XXH_rotl64(v2, 31);
+        v2 *= XXH_PRIME_1;
+        h64 ^= v2;
+        h64 = h64 * XXH_PRIME_1 + XXH_PRIME_4;
+
+        v3 *= XXH_PRIME_2;
+        v3 = XXH_rotl64(v3, 31);
+        v3 *= XXH_PRIME_1;
+        h64 ^= v3;
+        h64 = h64 * XXH_PRIME_1 + XXH_PRIME_4;
+
+        v4 *= XXH_PRIME_2;
+        v4 = XXH_rotl64(v4, 31);
+        v4 *= XXH_PRIME_1;
+        h64 ^= v4;
+        h64 = h64 * XXH_PRIME_1 + XXH_PRIME_4;
+    }
+    else {
+        h64 = seed + XXH_PRIME_5;
+    }
+
+    h64 += (uint64_t)len;
+
+    while (p + 8 <= end) {
+        uint64_t k1 = XXH_read64(p);
+        k1 *= XXH_PRIME_2;
+        k1 = XXH_rotl64(k1, 31);
+        k1 *= XXH_PRIME_1;
+        h64 ^= k1;
+        h64 = XXH_rotl64(h64, 27) * XXH_PRIME_1 + XXH_PRIME_4;
+        p += 8;
+    }
+
+    if (p + 4 <= end) {
+        h64 ^= (uint64_t)(XXH_read32(p)) * XXH_PRIME_1;
+        h64 = XXH_rotl64(h64, 23) * XXH_PRIME_2 + XXH_PRIME_3;
+        p += 4;
+    }
+
+    while (p < end) {
+        h64 ^= (*p) * XXH_PRIME_5;
+        h64 = XXH_rotl64(h64, 11) * XXH_PRIME_1;
+        p++;
+    }
+
+    h64 ^= h64 >> 33;
+    h64 *= XXH_PRIME_2;
+    h64 ^= h64 >> 29;
+    h64 *= XXH_PRIME_3;
+    h64 ^= h64 >> 32;
+
+    return h64;
+}
+
+// hashmap_sip returns a hash value for `data` using SipHash-2-4.
+uint64_t hashmap_sip(const void *data, size_t len, uint64_t seed0,
+    uint64_t seed1)
+{
+    return SIP64((uint8_t*)data, len, seed0, seed1);
+}
+
+// hashmap_murmur returns a hash value for `data` using Murmur3_86_128.
+uint64_t hashmap_murmur(const void *data, size_t len, uint64_t seed0,
+    uint64_t seed1)
+{
+    (void)seed1;
+    return MM86128(data, len, seed0);
+}
+
+uint64_t hashmap_xxhash3(const void *data, size_t len, uint64_t seed0,
+    uint64_t seed1)
+{
+    (void)seed1;
+    return xxh3(data, len ,seed0);
+}
+
+//==============================================================================
+// TESTS AND BENCHMARKS
+// $ cc -DHASHMAP_TEST hashmap.c && ./a.out              # run tests
+// $ cc -DHASHMAP_TEST -O3 hashmap.c && BENCH=1 ./a.out  # run benchmarks
+//==============================================================================
+#ifdef HASHMAP_TEST
+
+static size_t deepcount(struct hashmap *map) {
+    size_t count = 0;
+    for (size_t i = 0; i < map->nbuckets; i++) {
+        if (bucket_at(map, i)->dib) {
+            count++;
+        }
+    }
+    return count;
+}
+
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wcompound-token-split-by-macro"
+#pragma GCC diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#endif
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <assert.h>
+#include <stdio.h>
+#include "hashmap.h"
+
+static bool rand_alloc_fail = false;
+static int rand_alloc_fail_odds = 3; // 1 in 3 chance malloc will fail.
+static uintptr_t total_allocs = 0;
+static uintptr_t total_mem = 0;
+
+static void *xmalloc(size_t size) {
+    if (rand_alloc_fail && rand()%rand_alloc_fail_odds == 0) {
+        return NULL;
+    }
+    void *mem = malloc(sizeof(uintptr_t)+size);
+    assert(mem);
+    *(uintptr_t*)mem = size;
+    total_allocs++;
+    total_mem += size;
+    return (char*)mem+sizeof(uintptr_t);
+}
+
+static void xfree(void *ptr) {
+    if (ptr) {
+        total_mem -= *(uintptr_t*)((char*)ptr-sizeof(uintptr_t));
+        free((char*)ptr-sizeof(uintptr_t));
+        total_allocs--;
+    }
+}
+
+static void shuffle(void *array, size_t numels, size_t elsize) {
+    char tmp[elsize];
+    char *arr = array;
+    for (size_t i = 0; i < numels - 1; i++) {
+        int j = i + rand() / (RAND_MAX / (numels - i) + 1);
+        memcpy(tmp, arr + j * elsize, elsize);
+        memcpy(arr + j * elsize, arr + i * elsize, elsize);
+        memcpy(arr + i * elsize, tmp, elsize);
+    }
+}
+
+static bool iter_ints(const void *item, void *udata) {
+    int *vals = *(int**)udata;
+    vals[*(int*)item] = 1;
+    return true;
+}
+
+static int compare_ints_udata(const void *a, const void *b, void *udata) {
+    return *(int*)a - *(int*)b;
+}
+
+static int compare_strs(const void *a, const void *b, void *udata) {
+    return strcmp(*(char**)a, *(char**)b);
+}
+
+static uint64_t hash_int(const void *item, uint64_t seed0, uint64_t seed1) {
+    return hashmap_xxhash3(item, sizeof(int), seed0, seed1);
+    // return hashmap_sip(item, sizeof(int), seed0, seed1);
+    // return hashmap_murmur(item, sizeof(int), seed0, seed1);
+}
+
+static uint64_t hash_str(const void *item, uint64_t seed0, uint64_t seed1) {
+    return hashmap_xxhash3(*(char**)item, strlen(*(char**)item), seed0, seed1);
+    // return hashmap_sip(*(char**)item, strlen(*(char**)item), seed0, seed1);
+    // return hashmap_murmur(*(char**)item, strlen(*(char**)item), seed0, seed1);
+}
+
+static void free_str(void *item) {
+    xfree(*(char**)item);
+}
+
+static void all(void) {
+    int seed = getenv("SEED")?atoi(getenv("SEED")):time(NULL);
+    int N = getenv("N")?atoi(getenv("N")):2000;
+    printf("seed=%d, count=%d, item_size=%zu\n", seed, N, sizeof(int));
+    srand(seed);
+
+    rand_alloc_fail = true;
+
+    // test sip and murmur hashes
+    assert(hashmap_sip("hello", 5, 1, 2) == 2957200328589801622);
+    assert(hashmap_murmur("hello", 5, 1, 2) == 1682575153221130884);
+    assert(hashmap_xxhash3("hello", 5, 1, 2) == 2584346877953614258);
+
+    int *vals;
+    while (!(vals = xmalloc(N * sizeof(int)))) {}
+    for (int i = 0; i < N; i++) {
+        vals[i] = i;
+    }
+
+    struct hashmap *map;
+
+    while (!(map = hashmap_new(sizeof(int), 0, seed, seed, 
+                               hash_int, compare_ints_udata, NULL, NULL))) {}
+    shuffle(vals, N, sizeof(int));
+    for (int i = 0; i < N; i++) {
+        // // printf("== %d ==\n", vals[i]);
+        assert(map->count == (size_t)i);
+        assert(map->count == hashmap_count(map));
+        assert(map->count == deepcount(map));
+        const int *v;
+        assert(!hashmap_get(map, &vals[i]));
+        assert(!hashmap_delete(map, &vals[i]));
+        while (true) {
+            assert(!hashmap_set(map, &vals[i]));
+            if (!hashmap_oom(map)) {
+                break;
+            }
+        }
+        
+        for (int j = 0; j < i; j++) {
+            v = hashmap_get(map, &vals[j]);
+            assert(v && *v == vals[j]);
+        }
+        while (true) {
+            v = hashmap_set(map, &vals[i]);
+            if (!v) {
+                assert(hashmap_oom(map));
+                continue;
+            } else {
+                assert(!hashmap_oom(map));
+                assert(v && *v == vals[i]);
+                break;
+            }
+        }
+        v = hashmap_get(map, &vals[i]);
+        assert(v && *v == vals[i]);
+        v = hashmap_delete(map, &vals[i]);
+        assert(v && *v == vals[i]);
+        assert(!hashmap_get(map, &vals[i]));
+        assert(!hashmap_delete(map, &vals[i]));
+        assert(!hashmap_set(map, &vals[i]));
+        assert(map->count == (size_t)(i+1));
+        assert(map->count == hashmap_count(map));
+        assert(map->count == deepcount(map));
+    }
+
+    int *vals2;
+    while (!(vals2 = xmalloc(N * sizeof(int)))) {}
+    memset(vals2, 0, N * sizeof(int));
+    assert(hashmap_scan(map, iter_ints, &vals2));
+
+    // Test hashmap_iter. This does the same as hashmap_scan above.
+    size_t iter = 0;
+    void *iter_val;
+    while (hashmap_iter (map, &iter, &iter_val)) {
+        assert (iter_ints(iter_val, &vals2));
+    }
+    for (int i = 0; i < N; i++) {
+        assert(vals2[i] == 1);
+    }
+    xfree(vals2);
+
+    shuffle(vals, N, sizeof(int));
+    for (int i = 0; i < N; i++) {
+        const int *v;
+        v = hashmap_delete(map, &vals[i]);
+        assert(v && *v == vals[i]);
+        assert(!hashmap_get(map, &vals[i]));
+        assert(map->count == (size_t)(N-i-1));
+        assert(map->count == hashmap_count(map));
+        assert(map->count == deepcount(map));
+        for (int j = N-1; j > i; j--) {
+            v = hashmap_get(map, &vals[j]);
+            assert(v && *v == vals[j]);
+        }
+    }
+
+    for (int i = 0; i < N; i++) {
+        while (true) {
+            assert(!hashmap_set(map, &vals[i]));
+            if (!hashmap_oom(map)) {
+                break;
+            }
+        }
+    }
+
+    assert(map->count != 0);
+    size_t prev_cap = map->cap;
+    hashmap_clear(map, true);
+    assert(prev_cap < map->cap);
+    assert(map->count == 0);
+
+
+    for (int i = 0; i < N; i++) {
+        while (true) {
+            assert(!hashmap_set(map, &vals[i]));
+            if (!hashmap_oom(map)) {
+                break;
+            }
+        }
+    }
+
+    prev_cap = map->cap;
+    hashmap_clear(map, false);
+    assert(prev_cap == map->cap);
+
+    hashmap_free(map);
+
+    xfree(vals);
+
+
+    while (!(map = hashmap_new(sizeof(char*), 0, seed, seed,
+                               hash_str, compare_strs, free_str, NULL)));
+
+    for (int i = 0; i < N; i++) {
+        char *str;
+        while (!(str = xmalloc(16)));
+        snprintf(str, 16, "s%i", i);
+        while(!hashmap_set(map, &str));
+    }
+
+    hashmap_clear(map, false);
+    assert(hashmap_count(map) == 0);
+
+    for (int i = 0; i < N; i++) {
+        char *str;
+        while (!(str = xmalloc(16)));
+        snprintf(str, 16, "s%i", i);
+        while(!hashmap_set(map, &str));
+    }
+
+    hashmap_free(map);
+
+    if (total_allocs != 0) {
+        fprintf(stderr, "total_allocs: expected 0, got %lu\n", total_allocs);
+        exit(1);
+    }
+}
+
+#define bench(name, N, code) {{ \
+    if (strlen(name) > 0) { \
+        printf("%-14s ", name); \
+    } \
+    size_t tmem = total_mem; \
+    size_t tallocs = total_allocs; \
+    uint64_t bytes = 0; \
+    clock_t begin = clock(); \
+    for (int i = 0; i < N; i++) { \
+        (code); \
+    } \
+    clock_t end = clock(); \
+    double elapsed_secs = (double)(end - begin) / CLOCKS_PER_SEC; \
+    double bytes_sec = (double)bytes/elapsed_secs; \
+    printf("%d ops in %.3f secs, %.0f ns/op, %.0f op/sec", \
+        N, elapsed_secs, \
+        elapsed_secs/(double)N*1e9, \
+        (double)N/elapsed_secs \
+    ); \
+    if (bytes > 0) { \
+        printf(", %.1f GB/sec", bytes_sec/1024/1024/1024); \
+    } \
+    if (total_mem > tmem) { \
+        size_t used_mem = total_mem-tmem; \
+        printf(", %.2f bytes/op", (double)used_mem/N); \
+    } \
+    if (total_allocs > tallocs) { \
+        size_t used_allocs = total_allocs-tallocs; \
+        printf(", %.2f allocs/op", (double)used_allocs/N); \
+    } \
+    printf("\n"); \
+}}
+
+static void benchmarks(void) {
+    int seed = getenv("SEED")?atoi(getenv("SEED")):time(NULL);
+    int N = getenv("N")?atoi(getenv("N")):5000000;
+    printf("seed=%d, count=%d, item_size=%zu\n", seed, N, sizeof(int));
+    srand(seed);
+
+
+    int *vals = xmalloc(N * sizeof(int));
+    for (int i = 0; i < N; i++) {
+        vals[i] = i;
+    }
+
+    shuffle(vals, N, sizeof(int));
+
+    struct hashmap *map;
+    shuffle(vals, N, sizeof(int));
+
+    map = hashmap_new(sizeof(int), 0, seed, seed, hash_int, compare_ints_udata, 
+                      NULL, NULL);
+    bench("set", N, {
+        const int *v = hashmap_set(map, &vals[i]);
+        assert(!v);
+    })
+    shuffle(vals, N, sizeof(int));
+    bench("get", N, {
+        const int *v = hashmap_get(map, &vals[i]);
+        assert(v && *v == vals[i]);
+    })
+    shuffle(vals, N, sizeof(int));
+    bench("delete", N, {
+        const int *v = hashmap_delete(map, &vals[i]);
+        assert(v && *v == vals[i]);
+    })
+    hashmap_free(map);
+
+    map = hashmap_new(sizeof(int), N, seed, seed, hash_int, compare_ints_udata, 
+                      NULL, NULL);
+    bench("set (cap)", N, {
+        const int *v = hashmap_set(map, &vals[i]);
+        assert(!v);
+    })
+    shuffle(vals, N, sizeof(int));
+    bench("get (cap)", N, {
+        const int *v = hashmap_get(map, &vals[i]);
+        assert(v && *v == vals[i]);
+    })
+    shuffle(vals, N, sizeof(int));
+    bench("delete (cap)" , N, {
+        const int *v = hashmap_delete(map, &vals[i]);
+        assert(v && *v == vals[i]);
+    })
+
+    hashmap_free(map);
+
+    
+    xfree(vals);
+
+    if (total_allocs != 0) {
+        fprintf(stderr, "total_allocs: expected 0, got %lu\n", total_allocs);
+        exit(1);
+    }
+}
+
+int main(void) {
+    hashmap_set_allocator(xmalloc, xfree);
+
+    if (getenv("BENCH")) {
+        printf("Running hashmap.c benchmarks...\n");
+        benchmarks();
+    } else {
+        printf("Running hashmap.c tests...\n");
+        all();
+        printf("PASSED\n");
+    }
+}
+
+
+#endif
+
+
+
+// Copyright 2020 Joshua J Baker. All rights reserved.
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
+
+#ifndef HASHMAP_H
+#define HASHMAP_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#if defined(__cplusplus)
+extern "C" {
+#endif  // __cplusplus
+
+struct hashmap;
+typedef struct hashmap* map;
+
+struct hashmap *hashmap_new(size_t elsize, size_t cap, uint64_t seed0, 
+    uint64_t seed1, 
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1),
+    int (*compare)(const void *a, const void *b, void *udata),
+    void (*elfree)(void *item),
+    void *udata);
+
+struct hashmap *hashmap_new_with_allocator(void *(*malloc)(size_t), 
+    void *(*realloc)(void *, size_t), void (*free)(void*), size_t elsize, 
+    size_t cap, uint64_t seed0, uint64_t seed1,
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1),
+    int (*compare)(const void *a, const void *b, void *udata),
+    void (*elfree)(void *item),
+    void *udata);
+
+void hashmap_free(struct hashmap *map);
+void hashmap_clear(struct hashmap *map, bool update_cap);
+size_t hashmap_count(struct hashmap *map);
+bool hashmap_oom(struct hashmap *map);
+const void *hashmap_get(struct hashmap *map, const void *item);
+const void *hashmap_set(struct hashmap *map, const void *item);
+const void *hashmap_delete(struct hashmap *map, const void *item);
+const void *hashmap_probe(struct hashmap *map, uint64_t position);
+bool hashmap_scan(struct hashmap *map, bool (*iter)(const void *item, void *udata), void *udata);
+bool hashmap_iter(struct hashmap *map, size_t *i, void **item);
+
+uint64_t hashmap_sip(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
+uint64_t hashmap_murmur(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
+uint64_t hashmap_xxhash3(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
+
+const void *hashmap_get_with_hash(struct hashmap *map, const void *key, uint64_t hash);
+const void *hashmap_delete_with_hash(struct hashmap *map, const void *key, uint64_t hash);
+const void *hashmap_set_with_hash(struct hashmap *map, const void *item, uint64_t hash);
+void hashmap_set_grow_by_power(struct hashmap *map, size_t power);
+void hashmap_set_load_factor(struct hashmap *map, double load_factor);
+
+
+// DEPRECATED: use `hashmap_new_with_allocator`
+void hashmap_set_allocator(void *(*malloc)(size_t), void (*free)(void*));
+
+#if defined(__cplusplus)
+}
+#endif  // __cplusplus
+
+#endif  // HASHMAP_H
+module(
+	name: "map"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Simple hashmap ported from: https://github.com/tidwall/hashmap.c"
+)
+
+#include "./hashmap.h"
+#source "./hashmap.c"
+
+#typ struct map (
+		(@none fn size_t) malloc,
+		(@none fn @none, size_t) realloc,
+		(fn @none) free,
+    size_t elsize,
+    size_t cap,
+    u64 seed0,
+    u64 seed1,
+		(u64 fn const @none, u64, u64) hash,
+		(int fn const @none, const @none, @none) compare,
+		(fn @none) elfree,
+		@none udata,
+    size_t bucketsz,
+    size_t nbuckets,
+    size_t count,
+    size_t mask,
+    size_t growat,
+    size_t shrinkat,
+		//This was originallu uint8_t
+    byte loadfactor,
+    byte growpower,
+    bool oom,
+    @none buckets,
+    @none spare,
+    @none edata
+)
+
+//Hashing algos
+#provided (u64 fn const @none, size_t, u64, u64) hashmap_murmur
+
+//Hashmaps
+#provided (map fn size_t, size_t, u64, u64,
+	(u64 fn const @none, u64, u64), //hash
+  (int fn const @none, @none, @none), //compare
+	(fn @none), //elfree
+	@byte //udata
+	) hashmap_new
+#provided (const @none fn map, const @none) hashmap_get
+#provided (const @none fn map, const @none) hashmap_set
+
+int fn map.cmp_str(const @none a, const @none b, @none udata){
+	ret strcmp(a.(@byte), b.(@byte))
+}
+
+u64 fn map.hash_str(const @none item, u64 seed0, u64 seed1){
+	ret hashmap_murmur(item, strlen(item.(@byte)), seed0, seed1)
+}
+
+fn map.new((u64 fn const @none, u64, u64) hash=map^hash_str, (int fn const @none, const @none, @none) comp=map^cmp_str, size_t elem_sz=sz_of(null).(size_t), (fn @none) elfree=free){
+	ret hashmap_new(elem_sz, (0).(size_t), (0).(u64), (0).(u64), hash, comp, elfree, null)
+}
+
+fn map:set(@none item){
+	ret hashmap_set($., item)
+}
+
+fn map:get(@none item){
+	ret hashmap_get($., item)
 }
 
 module(
@@ -1841,17 +3285,854 @@ module(
 	description: "Memory module"
 )
 
-#provided (@none fn size_t) malloc
-#provided (fn @none) free
+// use std
 
-fn mem.alc(size_t sz){
+fn mem::alc(size_t sz){
 	ret malloc(sz)
 }
 
-fn mem.free(@none ptr){
+fn none:rlc(size_t sz){
+	ret realloc($, sz)
+}
+
+fn mem::free(@none ptr){
 	free(ptr)
 	ret 0
 }
+#provided (fn) InitAudioDevice
+#provided (fn) CloseAudioDevice
+#provided (bool fn) IsAudioDeviceReady
+#provided (fn f32) SetMasterVolume
+#provided (f32 fn) GetMasterVolume
+
+#provided (@Wave fn @byte) LoadWave
+#provided (@Wave fn @byte, @byte, int) LoadWaveFromMemory
+#provided (bool fn @Wave) IsWaveReady
+#provided (@Sound fn @byte) LoadSound
+#provided (@Sound fn @Wave) LoadSoundFromWave
+#provided (@Sound fn @Sound) LoadSoundAlias
+#provided (bool fn @Sound) IsSoundReady
+#provided (fn @Sound, @byte, int) UpdateSound
+#provided (fn @Wave) UnloadWave
+#provided (fn @Sound) UnloadSound
+#provided (fn @Sound) UnloadSoundAlias
+#provided (bool fn @Wave, @byte) ExportWave
+#provided (bool fn @Wave, @byte) ExportWaveAsCode
+
+#provided (fn @Sound) PlaySound
+#provided (fn @Sound) StopSound
+#provided (fn @Sound) PauseSound
+#provided (fn @Sound) ResumeSound
+#provided (bool fn @Sound) IsSoundPlaying
+#provided (fn @Sound, f32) SetSoundVolume
+#provided (fn @Sound, f32) SetSoundPitch
+#provided (fn @Sound, f32) SetSoundPan
+#provided (@Wave fn @Wave) WaveCopy
+#provided (fn @Wave, int, int) WaveCrop
+#provided (fn @Wave, int, int, int) WaveFormat
+#provided (@f32 fn @Wave) LoadWaveSamples
+#provided (fn @f32) UnloadWaveSamples
+
+#provided (Music fn @byte) LoadMusicStream
+#provided (Music fn @byte, @byte, int) LoadMusicStreamFromMemory
+#provided (bool fn Music) IsMusicReady
+#provided (fn Music) UnloadMusicStream
+#provided (fn Music) PlayMusicStream
+#provided (bool fn Music) IsMusicStreamPlaying
+#provided (fn Music) UpdateMusicStream
+#provided (fn Music) StopMusicStream
+#provided (fn Music) PauseMusicStream
+#provided (fn Music) ResumeMusicStream
+#provided (fn Music, f32) SeekMusicStream
+#provided (fn Music, f32) SetMusicVolume
+#provided (fn Music, f32) SetMusicPitch
+#provided (fn Music, f32) SetMusicPan
+#provided (f32 fn Music) GetMusicTimeLength
+#provided (f32 fn Music) GetMusicTimePlayed
+
+#provided (@AudioStream fn u32, u32, u32) LoadAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamReady
+#provided (fn @AudioStream) UnloadAudioStream
+#provided (fn @AudioStream, @byte, int) UpdateAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamProcessed
+#provided (fn @AudioStream) PlayAudioStream
+#provided (fn @AudioStream) PauseAudioStream
+#provided (fn @AudioStream) ResumeAudioStream
+#provided (bool fn @AudioStream) IsAudioStreamPlaying
+#provided (fn @AudioStream) StopAudioStream
+#provided (fn @AudioStream, f32) SetAudioStreamVolume
+#provided (fn @AudioStream, f32) SetAudioStreamPitch
+#provided (fn @AudioStream, f32) SetAudioStreamPan
+#provided (fn int) SetAudioStreamBufferSizeDefault
+#provided (fn @AudioStream, @AudioCallback) SetAudioStreamCallback
+
+#provided (fn @AudioStream, @AudioCallback) AttachAudioStreamProcessor
+#provided (fn @AudioStream, @AudioCallback) DetachAudioStreamProcessor
+
+#provided (fn @AudioCallback) AttachAudioMixedProcessor
+#provided (fn @AudioCallback) DetachAudioMixedProcessor
+#provided (fn int, int, @byte) InitWindow
+#provided (fn) CloseWindow
+#provided (bool fn) WindowShouldClose
+#provided (bool fn) IsWindowReady
+#provided (bool fn) IsWindowFullscreen
+#provided (bool fn) IsWindowHidden
+#provided (bool fn) IsWindowMinimized
+#provided (bool fn) IsWindowMaximized
+#provided (bool fn) IsWindowFocused
+#provided (bool fn) IsWindowResized
+#provided (bool fn u32) IsWindowState
+#provided (fn u32) SetWindowState
+#provided (fn u32) ClearWindowState
+#provided (fn) ToggleFullscreen
+#provided (fn) ToggleBorderlessWindowed
+#provided (fn) MaximizeWindow
+#provided (fn) MinimizeWindow
+#provided (fn) RestoreWindow
+#provided (fn Image) SetWindowIcon
+#provided (fn @Image, int) SetWindowIcons
+#provided (fn @byte) SetWindowTitle
+#provided (fn int, int) SetWindowPosition
+#provided (fn int) SetWindowMonitor
+#provided (fn int, int) SetWindowMinSize
+#provided (fn int, int) SetWindowMaxSize
+#provided (fn int, int) SetWindowSize
+#provided (fn f32) SetWindowOpacity
+#provided (fn) SetWindowFocused
+#provided (@byte fn) GetWindowHandle
+#provided (int fn) GetScreenWidth
+#provided (int fn) GetScreenHeight
+#provided (int fn) GetRenderWidth
+#provided (int fn) GetRenderHeight
+#provided (int fn) GetMonitorCount
+#provided (int fn) GetCurrentMonitor
+#provided (Vector2 fn int) GetMonitorPosition
+#provided (int fn int) GetMonitorWidth
+#provided (int fn int) GetMonitorHeight
+#provided (int fn int) GetMonitorPhysicalWidth
+#provided (int fn int) GetMonitorPhysicalHeight
+#provided (int fn int) GetMonitorRefreshRate
+#provided (Vector2 fn) GetWindowPosition
+#provided (Vector2 fn) GetWindowScaleDPI
+#provided (@byte fn int) GetMonitorName
+#provided (fn @byte) SetClipboardText
+#provided (@byte fn) GetClipboardText
+#provided (fn) EnableEventWaiting
+#provided (fn) DisableEventWaiting
+
+#provided (fn) ShowCursor
+#provided (fn) HideCursor
+#provided (bool fn) IsCursorHidden
+#provided (fn) EnableCursor
+#provided (fn) DisableCursor
+#provided (bool fn) IsCursorOnScreen
+
+#provided (fn Color) ClearBackground
+#provided (fn) BeginDrawing
+#provided (fn) EndDrawing
+#provided (fn Camera2D) BeginMode2D
+#provided (fn) EndMode2D
+#provided (fn Camera) BeginMode3D
+#provided (fn) EndMode3D
+#provided (fn RenderTexture2D) BeginTextureMode
+#provided (fn) EndTextureMode
+#provided (fn Shader) BeginShaderMode
+#provided (fn) EndShaderMode
+#provided (fn int) BeginBlendMode
+#provided (fn) EndBlendMode
+#provided (fn int, int, int, int) BeginScissorMode
+#provided (fn) EndScissorMode
+#provided (fn VrStereoConfig) BeginVrStereoMode
+#provided (fn) EndVrStereoMode
+
+#provided (VrStereoConfig fn VrDeviceInfo) LoadVrStereoConfig
+#provided (fn VrStereoConfig) UnloadVrStereoConfig
+
+#provided (Shader fn @byte, @byte) LoadShader
+#provided (Shader fn @byte, @byte) LoadShaderFromMemory
+#provided (bool fn Shader) IsShaderReady
+#provided (int fn Shader, @byte) GetShaderLocation
+#provided (int fn Shader, @byte) GetShaderLocationAttrib
+#provided (fn Shader, int, @none, int) SetShaderValue
+#provided (fn Shader, int, @none, int, int) SetShaderValueV
+#provided (fn Shader, int, Matrix) SetShaderValueMatrix
+#provided (fn Shader, int, Texture2D) SetShaderValueTexture
+#provided (fn Shader) UnloadShader
+
+#provided (Ray fn Vector2, Camera) GetMouseRay
+#provided (Matrix fn Camera) GetCameraMatrix
+#provided (Matrix fn Camera2D) GetCameraMatrix2D
+#provided (Vector2 fn Vector3, Camera) GetWorldToScreen
+#provided (Vector2 fn Vector2, Camera2D) GetScreenToWorld2D
+#provided (Vector2 fn Vector3, Camera, int, int) GetWorldToScreenEx
+#provided (Vector2 fn Vector2, Camera2D) GetWorldToScreen2D
+
+#provided (fn int) SetTargetFPS
+#provided (f32 fn) GetFrameTime
+#provided (f64 fn) GetTime
+#provided (int fn) GetFPS
+
+#provided (fn) SwapScreenBuffer
+#provided (fn) PollInputEvents
+#provided (fn f64) WaitTime
+
+#provided (fn u32) SetRandomSeed
+#provided (int fn int, int) GetRandomValue
+#provided (@int fn u32, int, int) LoadRandomSequence
+#provided (fn @int) UnloadRandomSequence
+
+#provided (fn @byte) TakeScreenshot
+#provided (fn u32) SetConfigFlags
+#provided (fn @byte) OpenURL
+
+#provided (fn int, @byte, ...) TraceLog
+#provided (fn int) SetTraceLogLevel
+#provided (@none fn u32) MemAlloc
+#provided (@none fn @none, u32) MemRealloc
+#provided (fn @none) MemFree
+
+#provided (fn @none) SetTraceLogCallback
+#provided (fn @none) SetLoadFileDataCallback
+#provided (fn @none) SetSaveFileDataCallback
+#provided (fn @none) SetLoadFileTextCallback
+#provided (fn @none) SetSaveFileTextCallback
+
+#provided (@byte fn @byte, @int) LoadFileData
+#provided (fn @byte) UnloadFileData
+#provided (bool fn @byte, @none, int) SaveFileData
+#provided (bool fn @byte, @byte, int) ExportDataAsCode
+#provided (@byte fn @byte) LoadFileText
+#provided (fn @byte) UnloadFileText
+#provided (bool fn @byte, @byte) SaveFileText
+
+#provided (bool fn @byte) FileExists
+#provided (bool fn @byte) DirectoryExists
+#provided (bool fn @byte, @byte) IsFileExtension
+#provided (int fn @byte) GetFileLength
+#provided (@byte fn @byte) GetFileExtension
+#provided (@byte fn @byte) GetFileName
+#provided (@byte fn @byte) GetFileNameWithoutExt
+#provided (@byte fn @byte) GetDirectoryPath
+#provided (@byte fn @byte) GetPrevDirectoryPath
+#provided (@byte fn) GetWorkingDirectory
+#provided (@byte fn) GetApplicationDirectory
+#provided (bool fn @byte) ChangeDirectory
+#provided (bool fn @byte) IsPathFile
+#provided (FilePathList fn @byte) LoadDirectoryFiles
+#provided (FilePathList fn @byte, @byte, bool) LoadDirectoryFilesEx
+#provided (fn FilePathList) UnloadDirectoryFiles
+#provided (bool fn) IsFileDropped
+#provided (FilePathList fn) LoadDroppedFiles
+#provided (fn FilePathList) UnloadDroppedFiles
+#provided (i64 fn @byte) GetFileModTime
+
+#provided (@byte fn @byte, int, @int) CompressData
+#provided (@byte fn @byte, int, @int) DecompressData
+#provided (@byte fn @byte, int, @int) EncodeDataBase64
+#provided (@byte fn @byte, @int) DecodeDataBase64
+
+#provided (AutomationEventList fn @byte) LoadAutomationEventList
+#provided (fn AutomationEventList) UnloadAutomationEventList
+#provided (bool fn AutomationEventList, @byte) ExportAutomationEventList
+#provided (fn AutomationEventList) SetAutomationEventList
+#provided (fn int) SetAutomationEventBaseFrame
+#provided (fn) StartAutomationEventRecording
+#provided (fn) StopAutomationEventRecording
+#provided (fn AutomationEvent) PlayAutomationEvent
+
+#provided (bool fn int) IsKeyPressed
+#provided (bool fn int) IsKeyPressedRepeat
+#provided (bool fn int) IsKeyDown
+#provided (bool fn int) IsKeyReleased
+#provided (bool fn int) IsKeyUp
+#provided (int fn) GetKeyPressed
+#provided (int fn) GetCharPressed
+#provided (fn int) SetExitKey
+
+#provided (bool fn int) IsGamepadAvailable
+#provided (int fn int) GetGamepadName
+#provided (bool fn int, int) IsGamepadButtonPressed
+#provided (bool fn int, int) IsGamepadButtonDown
+#provided (bool fn int, int) IsGamepadButtonReleased
+#provided (bool fn int, int) IsGamepadButtonUp
+#provided (int fn int) GetGamepadButtonPressed
+#provided (int fn int) GetGamepadAxisCount
+#provided (f32 fn int, int) GetGamepadAxisMovement
+#provided (int fn int, int) SetGamepadMappings
+
+#provided (bool fn int) IsMouseButtonPressed
+#provided (bool fn int) IsMouseButtonDown
+#provided (bool fn int) IsMouseButtonReleased
+#provided (bool fn int) IsMouseButtonUp
+#provided (int fn) GetMouseX
+#provided (int fn) GetMouseY
+#provided (Vector2 fn) GetMousePosition
+#provided (Vector2 fn) GetMouseDelta
+#provided (fn int) SetMousePosition
+#provided (fn Vector2) SetMouseOffset
+#provided (fn f32) SetMouseScale
+#provided (f32 fn) GetMouseWheelMove
+#provided (f32 fn) GetMouseWheelMoveV
+#provided (fn) SetMouseCursor
+
+#provided (bool fn int) IsTouching
+#provided (int fn) GetTouchX
+#provided (int fn) GetTouchY
+#provided (Vector2 fn int) GetTouchPosition
+#provided (int fn) GetTouchPointCount
+#provided (fn int, int, int) SetGesturesEnabled
+#provided (fn int, int) GetGestureDetected
+#provided (fn int) GetGestureHoldDuration
+#provided (Vector2 fn) GetGestureDragVector
+#provided (f32 fn) GetGestureDragAngle
+#provided (Vector2 fn) GetGesturePinchVector
+#provided (f32 fn) GetGesturePinchAngle
+
+#provided (fn u32) SetGestureCallbacks
+#provided (fn u32) SetGestureHoldCallback
+#provided (fn u32) SetGestureDragCallback
+#provided (fn u32) SetGesturePinchCallback
+#provided (fn u32) SetGestureRotateCallback
+#provided (fn u32) SetGestureSwipeCallback
+
+#provided (fn @Camera, int) UpdateCamera
+#provided (fn @Camera, Vector3, Vector3, f32) UpdateCameraPro
+
+#provided (fn @Vector3, @Vector3, @Color) DrawLine3D
+#provided (fn @Vector3, @Color) DrawPoint3D
+#provided (fn @Vector3, f32, @Vector3, f32, @Color) DrawCircle3D
+#provided (fn @Vector3, @Vector3, @Vector3, @Color) DrawTriangle3D
+#provided (fn @Vector3, int, @Color) DrawTriangleStrip3D
+#provided (fn @Vector3, f32, f32, f32, @Color) DrawCube
+#provided (fn @Vector3, @Vector3, @Color) DrawCubeV
+#provided (fn @Vector3, f32, f32, f32, @Color) DrawCubeWires
+#provided (fn @Vector3, @Vector3, @Color) DrawCubeWiresV
+#provided (fn @Vector3, f32, @Color) DrawSphere
+#provided (fn @Vector3, f32, int, int, @Color) DrawSphereEx
+#provided (fn @Vector3, f32, int, int, @Color) DrawSphereWires
+#provided (fn @Vector3, f32, f32, f32, int, @Color) DrawCylinder
+#provided (fn @Vector3, @Vector3, f32, f32, int, @Color) DrawCylinderEx
+#provided (fn @Vector3, f32, f32, f32, int, @Color) DrawCylinderWires
+#provided (fn @Vector3, @Vector3, f32, f32, int, @Color) DrawCylinderWiresEx
+#provided (fn @Vector3, @Vector3, f32, int, int, @Color) DrawCapsule
+#provided (fn @Vector3, @Vector3, f32, int, int, @Color) DrawCapsuleWires
+#provided (fn @Vector3, @Vector2, @Color) DrawPlane
+#provided (fn @Ray, @Color) DrawRay
+#provided (fn int, f32) DrawGrid
+
+#provided (Model fn @byte) LoadModel
+#provided (Model fn Mesh) LoadModelFromMesh
+#provided (bool fn Model) IsModelReady
+#provided (fn Model) UnloadModel
+#provided (BoundingBox fn Model) GetModelBoundingBox
+
+#provided (fn Model, Vector3, f32, Color) DrawModel
+#provided (fn Model, Vector3, Vector3, f32, Vector3, Color) DrawModelEx
+#provided (fn Model, Vector3, f32, Color) DrawModelWires
+#provided (fn Model, Vector3, Vector3, f32, Vector3, Color) DrawModelWiresEx
+#provided (fn BoundingBox, Color) DrawBoundingBox
+#provided (fn Camera, Texture2D, Vector3, f32, Color) DrawBillboard
+#provided (fn Camera, Texture2D, Rectangle, Vector3, Vector2, Color) DrawBillboardRec
+#provided (fn Camera, Texture2D, Rectangle, Vector3, Vector3, Vector2, Vector2, f32, Color) DrawBillboardPro
+
+#provided (fn @Mesh, bool) UploadMesh
+#provided (fn @Mesh, int, @byte, int, int) UpdateMeshBuffer
+#provided (fn @Mesh) UnloadMesh
+#provided (fn @Mesh, @Material, @Matrix) DrawMesh
+#provided (fn @Mesh, @Material, @Matrix, int) DrawMeshInstanced
+#provided (bool fn @Mesh, @byte) ExportMesh
+#provided (@BoundingBox fn @Mesh) GetMeshBoundingBox
+#provided (fn @Mesh) GenMeshTangents
+
+#provided (@Mesh fn int, f32) GenMeshPoly
+#provided (@Mesh fn f32, f32, int, int) GenMeshPlane
+#provided (@Mesh fn f32, f32, f32) GenMeshCube
+#provided (@Mesh fn f32, int, int) GenMeshSphere
+#provided (@Mesh fn f32, int, int) GenMeshHemiSphere
+#provided (@Mesh fn f32, f32, int) GenMeshCylinder
+#provided (@Mesh fn f32, f32, int) GenMeshCone
+#provided (@Mesh fn f32, f32, int, int) GenMeshTorus
+#provided (@Mesh fn f32, f32, int, int) GenMeshKnot
+#provided (@Mesh fn @Image, @Vector3) GenMeshHeightmap
+#provided (@Mesh fn @Image, @Vector3) GenMeshCubicmap
+
+#provided (@Material fn @byte, @int) LoadMaterials
+#provided (@Material fn) LoadMaterialDefault
+#provided (bool fn @Material) IsMaterialReady
+#provided (fn @Material) UnloadMaterial
+#provided (fn @Material, int, @Texture2D) SetMaterialTexture
+#provided (fn @Model, int, int) SetModelMeshMaterial
+
+#provided (@ModelAnimation fn @byte, @int) LoadModelAnimations
+#provided (fn Model, ModelAnimation, int) UpdateModelAnimation
+#provided (fn ModelAnimation) UnloadModelAnimation
+#provided (fn @ModelAnimation, int) UnloadModelAnimations
+#provided (bool fn Model, ModelAnimation) IsModelAnimationValid
+
+#provided (bool fn @Vector3, f32, @Vector3, f32) CheckCollisionSpheres
+#provided (bool fn @BoundingBox, @BoundingBox) CheckCollisionBoxes
+#provided (bool fn @BoundingBox, @Vector3, f32) CheckCollisionBoxSphere
+#provided (@RayCollision fn @Ray, @Vector3, f32) GetRayCollisionSphere
+#provided (@RayCollision fn @Ray, @BoundingBox) GetRayCollisionBox
+#provided (@RayCollision fn @Ray, @Mesh, @Matrix) GetRayCollisionMesh
+#provided (@RayCollision fn @Ray, @Vector3, @Vector3, @Vector3) GetRayCollisionTriangle
+#provided (@RayCollision fn @Ray, @Vector3, @Vector3, @Vector3, @Vector3) GetRayCollisionQuad
+module(
+	name: "raylib"
+	version: "5.0.0"
+	author: "Raysan5"
+	website: "https://www.raylib.com"
+	license_name: "zlib/libpng"
+	license: "https://www.raylib.com/license.html"
+	description: "Raylib"
+)
+
+#include <raylib.h>
+#flag "-lraylib"
+
+~~
+local libs = {
+    Windows = {"-lopengl32", "-lgdi32", "-lwinmm", "-lkernel32", "-luser32"},
+    Linux = {"-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11"}
+}
+return axo.setFlags(libs[axo.os])
+~~
+
+include "./types.axo"
+include "./core.axo"
+include "./shapes.axo"
+include "./textures.axo"
+include "./text.axo"
+include "./models.axo"
+include "./audio.axo"
+
+// Set texture and rectangle to be used on shapes drawing
+#provided (fn Texture2D, Rectangle) SetShapesTexture
+
+// Basic shapes drawing functions
+#provided (fn int, int, Color) DrawPixel
+#provided (fn Vector2, Color) DrawPixelV
+#provided (fn int, int, int, int, Color) DrawLine
+#provided (fn Vector2, Vector2, Color) DrawLineV
+#provided (fn Vector2, Vector2, f32, Color) DrawLineEx
+#provided (fn @Vector2, int, Color) DrawLineStrip
+#provided (fn Vector2, Vector2, f32, Color) DrawLineBezier
+#provided (fn int, int, f32, Color) DrawCircle
+#provided (fn Vector2, f32, f32, f32, int, Color) DrawCircleSector
+#provided (fn Vector2, f32, f32, f32, int, Color) DrawCircleSectorLines
+#provided (fn int, int, f32, Color, Color) DrawCircleGradient
+#provided (fn Vector2, f32, Color) DrawCircleV
+#provided (fn int, int, f32, Color) DrawCircleLines
+#provided (fn Vector2, f32, Color) DrawCircleLinesV
+#provided (fn int, int, f32, f32, Color) DrawEllipse
+#provided (fn int, int, f32, f32, Color) DrawEllipseLines
+#provided (fn Vector2, f32, f32, f32, f32, int, Color) DrawRing
+#provided (fn Vector2, f32, f32, f32, f32, int, Color) DrawRingLines
+#provided (fn int, int, int, int, Color) DrawRectangle
+#provided (fn Vector2, Vector2, Color) DrawRectangleV
+#provided (fn Rectangle, Color) DrawRectangleRec
+#provided (fn Rectangle, Vector2, f32, Color) DrawRectanglePro
+#provided (fn int, int, int, int, Color, Color) DrawRectangleGradientV
+#provided (fn int, int, int, int, Color, Color) DrawRectangleGradientH
+#provided (fn Rectangle, Color, Color, Color, Color) DrawRectangleGradientEx
+#provided (fn int, int, int, int, Color) DrawRectangleLines
+#provided (fn Rectangle, f32, Color) DrawRectangleLinesEx
+#provided (fn Rectangle, f32, int, Color) DrawRectangleRounded
+#provided (fn Rectangle, f32, int, f32, Color) DrawRectangleRoundedLines
+#provided (fn Vector2, Vector2, Vector2, Color) DrawTriangle
+#provided (fn Vector2, Vector2, Vector2, Color) DrawTriangleLines
+#provided (fn @Vector2, int, Color) DrawTriangleFan
+#provided (fn @Vector2, int, Color) DrawTriangleStrip
+#provided (fn Vector2, int, f32, f32, Color) DrawPoly
+#provided (fn Vector2, int, f32, f32, Color) DrawPolyLines
+#provided (fn Vector2, int, f32, f32, f32, Color) DrawPolyLinesEx
+
+// Splines drawing functions
+#provided (fn @Vector2, int, f32, Color) DrawSplineLinear
+#provided (fn @Vector2, int, f32, Color) DrawSplineBasis
+#provided (fn @Vector2, int, f32, Color) DrawSplineCatmullRom
+#provided (fn @Vector2, int, f32, Color) DrawSplineBezierQuadratic
+#provided (fn @Vector2, int, f32, Color) DrawSplineBezierCubic
+#provided (fn Vector2, Vector2, f32, Color) DrawSplineSegmentLinear
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBasis
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentCatmullRom
+#provided (fn Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBezierQuadratic
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBezierCubic
+
+// Spline segment point evaluation functions
+#provided (Vector2 fn Vector2, Vector2, f32) GetSplinePointLinear
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointBasis
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointCatmullRom
+#provided (Vector2 fn Vector2, Vector2, Vector2, f32) GetSplinePointBezierQuad
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointBezierCubic
+
+// Basic shapes collision detection functions
+#provided (bool fn Rectangle, Rectangle) CheckCollisionRecs
+#provided (bool fn Vector2, f32, Vector2, f32) CheckCollisionCircles
+#provided (bool fn Vector2, f32, Rectangle) CheckCollisionCircleRec
+#provided (bool fn Vector2, Rectangle) CheckCollisionPointRec
+#provided (bool fn Vector2, Vector2, f32) CheckCollisionPointCircle
+#provided (bool fn Vector2, Vector2, Vector2, Vector2) CheckCollisionPointTriangle
+#provided (bool fn Vector2, @Vector2, int) CheckCollisionPointPoly
+#provided (bool fn Vector2, Vector2, Vector2, Vector2, @Vector2) CheckCollisionLines
+#provided (bool fn Vector2, Vector2, Vector2, int) CheckCollisionPointLine
+#provided (Rectangle fn Rectangle, Rectangle) GetCollisionRec
+
+#provided (Font fn) GetFontDefault
+#provided (Font fn @byte) LoadFont
+#provided (Font fn @byte, int, @int, int) LoadFontEx
+#provided (Font fn Image, Color, int) LoadFontFromImage
+#provided (Font fn @byte, @byte, int, int, @int, int) LoadFontFromMemory
+#provided (bool fn Font) IsFontReady
+#provided (@GlyphInfo fn @byte, int, int, @int, int, int) LoadFontData
+#provided (Image fn @GlyphInfo, @Rectangle, int, int, int, int) GenImageFontAtlas
+#provided (fn @GlyphInfo, int) UnloadFontData
+#provided (fn Font) UnloadFont
+#provided (bool fn Font, @byte) ExportFontAsCode
+
+#provided (fn int, int) DrawFPS
+#provided (fn @byte, int, int, int, Color) DrawText
+#provided (fn Font, @byte, Vector2, f32, f32, Color) DrawTextEx
+#provided (fn Font, @byte, Vector2, Vector2, f32, f32, f32, Color) DrawTextPro
+#provided (fn Font, int, Vector2, f32, Color) DrawTextCodepoint
+#provided (fn Font, @int, int, Vector2, f32, f32, Color) DrawTextCodepoints
+
+#provided (fn int) SetTextLineSpacing
+#provided (int fn @byte, int) MeasureText
+#provided (Vector2 fn Font, @byte, f32, f32) MeasureTextEx
+#provided (int fn Font, int) GetGlyphIndex
+#provided (GlyphInfo fn Font, int) GetGlyphInfo
+#provided (Rectangle fn Font, int) GetGlyphAtlasRec
+
+#provided (@byte fn @int, int) LoadUTF8
+#provided (fn @byte) UnloadUTF8
+#provided (@int fn @byte, @int) LoadCodepoints
+#provided (fn @int) UnloadCodepoints
+#provided (int fn @byte) GetCodepointCount
+#provided (int fn @byte, @int) GetCodepoint
+#provided (int fn @byte, @int) GetCodepointNext
+#provided (int fn @byte, @int) GetCodepointPrevious
+#provided (@byte fn int, @int) CodepointToUTF8
+
+#provided (int fn @byte, @byte) TextCopy
+#provided (bool fn @byte, @byte) TextIsEqual
+#provided (u32 fn @byte) TextLength
+#provided (@byte fn @byte, ...) TextFormat
+#provided (@byte fn @byte, int, int) TextSubtext
+#provided (@byte fn @byte, @byte, @byte) TextReplace
+#provided (@byte fn @byte, @byte, int) TextInsert
+#provided (@byte fn @byte, int, @byte) TextJoin
+#provided (@byte fn @byte, byte, @int) TextSplit
+#provided (fn @byte, @byte, @int) TextAppend
+#provided (int fn @byte, @byte) TextFindIndex
+#provided (@byte fn @byte) TextToUpper
+#provided (@byte fn @byte) TextToLower
+#provided (@byte fn @byte) TextToPascal
+#provided (int fn @byte) TextToInteger
+// Image Loading Functions
+#provided (Image fn const @byte) LoadImage
+#provided (Image fn const @byte, int, int, int, int) LoadImageRaw
+#provided (Image fn const @byte, int, int) LoadImageSvg
+#provided (Image fn const @byte, @int) LoadImageAnim
+#provided (Image fn const @byte, const @byte, int) LoadImageFromMemory
+#provided (Image fn Texture2D) LoadImageFromTexture
+#provided (Image fn) LoadImageFromScreen
+#provided (bool fn Image) IsImageReady
+#provided (fn Image) UnloadImage
+#provided (bool fn Image, const @byte) ExportImage
+#provided (const @byte fn Image, const @byte, @int) ExportImageToMemory
+#provided (bool fn Image, const @byte) ExportImageAsCode
+
+// Image Generation Functions
+#provided (Image fn int, int, Color) GenImageColor
+#provided (Image fn int, int, int, Color, Color) GenImageGradientLinear
+#provided (Image fn int, int, f32, Color, Color) GenImageGradientRadial
+#provided (Image fn int, int, f32, Color, Color) GenImageGradientSquare
+#provided (Image fn int, int, int, int, Color, Color) GenImageChecked
+#provided (Image fn int, int, f32) GenImageWhiteNoise
+#provided (Image fn int, int, int, int, f32) GenImagePerlinNoise
+#provided (Image fn int, int, int) GenImageCellular
+#provided (Image fn int, int, const @byte) GenImageText
+
+// Image Manipulation Functions
+#provided (Image fn Image) ImageCopy
+#provided (Image fn Image, Rectangle) ImageFromImage
+#provided (Image fn const @byte, int, Color) ImageText
+#provided (Image fn Font, const @byte, f32, f32, Color) ImageTextEx
+#provided (fn @Image, int) ImageFormat
+#provided (fn @Image, Color) ImageToPOT
+#provided (fn @Image, Rectangle) ImageCrop
+#provided (fn @Image, f32) ImageAlphaCrop
+#provided (fn @Image, Color, f32) ImageAlphaClear
+#provided (fn @Image, Image) ImageAlphaMask
+#provided (fn @Image) ImageAlphaPremultiply
+#provided (fn @Image, int) ImageBlurGaussian
+#provided (fn @Image, int, int) ImageResize
+#provided (fn @Image, int, int) ImageResizeNN
+#provided (fn @Image, int, int, int, int, Color) ImageResizeCanvas
+#provided (fn @Image) ImageMipmaps
+#provided (fn @Image, int, int, int, int) ImageDither
+#provided (fn @Image) ImageFlipVertical
+#provided (fn @Image) ImageFlipHorizontal
+#provided (fn @Image, int) ImageRotate
+#provided (fn @Image) ImageRotateCW
+#provided (fn @Image) ImageRotateCCW
+#provided (fn @Image, Color) ImageColorTint
+#provided (fn @Image) ImageColorInvert
+#provided (fn @Image) ImageColorGrayscale
+#provided (fn @Image, f32) ImageColorContrast
+#provided (fn @Image, int) ImageColorBrightness
+#provided (fn @Image, Color, Color) ImageColorReplace
+#provided (@Color fn Image) LoadImageColors
+#provided (@Color fn Image, int, @int) LoadImagePalette
+#provided (fn @Color) UnloadImageColors
+#provided (fn @Color) UnloadImagePalette
+#provided (Rectangle fn Image, f32) GetImageAlphaBorder
+#provided (Color fn Image, int, int) GetImageColor
+
+// Image Drawing Functions
+#provided (fn @Image, Color) ImageClearBackground
+#provided (fn @Image, int, int, Color) ImageDrawPixel
+#provided (fn @Image, Vector2, Color) ImageDrawPixelV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawLine
+#provided (fn @Image, Vector2, Vector2, Color) ImageDrawLineV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawCircle
+#provided (fn @Image, Vector2, int, Color) ImageDrawCircleV
+#provided (fn @Image, int, int, int, Color) ImageDrawCircleLines
+#provided (fn @Image, Vector2, int, Color) ImageDrawCircleLinesV
+#provided (fn @Image, int, int, int, int, Color) ImageDrawRectangle
+#provided (fn @Image, Vector2, Vector2, Color) ImageDrawRectangleV
+#provided (fn @Image, Rectangle, Color) ImageDrawRectangleRec
+#provided (fn @Image, Rectangle, int, Color) ImageDrawRectangleLines
+#provided (fn @Image, Image, Rectangle, Rectangle, Color) ImageDraw
+#provided (fn @Image, const @byte, int, int, int, Color) ImageDrawText
+#provided (fn @Image, Font, const @byte, Vector2, f32, f32, Color) ImageDrawTextEx
+
+// Texture Loading Functions
+#provided (Texture2D fn const @byte) LoadTexture
+#provided (Texture2D fn Image) LoadTextureFromImage
+#provided (TextureCubemap fn Image, int) LoadTextureCubemap
+#provided (RenderTexture2D fn int, int) LoadRenderTexture
+#provided (bool fn Texture2D) IsTextureReady
+#provided (fn Texture2D) UnloadTexture
+#provided (bool fn RenderTexture2D) IsRenderTextureReady
+#provided (fn RenderTexture2D) UnloadRenderTexture
+#provided (fn Texture2D, const @byte) UpdateTexture
+#provided (fn Texture2D, Rectangle, const @byte) UpdateTextureRec
+
+// Texture Configuration Functions
+#provided (fn @Texture2D) GenTextureMipmaps
+#provided (fn Texture2D, int) SetTextureFilter
+#provided (fn Texture2D, int) SetTextureWrap
+
+// Texture Drawing Functions
+#provided (fn Texture2D, int, int, Color) DrawTexture
+#provided (fn Texture2D, Vector2, Color) DrawTextureV
+#provided (fn Texture2D, Vector2, f32, f32, Color) DrawTextureEx
+#provided (fn Texture2D, Rectangle, Vector2, Color) DrawTextureRec
+#provided (fn Texture2D, Rectangle, Rectangle, Vector2, f32, Color) DrawTexturePro
+#provided (fn Texture2D, NPatchInfo, Rectangle, Vector2, f32, Color) DrawTextureNPatch
+
+// Color/Pixel Related Functions
+#provided (Color fn Color, f32) Fade
+#provided (int fn Color) ColorToInt
+#provided (Vector4 fn Color) ColorNormalize
+#provided (Color fn Vector4) ColorFromNormalized
+#provided (Vector3 fn Color) ColorToHSV
+#provided (Color fn f32, f32, f32) ColorFromHSV
+#provided (Color fn Color, Color) ColorTint
+#provided (Color fn Color, f32) ColorBrightness
+#provided (Color fn Color, f32) ColorContrast
+#provided (Color fn Color, f32) ColorAlpha
+#provided (Color fn Color, Color, Color) ColorAlphaBlend
+#provided (Color fn u32) GetColor
+#provided (Color fn @byte, int) GetPixelColor
+#provided (fn @byte, Color, int) SetPixelColor
+#provided (int fn int, int, int) GetPixelDataSize
+#typ struct Vector2 (
+	f32 x,
+	f32 y
+)
+
+#typ struct Vector3 (
+	f32 x,
+	f32 y,
+	f32 z
+)
+
+#typ struct Vector4 (
+	f32 x,
+	f32 y,
+	f32 z,
+	f32 w
+)
+
+#typ struct Quaternion (
+	f32 x,
+	f32 y,
+	f32 z,
+	f32 w
+)
+
+#typ struct Matrix (
+	f32 m0,
+	f32 m4,
+	f32 m8,
+	f32 m12,
+
+	f32 m1,
+	f32 m5,
+	f32 m9,
+	f32 m13,
+
+	f32 m2,
+	f32 m6,
+	f32 m10,
+	f32 m14,
+
+	f32 m3,
+	f32 m7,
+	f32 m11,
+	f32 m15
+)
+
+#typ struct Color (
+	byte r,
+	byte g,
+	byte b,
+	byte a
+)
+
+#provided Color LIGHTGRAY
+#provided Color GRAY
+#provided Color DARKGRAY
+#provided Color YELLOW
+#provided Color GOLD
+#provided Color ORANGE
+#provided Color PINK
+#provided Color RED
+#provided Color MAROON
+#provided Color GREEN
+#provided Color LIME
+#provided Color DARKGREEN
+#provided Color SKYBLUE
+#provided Color BLUE
+#provided Color DARKBLUE
+#provided Color PURPLE
+#provided Color VIOLET
+#provided Color DARKPURPLE
+#provided Color BEIGE
+#provided Color BROWN
+#provided Color DARKBROWN
+
+#provided Color WHITE
+#provided Color BLACK
+#provided Color BLANK
+#provided Color MAGENTA
+#provided Color RAYWHITE
+
+#typ struct Rectangle (
+	f32 x,
+	f32 y,
+	f32 width,
+	f32 height
+)
+
+#typ struct Texture (
+	u32 id,
+	int width,
+	int height,
+	int mipmaps,
+	int format
+)
+
+#typ struct Camera (
+	Vector3 position,
+	Vector3 target,
+	Vector3 up,
+	f32 fovy,
+	int projection
+)
+
+#typ struct Camera3D (
+	Vector3 position,
+	Vector3 target,
+	Vector3 up,
+	f32 fovy,
+	int projection
+)
+#provided int CAMERA_PERSPECTIVE
+#provided int CAMERA_ORBITAL
+
+#typ struct Camera2D (
+	Vector2 offest,
+	Vector2 traget,
+	f32 rotation,
+	f32 zoom
+)
+
+#provided int MOUSE_BUTTON_RIGHT
+#provided int MOUSE_BUTTON_LEFT
+#provided int MOUSE_BUTTON_MIDDLE
+#provided int MOUSE_BUTTON_SIDE
+#provided int MOUSE_BUTTON_EXTRA
+#provided int MOUSE_BUTTON_FORWARD
+#provided int MOUSE_BUTTON_BACK
+
+#typ struct Transform (
+	Vector3 translation,
+	Quaternion rotation,
+	Vector3 scale
+)
+
+#typ struct BoneInfo (
+	@byte name,
+	int parent
+)
+
+#typ struct ModelAnimation(
+	int boneCount,
+	int frameCount,
+	@BoneInfo bones,
+	@@Transform framePoses,
+	@byte name
+)
+
+//TODO: Finish these types!
+//Core
+#typ Image
+#typ RenderTexture2D
+#typ Shader
+#typ VrStereoConfig
+#typ VrDeviceInfo
+#typ Texture2D
+#typ Ray
+#typ FilePathList
+#typ AutomationEventList
+#typ AutomationEvent
+
+//Text
+#typ Font
+#typ GlyphInfo
+
+//Shapes
+#typ TextureCubemap
+#typ NPatchInfo
+
+//Models
+#typ Model
+#typ Mesh
+#typ BoundingBox
+#typ Material
+#typ RayCollision
+
+//Audio
+#typ Wave
+#typ Sound
+#typ Music
+#typ AudioStream
+#typ AudioCallback
+
 module(
 	name: "std"
 	// prefix: "axo__"
@@ -1860,27 +4141,103 @@ module(
 	website: "https://axolang.com"
 	license_name: "Apache 2.0"
 	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
-	description: "Axo standard library."
+	description: "Axo standard library. This mostly reuses C stdlib."
 )
 
-#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#provided bool true
+#provided bool false
 
-#provided (int fn @byte, ...) printf
-#provided (int fn @byte, ...) scanf
+// Memory allocation
+#provided (@none fn size_t) malloc
+#provided (@none fn @none, size_t) realloc
+#provided (none fn @none) free
 
-#provided (int fn int) srand
-#provided (int fn) rand
-
+// Process control
 #provided (int fn @byte) system
-#provided (int fn @byte) remove
+#provided (none fn int) exit
+#provided (int fn none) atexit
 
-fn std.seed_rand(int seed){
+// Environment
+#provided (int fn none) getenv
+#provided (int fn @byte, @byte) setenv
+#provided (int fn @byte) unsetenv
+#provided (int fn none) clearenv
+
+// Sorting and searching
+#provided (none fn @none, size_t, size_t, (int fn const @none, const @none)) qsort
+#provided (@none fn @none, @none, size_t, size_t, @int) bsearch
+
+// Pseudo-random number generation
+#provided (int fn) rand
+#provided (none fn u32) srand
+
+// Integer arithmetic
+#provided (int fn @byte, @byte, int) abs
+#provided (i64 fn @byte, @byte, i64) labs
+// #provided (long long fn @byte, @byte, long long) llabs
+
+// Multibyte string conversion
+#provided (int fn @byte, @byte, @byte, int) mbtowc
+#provided (int fn @byte, @byte, @byte) mbstowcs
+#provided (int fn @byte, @byte, @byte, int) wctomb
+#provided (int fn @byte, @byte, @byte) wcstombs
+
+// Conversion
+#provided (int fn @byte, @byte) atoi
+#provided (i64 fn @byte, @byte) atol
+// #provided (long long fn @byte, @byte) atoll
+#provided (f64 fn @byte, @byte) atof
+#provided (int fn @byte, @byte, @byte) strtol
+#provided (u64 fn @byte, @byte, @byte) strtoul
+// #provided (long long fn @byte, @byte, @byte) strtoll
+#provided (u64 fn @byte, @byte, @byte) strtoull
+#provided (f64 fn @byte, @byte, @byte) strtod
+#provided (f32 fn @byte, @byte, @byte) strtof
+// #provided (long double fn @byte, @byte, @byte) strtold
+
+// Memory management
+#provided (@none fn size_t) calloc
+
+// Process management
+#provided (int fn none) abort
+#provided (int fn none) _Exit
+
+// Mathematical functions
+#provided (int fn @byte) div
+#provided (i64 fn @byte) ldiv
+// #provided (long long fn @byte) lldiv
+
+// Temporary files
+#provided (@byte fn @byte) mktemp
+#provided (int fn @byte) mkstemp
+#provided (@byte fn @byte) tmpnam
+
+// Miscellaneous
+#provided (int fn) rand_r
+#provided (int fn @byte) realpath
+#provided (int fn @byte, @byte, int, int) mkfifo
+
+use io
+use time
+
+fn std::seed_rand(u32 seed=time::now().(u32)){
 	srand(seed)
 	ret 0
 }
 
-fn std.rand(){
+fn std::rand(){
 	ret rand()
+}
+
+fn panic(@byte msg, int exit_code=1){
+	fprintf(stderr, "%s%s%s\n", aesc::red, msg, aesc::reset)
+	exit(exit_code)
+}
+
+fn error:panic(){
+	panic($.msg, $.code)
 }
 
 fn print_module(axo_module mod){
@@ -1889,9 +4246,57 @@ fn print_module(axo_module mod){
 	ret 0
 }
 
-//Include common modules
-use aesc
+module(
+	name: "str"
+	version: "0.0.1"
+	author: "mightypancake"
+	website: "https://axolang.com"
+	license_name: "MIT"
+	license: "https://www.apache.org/licenses/LICENSE-2.0.txt"
+	description: "Basic string functionality"
+)
+
 use mem
+
+#include <string.h>
+
+#provided (@byte fn @byte, int, size_t) memchr
+#provided (int fn @byte, @byte, size_t) memcmp
+#provided (@byte fn @byte, @byte, size_t) memcpy
+#provided (@byte fn @byte, @byte, size_t) memmove
+#provided (@byte fn @byte, int, size_t) memset
+#provided (@byte fn @byte, @byte) strcat
+#provided (@byte fn @byte, @byte, size_t) strncat
+#provided (@byte fn @byte, int) strchr
+#provided (int fn @byte, @byte) strcmp
+#provided (int fn @byte, @byte, size_t) strncmp
+#provided (int fn @byte, @byte) strcoll
+#provided (@byte fn @byte, @byte) strcpy
+#provided (@byte fn @byte, @byte, size_t) strncpy
+#provided (size_t fn @byte, @byte) strcspn
+#provided (@byte fn int) strerror
+#provided (size_t fn @byte) strlen
+#provided (@byte fn @byte, @byte) strpbrk
+#provided (@byte fn @byte, int) strrchr
+#provided (size_t fn @byte, @byte) strspn
+#provided (@byte fn @byte, @byte) strstr
+#provided (@byte fn @byte, @byte) strtok
+#provided (size_t fn @byte, @byte, size_t) strxfrm
+
+fn str::alc(@byte str){
+  res = mem::alc(strlen(str)+1.(size_t)).(@byte)
+  strcpy(res, str)
+  ret res
+}
+
+fn byte:cpy(){
+	ret str::alc($)
+}
+
+fn byte:to_arr(){
+	res = [?0]byte
+}
+
 module(
 	name: "testing"
 	prefix: "test_"
@@ -1914,7 +4319,7 @@ struct test_batch (
 	u32							success_count
 )
 
-fn testing.new(@byte name){
+fn testing::new(@byte name){
 	r = test_batch{
 		name=name,
 		tests=[?0]tested_func,
@@ -1924,23 +4329,23 @@ fn testing.new(@byte name){
 }
 
 fn test_batch:add((int fn) func, @byte name){
-	self^.tests:push(tested_func{func=func, name=name})
+	$.tests:push(tested_func{func=func, name=name})
 	ret 0
 }
 
 fn test_batch:run(){
-	printf("%sTesting '%s':%s\n", aesc.blue, self^.name, aesc.reset)
-	for test in self^.tests {
+	printf("%sTesting '%s':%s\n", aesc::blue, $.name, aesc::reset)
+	for test in $.tests {
 		res = test.func()
 		if res == 0 {
-			self^.success_count++
-			printf("%s%s passed.%s\n", aesc.green, test.name, aesc.reset)
+			$.success_count++
+			printf("%s%s passed.%s\n", aesc::green, test.name, aesc::reset)
 		} else {
-			printf("%s%s failed, returned %d%s\n", aesc.red, test.name, res, aesc.reset)
+			printf("%s%s failed, returned %d%s\n", aesc::red, test.name, res, aesc::reset)
 		}
 	}
-	printf("%sTest results: %d/%d%s\n", aesc.blue, self^.success_count.(int), self^.tests.len[0],  aesc.reset)
-	ret self^.success_count.(int) == self^.tests.len[0] ? 0 : 1
+	printf("%sTest results: %d/%d%s\n", aesc::blue, $.success_count.(int), $.tests.len[0],  aesc::reset)
+	ret $.success_count.(int) == $.tests.len[0] ? 0 : 1
 }
 
 module(
@@ -1957,4 +4362,23 @@ module(
 
 fn tim.now(){
   ret time(null.(@time_t))
+}module(
+  name: "time"
+  author: "mightypancake"
+  description: "Provides basic time functionality."
+)
+
+#include <time.h>
+#typ time_t
+
+#provided (time_t fn @time_t) time
+#provided (@byte fn const @time_t) ctime
+
+fn time::now(){
+  ret time()
+}
+
+fn time::str(){
+  t = time::now()
+  ret ctime(t@)
 }

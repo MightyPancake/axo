@@ -1,7 +1,7 @@
 use std
-use io
 
-fn main([][]byte args) {
-    a += 1
-    ret 0
+fn main(){
+  e = "crazy"
+  ~print("hello world")
+  ret 0
 }

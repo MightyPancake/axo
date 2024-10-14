@@ -10,19 +10,19 @@ module(
 
 {
 	//Reset
-	aesc.reset = "\x1B[0m"
+	aesc::reset = "\x1B[0m"
 
 	//Styles
-	aesc.bold = "\x1B[1m"
-	aesc.inverse = "\x1B[7m"
+	aesc::bold = "\x1B[1m"
+	aesc::inverse = "\x1B[7m"
 
 	//Forground colors
-	aesc.black = "\x1B[30m"
-	aesc.red = "\x1B[31m"
-	aesc.green	= "\x1B[32m"
-	aesc.yellow = "\x1B[33m"
-	aesc.blue = "\x1B[34m"
-	aesc.magenta	= "\x1B[35m"
-	aesc.cyan = "\x1B[36m"
-	aesc.white	= "\x1B[37m"
+	aesc::black = "\x1B[30m"
+	aesc::red = "\x1B[31m"
+	aesc::green	= "\x1B[32m"
+	aesc::yellow = "\x1B[33m"
+	aesc::blue = "\x1B[34m"
+	aesc::magenta	= "\x1B[35m"
+	aesc::cyan = "\x1B[36m"
+	aesc::white	= "\x1B[37m"
 }

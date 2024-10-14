@@ -1,11 +1,3 @@
-# Eager to start coding?
-If you're not entirely new to programming and have uses a language before, you will probably pick axo really fast.
-This page is meant for veterans or people that feel generally well informed in the realm of programming languages.
+# Quick start
 
-This single page has the knowledge you need to start coding your own stuff. If you want, save it locally and read it while you have some spare time. It should only take about one day of reading.
-
-With that out of the way, jump right into reading. Remember to test your knowledge frequently. You can do it with The compiler itself or by using [the playground]().
-
-> [!TIP]
-> Click a header to save your reading progress!
-
+> An awesome project's another page.

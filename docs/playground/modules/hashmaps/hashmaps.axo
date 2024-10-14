@@ -24,8 +24,8 @@ struct hashmap_key_value_pair (
     size_t cap,
     u64 seed0,
     u64 seed1,
-		(u64 fn @none, u64, u64) hash,
-		(int fn @none, @none, @none) compare,
+		(u64 fn const @none, u64, u64) hash,
+		(int fn const @none, @none, @none) compare,
 		(fn @none) elfree,
 		@none udata,
     size_t bucketsz,
@@ -44,7 +44,7 @@ struct hashmap_key_value_pair (
 )
 
 //Hashing algos
-#provided (u64 fn @none, size_t, u64, u64) hashmap_murmur
+#provided (u64 fn const @none, size_t, u64, u64) hashmap_murmur
 
 //Hashmaps
 #provided (map fn size_t, size_t, u64, u64,
@@ -53,34 +53,34 @@ struct hashmap_key_value_pair (
 	(fn @none), //elfree
 	@byte //udata
 	) hashmap_new
-#provided (@none fn map, @none) hashmap_get
-#provided (@none fn map, @none) hashmap_set
+#provided (const @none fn map, @none) hashmap_get
+#provided (const @none fn map, @none) hashmap_set
 
 int fn hashmaps.cmp_str(@none a, @none b, @none udata){
 	ret strcmp(a.(@byte), b.(@byte))
 }
 
-u64 fn hashmaps.hash_str(@none item, u64 seed0, u64 seed1){
+u64 fn hashmaps.hash_str(const @none item, u64 seed0, u64 seed1){
 	ret hashmap_murmur(item, strlen(item.(@byte)), seed0, seed1)
 }
 
-int fn hashmaps.cmp_key_value_pair_str(@none a, @none b, @none udata){
+int fn hashmaps.cmp_key_value_pair_str(const @none a, const @none b, @none udata){
 	ret strcmp(a.(@byte), b.(@byte))
 }
 
-u64 fn hashmaps.hash_key_value_pair_str(@none item, u64 seed0, u64 seed1){
+u64 fn hashmaps.hash_key_value_pair_str(const @none item, u64 seed0, u64 seed1){
 	ret hashmap_murmur(item, strlen(item.(@byte)), seed0, seed1)
 }
 
-fn hashmaps.new((u64 fn @none, u64, u64) hash=hashmaps.hash_key_value_pair_str, (int fn @none, @none, @none) comp=hashmaps.cmp_key_value_pair_str, size_t elem_sz=sz_of(null).(size_t), (fn @none) elfree=free){
+fn hashmaps.new((u64 fn const @none, u64, u64) hash=hashmaps.hash_key_value_pair_str, (int fn const @none, const @none, @none) comp=hashmaps.cmp_key_value_pair_str, size_t elem_sz=sz_of(null).(size_t), (fn @none) elfree=free){
 	ret hashmap_new(elem_sz, (0).(size_t), (0).(u64), (0).(u64), hash, comp, elfree, null)
 }
 
-fn map:set(@none item){
+fn map:set(const @none item){
 	ret hashmap_set(self^, item)
 }
 
-fn map:get(@none item){
+fn map:get(const @none item){
 	ret hashmap_get(self^, item)
 }
 

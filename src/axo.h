@@ -10,10 +10,8 @@ typedef struct hashmap* map;
 #elif __EMSCRIPTEN__
     #include <emscripten.h>
     #include <emscripten/html5.h>
-    #include "./wasm.h"
 #endif
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include "./axo_err.h"
@@ -22,6 +20,18 @@ typedef struct hashmap* map;
 #include <dirent.h>
 #include <time.h>
 #include <stdio.h>
+
+//Include Lua
+#include "./lua/src/lua.h"
+#include "./lua/src/lualib.h"
+#include "./lua/src/lauxlib.h"
+
+//Lexer
+#define YY_DECL int yylex (YYSTYPE * yylval, struct YYLTYPE * yylloc, yyscan_t yyscanner)
+#define YY_BUF_SIZE 16384
+// void *yyextra;
+typedef void* yyscan_t;
+#define YY_EXTRA (yyextra)
 
 //Define YYLTYPE
 typedef struct YYLTYPE YYLTYPE;
@@ -33,6 +43,7 @@ struct YYLTYPE
   int last_column;
 };
 #define axo_max_path_len 2048
+#define axo_tmp_path_str ((char[axo_max_path_len]){'\0'})
 
 //Memory management values
 #define axo_scopes_cap 32
@@ -52,6 +63,8 @@ struct YYLTYPE
 #define axo_switch_expr_list_cap 16
 #define axo_cases_cap 16
 #define axo_c_sources_cap 16
+#define axo_cc_flags_len 16
+#define axo_comptime_params_cap 16
 
 #ifdef __WIN32
     #define AXO_BIN_EXT ".exe"
@@ -71,7 +84,8 @@ typedef enum axo_typ_kind{
     axo_c_arg_list_kind,
     axo_map_kind,
     axo_none_kind,
-    axo_module_kind
+    axo_module_kind,
+    axo_literal_kind
 }axo_typ_kind;
 
 #define axo_subtyp(T) ((axo_typ*)(T.subtyp))
@@ -112,13 +126,15 @@ typedef struct axo_typ {
         void*           structure;
         void*           arr;
         void*           map;
-        void*           module;
     };
     void*              def;
+    bool               is_const;
+    bool               is_volatile;
 }axo_typ;
 
 #define axo_no_typ ((axo_typ){.kind=axo_no_kind, .def=NULL})
 #define axo_none_typ ((axo_typ){.kind=axo_none_kind, .def=NULL})
+#define axo_none_ptr_typ ((axo_typ){.kind=axo_ptr_kind, .subtyp=&axo_none_typ,.def=NULL})
 
 typedef struct axo_arr_typ{
     axo_typ    subtyp;
@@ -133,7 +149,6 @@ typedef struct axo_types_list{
 typedef enum axo_expr_kind{
     axo_expr_normal_kind,
     axo_expr_enum_typ_kind,
-    axo_expr_module_kind,
     axo_expr_assigned_declaration_kind
 }axo_expr_kind;
 
@@ -144,10 +159,10 @@ typedef enum axo_lval_kind{
 }axo_lval_kind;
 
 typedef struct axo_expr{
-    axo_expr_kind  kind;
-    axo_lval_kind  lval_kind;
-    char*          val;
-    axo_typ        typ;
+    axo_expr_kind          kind;
+    axo_lval_kind          lval_kind;
+    char*                  val;
+    axo_typ                typ;
 }axo_expr;
 
 typedef enum axo_identifier_kind{
@@ -195,6 +210,7 @@ typedef enum axo_statement_kind{
     axo_expr_statement_kind,
     axo_switch_statement_kind,
     axo_defer_statement_kind,
+    axo_empty_statement_kind,
     axo_no_statement_kind
 }axo_statement_kind;
 
@@ -217,7 +233,10 @@ typedef enum axo_decl_kind{
     axo_assign_decl_kind,
     axo_is_decl_kind,
     axo_typ_def_decl_kind,
-    axo_other_decl_kind
+    axo_other_decl_kind,
+    axo_c_code_decl_kind,
+    axo_typedef_decl_kind,
+    axo_comptime_block_decl_kind
 }axo_decl_kind;
 
 typedef struct axo_decl {
@@ -242,10 +261,17 @@ typedef struct axo_scopes{
 }axo_scopes;
 
 typedef struct axo_var{
-    char*       name;
-    axo_typ     typ;
-    bool        is_const;
+    char*                  name;
+    axo_typ                typ;
 }axo_var;
+
+typedef enum axo_storage_qualifier {
+    axo_default_storage_qualifier,
+    axo_auto_storage_qualifier,
+    axo_register_storage_qualifier,
+    axo_static_storage_qualifier,
+    axo_extern_storage_qualifier
+}axo_storage_qualifier;
 
 typedef struct axo_simple_typ{
     char*        name;
@@ -273,23 +299,35 @@ typedef struct axo_compiler_config{
     bool                      extended_ascii;
 }axo_compiler_config;
 
+typedef enum axo_source_kind{
+    axo_string_source_kind,
+    axo_file_source_kind
+}axo_source_kind;
+
 typedef struct axo_source{
-    char*            path;
-    char*            parent_dir;
-    FILE*            file;
+    char*            name;    //What gets displayed in error messages
+    axo_source_kind  kind;
+    union {
+        FILE*        file;
+        char*        str;
+    };
+    //File related
+    char*            path;        //Aboslute path to source file
+    //General
     long             pos;
     int              line;
     int              col;
     int              index;
 }axo_source;
 
-#define axo_source(ST) (&(ST->sources[ST->sources_len-1]))
-#define axo_line(ST) (axo_source(ST)->line)
-#define axo_col(ST) (axo_source(ST)->col)
-#define axo_pos(ST) (axo_source(ST)->pos)
-#define axo_src_path(ST) (axo_source(ST)->path)
-#define axo_src_file(ST) (axo_source(ST)->file)
-#define axo_src_index(ST) (axo_source(ST)->index)
+#define axo_get_source(ST) (&(ST->sources[ST->sources_len-1]))
+#define axo_line(ST) (axo_get_source(ST)->line)
+#define axo_col(ST) (axo_get_source(ST)->col)
+#define axo_pos(ST) (axo_get_source(ST)->pos)
+#define axo_src_path(ST) (axo_get_source(ST)->path)
+#define axo_src_name(ST) (axo_get_source(ST)->name)
+#define axo_src_file(ST) (axo_get_source(ST)->file)
+#define axo_src_index(ST) (axo_get_source(ST)->index)
 
 typedef struct axo_module{
     char*        name;
@@ -301,7 +339,6 @@ typedef struct axo_module{
     char*        license_name;
     char*        license;
     char*        description;
-    axo_scope*   scope;
 }axo_module;
 
 typedef struct axo_state{
@@ -335,6 +372,7 @@ typedef struct axo_state{
     int                    extra_c_sources_len; //Length of extra C sources
     char*                  input_str;           //Input string (defaults to NULL)
     int                    input_str_index;
+    map                    included_files;
 
     //Modules
     map                    modules;
@@ -345,6 +383,12 @@ typedef struct axo_state{
     //Misc
     bool                   silenced;
     bool                   run;
+    char**                 cc_flags;
+    int                    cc_flags_len;
+    //Lua (comptime)
+    lua_State*             lua_state;
+    //Scanner
+    yyscan_t               scanner;
 }axo_state;
 
 #define axo_col_sup(ST) (ST->config.color_support)
@@ -404,6 +448,12 @@ typedef struct axo_func_call{
     axo_expr*           params;        //Fix: should be just char**
     int                 params_len;
 }axo_func_call;
+
+typedef struct axo_comptime_call {
+    char*               name;
+    axo_expr*           params;
+    int                 params_len;
+}axo_comptime_call;
 
 typedef struct axo_for_loop{
     char*          start;
@@ -579,9 +629,9 @@ uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1);
 #include "../axo_gram.tab.h"
 
 //Yacc
-int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
-void yyerror(YYLTYPE*, const char *, ...);
-int yyparse(void);
+void axo_yyerror(YYLTYPE*, const char *, ...);
+void yyerror(yyscan_t scanner, YYLTYPE*, const char *, ...);
+
 int asprintf(char **strp, const char *format, ...);
 
 //State
@@ -604,18 +654,19 @@ axo_scope* axo_scopes_top(axo_scopes* scopes);
 void axo_push_scope(axo_scopes* scopes, axo_scope* sc);
 
 //Variables
-axo_var* axo_set_var(axo_scope* sc, axo_var var);
+void axo_set_var(axo_scope* sc, axo_var var);
 axo_var* axo_get_var(axo_scope* sc, char* name);
 axo_var* axo_del_var(axo_scope* sc, char* name);
 void axo_set_func(axo_state* st, axo_func fn);
-char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr);
+char* axo_get_var_decl_assign(YYLTYPE* pos, axo_var var, axo_expr expr);
 
 //Sources
 void axo_new_source(axo_state* st, char* path);
 void axo_new_string_source(axo_state* st, char* code);
 void axo_pop_source(axo_state* st);
-void axo_switch_source(axo_source* src);
+void axo_switch_source(axo_state* st, axo_source* src);
 axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_lit);
+bool axo_was_file_included(axo_state* st, char* path);
 void axo_set_input_string(const char *str);
 
 //Modules
@@ -632,6 +683,8 @@ axo_decl axo_add_module(axo_state* st, axo_module mod);
 axo_decl axo_func_decl_to_decl(axo_func func);
 axo_decl axo_func_def_to_decl(axo_func func);
 axo_expr axo_call_to_expr(axo_func_call cl);
+axo_func_call axo_method_call(axo_state* st, axo_scope* sc, YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* name_pos, axo_expr expr, char* name, bool rval_now);
+axo_expr axo_expr_dot_field(axo_state* st, YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* field_pos, axo_expr passed_expr, char* field);
 
 //Structures
 int axo_get_struct_field_index(axo_struct* structure, char* name);
@@ -661,6 +714,8 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2); //FIX!
 bool axo_is_no_typ(axo_typ typ);
 bool is_simple_typ_eq(axo_typ t1, char* t2);
 const char* axo_identifier_kind_to_str(axo_identifier_kind kind);
+axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q);
+axo_typ axo_deep_copy_typ(axo_typ t);
 
 //Loops
 char* axo_for_loop_to_str(axo_for_loop lp);
@@ -684,6 +739,7 @@ bool axo_dir_exists(char* dirname) ;
 char* fmt_str(char* dest, const char fmt[], ...);
 char* fmtstr(const char fmt[], ...);
 char* axo_bool_to_str(bool a, axo_color_support_kind col_sup);
+const char* axo_identifier_kind_to_str(axo_identifier_kind iden);
 char* axo_cc_to_str(axo_cc_kind cc);
 char* axo_color_support_to_str(axo_color_support_kind col_sup);
 int axo_color_count(axo_color_support_kind col_sup);
@@ -694,13 +750,22 @@ void axo_color_printf(int index, axo_color_support_kind col_sup, const char* fmt
 char* itoa_spaced(int a);
 unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii);
 
+//Lua
+void axo_test_lua(axo_state* st);
+char* axo_typ_to_lua(axo_typ t);
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok, const char* src_name);
+const char* axo_lua_dofile(axo_state* st, const char* lua_path, bool* ok);
+axo_expr axo_parse_string_for_expr(axo_state* st, const char* code);
+axo_decl axo_parse_string_for_decl(axo_state* st, const char* code);
+
+
 //Memory related
 void* axo_safe_malloc(size_t n);
 
 //Errors
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg);
-void axo_verrorf(const char* fmt, va_list args);
-void axo_errorf(const char* fmt, ...);
+void axo_err_printf(const char* fmt, ...);
+void axo_err_vprintf(const char* fmt, va_list vargs);
 
 //Unknown
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2);
@@ -709,15 +774,26 @@ axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLT
 long long int* axo_encode_easter(char* input, int* out_len);
 char* axo_decode_easter(long long int* data);
 char* axo_err_msg(axo_err_code err_code);
+int axo_lua_dostring_with_source(lua_State *L, const char *code, const char *source_name);
 
 //Platform specific
 char* axo_resolve_path(char* filename);
 int axo_chdir(char* path);
 char* axo_get_exec_path(char* buf, int sz) ;
 char* axo_cwd(char* dest, size_t sz);
-char* axo_get_parent_dir(char* path);
+char* axo_get_parent_dir(char* dest, char* path);
 
 //Deprecated/shouldn't be used (will have to replace them)
 void set_val(axo_expr* dest, axo_typ typ, char* val);
+
+//Free
+void axo_free_state(axo_state* st);
+void axo_free_scope(axo_scope* sc);
+void axo_free_source(axo_source s);
+void axo_free_variables(map vars);
+void axo_free_func(axo_func fn);
+void axo_free_typ(axo_typ t);
+void axo_free_func_typ(axo_func_typ ft);
+void axo_free_index_access(axo_index_access ia);
 
 #endif

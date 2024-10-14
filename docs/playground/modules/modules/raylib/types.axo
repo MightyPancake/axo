@@ -1,0 +1,184 @@
+#typ struct Vector2 (
+	f32 x,
+	f32 y
+)
+
+#typ struct Vector3 (
+	f32 x,
+	f32 y,
+	f32 z
+)
+
+#typ struct Vector4 (
+	f32 x,
+	f32 y,
+	f32 z,
+	f32 w
+)
+
+#typ struct Quaternion (
+	f32 x,
+	f32 y,
+	f32 z,
+	f32 w
+)
+
+#typ struct Matrix (
+	f32 m0,
+	f32 m4,
+	f32 m8,
+	f32 m12,
+
+	f32 m1,
+	f32 m5,
+	f32 m9,
+	f32 m13,
+
+	f32 m2,
+	f32 m6,
+	f32 m10,
+	f32 m14,
+
+	f32 m3,
+	f32 m7,
+	f32 m11,
+	f32 m15
+)
+
+#typ struct Color (
+	byte r,
+	byte g,
+	byte b,
+	byte a
+)
+
+#provided Color LIGHTGRAY
+#provided Color GRAY
+#provided Color DARKGRAY
+#provided Color YELLOW
+#provided Color GOLD
+#provided Color ORANGE
+#provided Color PINK
+#provided Color RED
+#provided Color MAROON
+#provided Color GREEN
+#provided Color LIME
+#provided Color DARKGREEN
+#provided Color SKYBLUE
+#provided Color BLUE
+#provided Color DARKBLUE
+#provided Color PURPLE
+#provided Color VIOLET
+#provided Color DARKPURPLE
+#provided Color BEIGE
+#provided Color BROWN
+#provided Color DARKBROWN
+
+#provided Color WHITE
+#provided Color BLACK
+#provided Color BLANK
+#provided Color MAGENTA
+#provided Color RAYWHITE
+
+#typ struct Rectangle (
+	f32 x,
+	f32 y,
+	f32 width,
+	f32 height
+)
+
+#typ struct Texture (
+	u32 id,
+	int width,
+	int height,
+	int mipmaps,
+	int format
+)
+
+#typ struct Camera (
+	Vector3 position,
+	Vector3 target,
+	Vector3 up,
+	f32 fovy,
+	int projection
+)
+
+#typ struct Camera3D (
+	Vector3 position,
+	Vector3 target,
+	Vector3 up,
+	f32 fovy,
+	int projection
+)
+#provided int CAMERA_PERSPECTIVE
+#provided int CAMERA_ORBITAL
+
+#typ struct Camera2D (
+	Vector2 offest,
+	Vector2 traget,
+	f32 rotation,
+	f32 zoom
+)
+
+#provided int MOUSE_BUTTON_RIGHT
+#provided int MOUSE_BUTTON_LEFT
+#provided int MOUSE_BUTTON_MIDDLE
+#provided int MOUSE_BUTTON_SIDE
+#provided int MOUSE_BUTTON_EXTRA
+#provided int MOUSE_BUTTON_FORWARD
+#provided int MOUSE_BUTTON_BACK
+
+#typ struct Transform (
+	Vector3 translation,
+	Quaternion rotation,
+	Vector3 scale
+)
+
+#typ struct BoneInfo (
+	@byte name,
+	int parent
+)
+
+#typ struct ModelAnimation(
+	int boneCount,
+	int frameCount,
+	@BoneInfo bones,
+	@@Transform framePoses,
+	@byte name
+)
+
+//TODO: Finish these types!
+//Core
+#typ Image
+#typ RenderTexture2D
+#typ Shader
+#typ VrStereoConfig
+#typ VrDeviceInfo
+#typ Texture2D
+#typ Ray
+#typ FilePathList
+#typ AutomationEventList
+#typ AutomationEvent
+
+//Text
+#typ Font
+#typ GlyphInfo
+
+//Shapes
+#typ TextureCubemap
+#typ NPatchInfo
+
+//Models
+#typ Model
+#typ Mesh
+#typ BoundingBox
+#typ Material
+#typ RayCollision
+
+//Audio
+#typ Wave
+#typ Sound
+#typ Music
+#typ AudioStream
+#typ AudioCallback
+

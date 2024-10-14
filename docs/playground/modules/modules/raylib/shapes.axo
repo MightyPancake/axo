@@ -1,0 +1,72 @@
+// Set texture and rectangle to be used on shapes drawing
+#provided (fn Texture2D, Rectangle) SetShapesTexture
+
+// Basic shapes drawing functions
+#provided (fn int, int, Color) DrawPixel
+#provided (fn Vector2, Color) DrawPixelV
+#provided (fn int, int, int, int, Color) DrawLine
+#provided (fn Vector2, Vector2, Color) DrawLineV
+#provided (fn Vector2, Vector2, f32, Color) DrawLineEx
+#provided (fn @Vector2, int, Color) DrawLineStrip
+#provided (fn Vector2, Vector2, f32, Color) DrawLineBezier
+#provided (fn int, int, f32, Color) DrawCircle
+#provided (fn Vector2, f32, f32, f32, int, Color) DrawCircleSector
+#provided (fn Vector2, f32, f32, f32, int, Color) DrawCircleSectorLines
+#provided (fn int, int, f32, Color, Color) DrawCircleGradient
+#provided (fn Vector2, f32, Color) DrawCircleV
+#provided (fn int, int, f32, Color) DrawCircleLines
+#provided (fn Vector2, f32, Color) DrawCircleLinesV
+#provided (fn int, int, f32, f32, Color) DrawEllipse
+#provided (fn int, int, f32, f32, Color) DrawEllipseLines
+#provided (fn Vector2, f32, f32, f32, f32, int, Color) DrawRing
+#provided (fn Vector2, f32, f32, f32, f32, int, Color) DrawRingLines
+#provided (fn int, int, int, int, Color) DrawRectangle
+#provided (fn Vector2, Vector2, Color) DrawRectangleV
+#provided (fn Rectangle, Color) DrawRectangleRec
+#provided (fn Rectangle, Vector2, f32, Color) DrawRectanglePro
+#provided (fn int, int, int, int, Color, Color) DrawRectangleGradientV
+#provided (fn int, int, int, int, Color, Color) DrawRectangleGradientH
+#provided (fn Rectangle, Color, Color, Color, Color) DrawRectangleGradientEx
+#provided (fn int, int, int, int, Color) DrawRectangleLines
+#provided (fn Rectangle, f32, Color) DrawRectangleLinesEx
+#provided (fn Rectangle, f32, int, Color) DrawRectangleRounded
+#provided (fn Rectangle, f32, int, f32, Color) DrawRectangleRoundedLines
+#provided (fn Vector2, Vector2, Vector2, Color) DrawTriangle
+#provided (fn Vector2, Vector2, Vector2, Color) DrawTriangleLines
+#provided (fn @Vector2, int, Color) DrawTriangleFan
+#provided (fn @Vector2, int, Color) DrawTriangleStrip
+#provided (fn Vector2, int, f32, f32, Color) DrawPoly
+#provided (fn Vector2, int, f32, f32, Color) DrawPolyLines
+#provided (fn Vector2, int, f32, f32, f32, Color) DrawPolyLinesEx
+
+// Splines drawing functions
+#provided (fn @Vector2, int, f32, Color) DrawSplineLinear
+#provided (fn @Vector2, int, f32, Color) DrawSplineBasis
+#provided (fn @Vector2, int, f32, Color) DrawSplineCatmullRom
+#provided (fn @Vector2, int, f32, Color) DrawSplineBezierQuadratic
+#provided (fn @Vector2, int, f32, Color) DrawSplineBezierCubic
+#provided (fn Vector2, Vector2, f32, Color) DrawSplineSegmentLinear
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBasis
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentCatmullRom
+#provided (fn Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBezierQuadratic
+#provided (fn Vector2, Vector2, Vector2, Vector2, f32, Color) DrawSplineSegmentBezierCubic
+
+// Spline segment point evaluation functions
+#provided (Vector2 fn Vector2, Vector2, f32) GetSplinePointLinear
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointBasis
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointCatmullRom
+#provided (Vector2 fn Vector2, Vector2, Vector2, f32) GetSplinePointBezierQuad
+#provided (Vector2 fn Vector2, Vector2, Vector2, Vector2, f32) GetSplinePointBezierCubic
+
+// Basic shapes collision detection functions
+#provided (bool fn Rectangle, Rectangle) CheckCollisionRecs
+#provided (bool fn Vector2, f32, Vector2, f32) CheckCollisionCircles
+#provided (bool fn Vector2, f32, Rectangle) CheckCollisionCircleRec
+#provided (bool fn Vector2, Rectangle) CheckCollisionPointRec
+#provided (bool fn Vector2, Vector2, f32) CheckCollisionPointCircle
+#provided (bool fn Vector2, Vector2, Vector2, Vector2) CheckCollisionPointTriangle
+#provided (bool fn Vector2, @Vector2, int) CheckCollisionPointPoly
+#provided (bool fn Vector2, Vector2, Vector2, Vector2, @Vector2) CheckCollisionLines
+#provided (bool fn Vector2, Vector2, Vector2, int) CheckCollisionPointLine
+#provided (Rectangle fn Rectangle, Rectangle) GetCollisionRec
+

@@ -8,9 +8,8 @@
 #include <time.h>
 #include <stdio.h>
 #include "./axo.h"
+#include "../lex.yy.h"
 #include "./asciiart.h" //ASCII art for the mascot!
-
-void yyrestart(FILE*);
 
 long long int axo_easter_msg1[] = {2334956330867777876, 2338060278192697204, 8243113893085146979, 8297728800164421695, 7237125614924164640, 2339460887010487854, 7594793506165449313, 8030798189137847406, 7954880256880436589, 7310595013176488804, 2188385};
 
@@ -24,8 +23,8 @@ uint64_t map_hash_func(const void *item, uint64_t seed0, uint64_t seed1) {return
 int map_cmp_module(const void* a, const void* b, void *udata){return strcmp(((axo_module*)(a))->name, ((axo_module*)(b))->name); }
 uint64_t map_hash_module(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_module*)item)->name, strlen(((axo_module*)item)->name), seed0, seed1);}
 
-int map_cmp_str(const void* a, const void* b, void *udata){return strcmp((char*)a, (char*)b); }
-uint64_t map_hash_str(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(item, strlen((char*)item), seed0, seed1);}
+int map_cmp_str(const void* a, const void* b, void *udata){return strcmp(*(char**)a, *(char**)b); }
+uint64_t map_hash_str(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(*(char**)item, strlen(*(char**)item), seed0, seed1);}
 
 int map_cmp_typ_def(const void* a, const void* b, void *udata){return strcmp(((axo_typ_def*)(a))->name, ((axo_typ_def*)(b))->name); }
 uint64_t map_hash_typ_def(const void *item, uint64_t seed0, uint64_t seed1) {return hashmap_murmur(((axo_typ_def*)item)->name, strlen(((axo_typ_def*)item)->name), seed0, seed1);}
@@ -55,6 +54,12 @@ char* axo_get_typ_default(axo_typ typ){
     axo_typ err_t;
     if (typ.def != NULL) return (char*)(typ.def);
     switch(typ.kind){
+        case axo_none_kind:
+            return "none_defult";
+            break;
+        case axo_simple_kind:
+            return "0";
+            break;
         case axo_arr_kind:
             return "AXO_NULL_ARR";
             break;
@@ -68,7 +73,7 @@ char* axo_get_typ_default(axo_typ typ){
         case axo_c_arg_list_kind:
             return "";
         default:
-            yyerror(NULL, "Couldn't get default type for kind %s.", axo_typ_kind_to_str(typ.kind));
+            axo_yyerror(NULL, "Couldn't get default type for kind %s.", axo_typ_kind_to_str(typ.kind));
             break;
     }
     return "";
@@ -84,7 +89,8 @@ char* axo_file_to_str(char* path){
         fseek (file, 0, SEEK_SET);
         str = (char*)malloc((len+1)*sizeof(char));
         if (str){
-            fread(str, sizeof(char), len, file);
+            if (fread(str, sizeof(char), len, file) < len)
+                fprintf(stderr, "Error at %s:%d\n", __FILE__, __LINE__);
         }
         fclose(file);
     }
@@ -122,6 +128,7 @@ axo_state* axo_new_state(char* root_path){
     axo_new_numeric_typ(st, "i64", "int64_t", "0");
     axo_new_numeric_typ(st, "u16", "uint16_t", "0");
     axo_new_numeric_typ(st, "u64", "uint64_t", "0");
+    axo_new_numeric_typ(st, "size_t", "size_t", "0");
     //File related
     st->root_path = root_path;
     st->sources = NULL;
@@ -134,6 +141,7 @@ axo_state* axo_new_state(char* root_path){
     st->extra_c_sources_len = 0;
     st->input_str = NULL;
     st->input_str_index = 0;
+    st->included_files = new_map(char*, map_hash_str, map_cmp_str);
     //Modules
     st->modules = new_map(axo_module, map_hash_module, map_cmp_module);
     st->module_names = NULL;
@@ -141,7 +149,55 @@ axo_state* axo_new_state(char* root_path){
     //Misc
     st->silenced = false;
     st->run = false;
+    st->cc_flags = NULL;
+    st->cc_flags_len = 0;
+    //Lua
+    st->lua_state = luaL_newstate();
+    luaL_openlibs(st->lua_state);
+    //Scanner
+    yylex_init(&(st->scanner));
     return st;
+}
+
+void axo_free_state(axo_state* st){
+    for (int i=0; i<st->decls_len; i++)
+        free(st->decls[i].val);
+    //TODO: Free underlying types?
+    hashmap_free(st->types_def);
+    // free(st->orig_cwd);
+    // free(st->root_path);
+    for (int i=0; i<st->sources_len; i++){
+        axo_free_source(st->sources[i]);
+    }
+    free(st->sources);
+    free(st->entry_file);
+    free(st->entry_point);
+    free(st->output_file);
+    free(st->output_c_file);
+    for (int i=0; i<st->extra_c_sources_len; i++)
+        free(st->extra_c_sources[i]);
+    free(st->extra_c_sources);
+    if (st->input_str) free(st->input_str);
+    hashmap_free(st->modules);
+    for (int i=0; i<st->cc_flags_len; i++)
+        free(st->cc_flags[i]);
+    free(st->cc_flags);
+    axo_free_scope(st->global_scope);
+
+    size_t iter = 0;
+    void* item;
+    while (hashmap_iter(st->included_files, &iter, &item)) {
+        char** path = (char**)item;
+        // printf("Freeing path: %s\n", *path);
+        free(*path);
+    }
+    hashmap_free(st->included_files);
+    
+    free(st);
+}
+
+void axo_free_str_map(map hashmap){
+    
 }
 
 void axo_load_cfg(axo_state* st){
@@ -172,7 +228,7 @@ void axo_load_cfg(axo_state* st){
 #define next_arg ({ \
     skip_arg; \
     if (arg==NULL){ \
-        yyerror(NULL, "Expected at least one more argument after: %s", argv[arg_num-1]); \
+        axo_yyerror(NULL, "Expected at least one more argument after: %s", argv[arg_num-1]); \
         return; \
     } \
     arg; \
@@ -182,13 +238,13 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
     int arg_num = init_arg;
     char* arg = argv[init_arg];
     while (arg != NULL){
-        // printf("Got arg #%d: %s\n", arg_num, arg);
+        // printf("Got arg #%d/%d: %s\n", arg_num, argc, arg);
         if (strcmp(arg, "-e")==0){ //Set entry point
             next_arg;
             if (st->entry_point == NULL)
                 st->entry_point = alloc_str(arg);
             else
-                yyerror(NULL, "Cannot set entry point to '%s' after it was already set to '%s'.", arg, st->entry_point);
+                axo_yyerror(NULL, "Cannot set entry point to '%s' after it was already set to '%s'.", arg, st->entry_point);
         }else if (strcmp(arg, "-r")==0 || strcmp(arg, "run") == 0){ //Silence compiler's printfs
             st->run = true;
         }else if (strcmp(arg, "-s")==0){ //Silence compiler's printfs
@@ -198,25 +254,25 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
             if (st->output_file == NULL)
                 st->output_file = alloc_str(arg);
             else
-                yyerror(NULL, "Cannot set output file name to '%s' after it was already set to '%s'.", arg, st->output_file);
+                axo_yyerror(NULL, "Cannot set output file name to '%s' after it was already set to '%s'.", arg, st->output_file);
         }else if (strcmp(arg, "-i")==0){ //Get input from argument
             next_arg;
             if (st->input_str == NULL){
                 st->input_str = alloc_str(arg);
             }else{
-                yyerror(NULL, "Multiple string inputs.");
+                axo_yyerror(NULL, "Multiple string inputs.");
             }
         }else if (strcmp(arg, "-oc")==0){ //Set output c file name
             next_arg;
             if (st->output_c_file == NULL)
                 st->output_c_file = alloc_str(arg);
             else
-                yyerror(NULL, "Cannot set output c file name to '%s' after it was already set to '%s'.", arg, st->output_c_file);
+                axo_yyerror(NULL, "Cannot set output c file name to '%s' after it was already set to '%s'.", arg, st->output_c_file);
         }else{//Set entry file
             if (st->entry_file == NULL)
                 st->entry_file = alloc_str(arg);
             else
-                yyerror(NULL, "Cannot set entry file to '%s' after it was already set to '%s'.", arg, st->entry_file);
+                axo_yyerror(NULL, "Cannot set entry file to '%s' after it was already set to '%s'.", arg, st->entry_file);
         }
         skip_arg;
     }
@@ -340,7 +396,7 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
                 };
                 break;
             default:
-                yyerror(expr_loc, "Field not supported for %dd arays yet.");
+                axo_yyerror(expr_loc, "Field not supported for %dd arays yet.");
                 break;
         }
     }else if (strcmp("cap", field)==0){
@@ -401,11 +457,149 @@ axo_expr axo_get_array_field(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* field_lo
         };
         free(typ.subtyp);
         if (arr_typ.dim_count>3)
-            yyerror(field_loc, "Field not yet supported for %dd arrays!");
+            axo_yyerror(field_loc, "Field not yet supported for %dd arrays!");
     }else{
-        yyerror(field_loc, "Invalid array field.");
+        axo_yyerror(field_loc, "Invalid array pseudo-field.");
     }
     return (axo_expr){};
+}
+
+axo_expr axo_expr_dot_field(axo_state* st,YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* field_pos, axo_expr expr, char* field){
+    axo_expr ret = (axo_expr){};
+    axo_enum* enumerate;
+    axo_struct* structure;
+    while(expr.typ.kind==axo_ptr_kind){
+        char* new_val = fmtstr("(*%s)", expr.val);
+        expr = (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .lval_kind=false,
+            .typ=*axo_subtyp(expr.typ)
+        };
+        free(expr.val);
+        expr.val = new_val;
+    }
+    switch(expr.kind){
+      case axo_expr_enum_typ_kind:
+        enumerate = (axo_enum*)(expr.typ.enumerate);
+        int index = -1;
+        for (int i=0; i<enumerate->len; i++){
+          if (strcmp(enumerate->names[i], field)==0){
+            index = i;
+            break;
+          }
+        }
+        if (index<0)
+         axo_yyerror(pos, "Enum '%s' doesn't have a field named '%s'.", enumerate->name, field);
+        else{
+          ret = (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .typ=expr.typ,
+            .val=fmtstr("%s$%s", enumerate->name, enumerate->names[index])
+          };
+        }
+        break;
+      default:
+        switch(expr.typ.kind){
+          case axo_struct_kind:
+            structure = (axo_struct*)(expr.typ.structure);
+            int index = -1;
+            for (int i=0;i<structure->fields_len; i++){
+              if (strcmp(structure->fields[i].name, field)==0){
+                index = i;
+                break;
+              }
+            }
+            if (index<0){
+                axo_yyerror(pos, "Struct '%s' doesn't have a field named '%s'.", structure->name, field);
+            }else{
+              ret = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .val=fmtstr("%s.%s", expr.val, field),
+                .typ=structure->fields[index].typ
+              };
+            }
+            break;
+          case axo_arr_kind: //.len, .data, .dims
+            ret = axo_get_array_field(st, expr_pos, field_pos, expr, field);
+            break;
+          default:
+            axo_yyerror(expr_pos, "Cannot get field of type '%s'", axo_typ_to_str(expr.typ));
+          break;
+        }
+        break;
+    }
+    free(field);
+    return ret;
+}
+
+axo_func_call axo_method_call(axo_state* st, axo_scope* sc, YYLTYPE* pos, YYLTYPE* expr_pos, YYLTYPE* name_pos, axo_expr expr, char* name, bool rval_now){
+    axo_func_call ret;
+    axo_expr passed_expr;
+    axo_expr self_expr = expr;
+    while(self_expr.typ.kind==axo_ptr_kind){
+        char* new_val = fmtstr("(*%s)", self_expr.val);
+        self_expr = (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .lval_kind=false,
+            .typ=*axo_subtyp(self_expr.typ)
+        };
+        free(self_expr.val);
+        self_expr.val = new_val;
+    }
+    switch(self_expr.typ.kind){
+      case axo_enum_kind:
+      case axo_simple_kind:
+      case axo_struct_kind:
+        if (self_expr.lval_kind == axo_not_lval_kind){
+          axo_yyerror(expr_pos, "Cannot reference a non-lvalue expression to call a method.");
+        }else{
+          char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str(self_expr.typ), name);
+          axo_var* var = axo_get_var(sc, fn_name);
+          if (!var)
+            axo_yyerror(name_pos, "Method '%s' undefined before usage.", name);
+          else{
+            if (var->typ.kind != axo_func_kind){
+              axo_yyerror(name_pos, "Attempted to call a non-function method. (Naming clash?)");  
+            }else{
+              passed_expr = (axo_expr){
+                .kind=axo_expr_normal_kind,
+                .lval_kind=axo_not_lval_kind,
+                .val=fmtstr("(&(%s))", self_expr.val),
+                .typ=(axo_typ){
+                  .kind=axo_ptr_kind,
+                  .subtyp=alloc_one(axo_typ)
+                }
+              };
+              *axo_subtyp(passed_expr.typ) = self_expr.typ;
+              ret = (axo_func_call){
+                .typ = var->typ,
+                .called_val = fn_name,
+                .params_len=1,
+                .params=(axo_expr*)malloc(axo_func_args_cap*sizeof(axo_expr))
+              };
+              ret.params[0] = passed_expr;
+            }
+          }
+        }        
+        break;
+        case axo_arr_kind:
+          passed_expr = (axo_expr){
+            .kind=axo_expr_normal_kind,
+            .lval_kind=axo_not_lval_kind,
+            .val=fmtstr("(&(%s))", self_expr.val),
+            .typ=(axo_typ){
+              .kind=axo_ptr_kind,
+              .subtyp=alloc_one(axo_typ)
+            }
+          };
+          *axo_subtyp(passed_expr.typ) = self_expr.typ;
+          ret = axo_get_array_method(st, expr_pos, name_pos, passed_expr, name);
+          break;
+      default:
+        axo_yyerror(expr_pos, "Methods can only operate on simple types (primitives, enums or structures), not '%s'.", axo_typ_to_str(self_expr.typ));
+        break;
+    }
+    return ret;
 }
 
 axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* name_loc, axo_expr expr, char* name){
@@ -467,7 +661,7 @@ axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* na
         ret.params[0] = expr;
         ret.params[0].val = fmtstr("%s, %s", axo_typ_to_c_str((axo_typ){.kind=axo_ptr_kind, .subtyp=&(arr_typ.subtyp)}), expr.val);
         if (arr_typ.dim_count>1)
-            yyerror(name_loc, "Method not yet supported for %dd arrays!", arr_typ.dim_count);
+            axo_yyerror(name_loc, "Method not yet supported for %dd arrays!", arr_typ.dim_count);
         return ret;
     }else if (strcmp("cap", name) == 0){
         *f_typ = (axo_func_typ){
@@ -528,10 +722,10 @@ axo_func_call axo_get_array_method(axo_state* st, YYLTYPE* expr_loc, YYLTYPE* na
         ret.params[0] = expr;
         ret.params[0].val = fmtstr("%s, (*%s)", axo_typ_to_c_str(arr_typ.subtyp), expr.val);
         if (arr_typ.dim_count>3)
-            yyerror(expr_loc, "Method unsupported for %dd arrays yet!", arr_typ.dim_count);
+            axo_yyerror(expr_loc, "Method unsupported for %dd arrays yet!", arr_typ.dim_count);
         return ret;
     }else{
-        yyerror(name_loc, "Undefined array method.");
+        axo_yyerror(name_loc, "Undefined array method.");
     }
     return (axo_func_call){};
 }
@@ -551,7 +745,7 @@ void axo_lolprintf(axo_color_support_kind col_sup, int seed, const char* fmt, ..
         case axo_full_color_support_kind:
         case axo_limited_color_support_kind:
             va_start(args, fmt);
-            vasprintf(&str, fmt, args);
+            if (vasprintf(&str, fmt, args)<0) fprintf(stderr, "vasprintf error at %s:%d\n", __FILE__, __LINE__);
             va_end(args);
             len = strlen(str);
             col_count = axo_color_count(col_sup);
@@ -581,7 +775,9 @@ char* axo_lolsprintf(axo_color_support_kind col_sup, int seed, char* dest, const
         case axo_full_color_support_kind:
         case axo_limited_color_support_kind:
             va_start(args, fmt);
-            vasprintf(&str, fmt, args);
+            if (vasprintf(&str, fmt, args) < 0){
+                fprintf(stderr, "error in vasprintf %s:%d\n", __FILE__, __LINE__);
+            }
             va_end(args);
             len = strlen(str);
             col_count = axo_color_count(col_sup);
@@ -621,10 +817,12 @@ void axo_print_config(axo_state* st){
     int col_count = axo_color_count(col_sup);
     int seed = rand() % col_count;
     printf("%s", axo_get_color_esc(28, col_sup));
+    int axo_moji_res;
     if (col_sup == axo_no_color_support_kind)
-        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
+        axo_moji_res = system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printmoji"AXO_BIN_EXT, st->root_path));
     else
-        system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printcolmoji"AXO_BIN_EXT, st->root_path));
+        axo_moji_res = system(fmt_str((char[axo_max_path_len]){},"%s"axo_dir_sep"printcolmoji"AXO_BIN_EXT, st->root_path));
+    if (axo_moji_res != 0) printf("Error printing cfg\n");
     printf("  v.%s\n", AXO_VERSION);
     printf(axo_reset_style"cc: %s\n", axo_lolsprintf(col_sup, seed, (char[64]){}, axo_cc_to_str(cfg.cc)));
     printf("keep_c: %s\n", axo_bool_to_str(cfg.keep_c, col_sup));
@@ -706,16 +904,18 @@ int axo_set_cmd(axo_state* st, int argc, char** argv){
 void axo_new_source(axo_state* st, char* path){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
-    src->path = alloc_str(path);
-    //ERROR
-    src->parent_dir = alloc_str(axo_get_parent_dir(axo_resolve_path(path)));
+    src->name = alloc_str(path);
+    src->kind = axo_file_source_kind;
+    src->path = axo_resolve_path(path);
+    // printf("parent dir: %s\n", src->path);
     src->file = fopen(src->path, "rb");
     src->index = 0;
     src->pos = 0;
     src->line = 1;
     src->col = 1;
-    axo_chdir(src->parent_dir);
-    yyrestart(src->file);
+    
+    axo_chdir(axo_get_parent_dir(axo_tmp_path_str, path));
+    yyrestart(src->file, st->scanner);
     st->sources_len++;
     if (!(src->file)){
         fprintf(stderr, "fopen('%s') error: ", path);
@@ -723,38 +923,59 @@ void axo_new_source(axo_state* st, char* path){
     }
 }
 
+void axo_free_source(axo_source s){
+    free(s.name);
+    switch(s.kind){
+        case axo_file_source_kind:
+            free(s.path);
+            break;
+        case axo_string_source_kind:
+        break;
+    }
+}
+
+void axo_free_index_access(axo_index_access ia){
+    free(ia.indexes);
+}
+
 void axo_new_string_source(axo_state* st, char* code){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
-    src->path = alloc_str(code);
+    src->name = alloc_str("string source");
+    src->path = alloc_str("input string");
+    src->str = alloc_str(code);
     src->index = 0;
-    src->parent_dir = alloc_str(axo_cwd((char[1024]){}, 1024));
-    src->file = NULL;
     src->pos = 0;
     src->line = 1;
     src->col = 1;
-    axo_chdir(src->parent_dir);
-    // yyrestart(src->file);
+    src->kind = axo_string_source_kind;
+    // axo_chdir(src->parent_dir);
     st->sources_len++;
 }
 
 void axo_pop_source(axo_state* st){
     st->sources_len--;
+    axo_free_source(st->sources[st->sources_len]);
     if (st->sources_len>0){
         axo_source* src = &(st->sources[st->sources_len-1]);
-        axo_switch_source(src);
+        axo_switch_source(st, src);
     }else{
         printf("all sources ended. (this should never happen)\n");
     }
 }
 
-void axo_switch_source(axo_source* src){
-    axo_chdir(src->parent_dir);
-    if (src->file){
-        fseek(src->file, src->pos, SEEK_SET);
-        yyrestart(src->file);
-    }else{
-        src->index = src->pos;
+void axo_switch_source(axo_state* st, axo_source* src){
+    switch (src->kind){
+        case axo_string_source_kind:
+            src->index = src->pos;
+            break;
+        case axo_file_source_kind:
+            fseek(src->file, src->pos, SEEK_SET);
+            yyrestart(src->file, st->scanner);
+            char* dir = axo_get_parent_dir(axo_tmp_path_str, src->path);
+            // printf("Switching chdir to %s\n", dir);
+            axo_chdir(dir);
+            break;
     }
 }
 
@@ -769,16 +990,25 @@ axo_decl axo_include_file(axo_state* st, YYLTYPE* loc, char* filename, bool str_
     //Check local first
     bool exists = axo_file_exists(str);
     if (exists){
-      axo_new_source(st, str);
+        char* res_path = axo_resolve_path(str);
+        if (!axo_was_file_included(st, res_path)){
+            hashmap_set(st->included_files, &res_path);
+            axo_new_source(st, str);
+        }else{
+            free(res_path);
+        }
     }else{
-      yyerror(loc, "Couldn't find '%s'.\n", str);
+      axo_yyerror(loc, "Couldn't find '%s'.\n", str);
     }
     return (axo_decl){.val=fmtstr("//including '%s'", str), .kind=axo_use_decl_kind};
 }
 
+bool axo_was_file_included(axo_state* st, char* path){
+    void* p = (char*)(hashmap_get(st->included_files, &path));
+    return p?true:false;
+}
+
 axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name){
-    // printf("use %s\n", name);
-    // printf("Searching for dir...\n");
     //Check local first
     char path[axo_max_path_len];
     bool found = false;
@@ -787,18 +1017,26 @@ axo_decl axo_use_module(axo_state* st, YYLTYPE* loc, char* name){
     if (!(found = axo_dir_exists(path))){
         sprintf(path, "%s"axo_dir_sep"modules"axo_dir_sep"%s", st->root_path, name);
         if (!(found = axo_dir_exists(path))){
-            yyerror(loc, "Couldn't find module '%s'.", name);
+            axo_yyerror(loc, "Couldn't find module '%s'.", name);
         }
     }
     if (found){
         strcat(path, axo_dir_sep);
         strcat(path, name);
         strcat(path, ".axo");
-        // printf("Found the folder, searching for the file:\n%s\n", path);
-        if (axo_file_exists(path))
+        if (axo_file_exists(path)){
             axo_include_file(st, loc, path, false);
-        else
-            yyerror(loc, "No entry file for module. Missing '%s.axo' in module directory?", name);
+            char* lua_path = axo_swap_file_extension(path, ".lua");
+            if (axo_file_exists(lua_path)){
+                bool ok;
+                const char* res = axo_lua_dofile(st, lua_path, &ok);
+                if (!ok){
+                    axo_err_printf("Lua error: %s\n", res);
+                }
+            }
+        }else{
+            axo_yyerror(loc, "No entry file for module. Missing '%s.axo' in module directory?", name);
+        }
     }
     return (axo_decl){.val=fmtstr("//use %s", name), .kind=axo_use_decl_kind};
 }
@@ -813,7 +1051,6 @@ axo_module axo_new_module(){
         .license_name = NULL,
         .license = NULL,
         .description = NULL,
-        .scope = axo_new_scope(NULL)
     };
 }
 
@@ -841,6 +1078,7 @@ void axo_set_module(axo_state* st, axo_module mod){
     axo_module* ptr = alloc_one(axo_module);
     *ptr = mod;
     hashmap_set(st->modules, ptr);
+    free(ptr);
 }
 
 axo_module* axo_get_module(axo_state* st, char* name){
@@ -888,7 +1126,7 @@ axo_typ_def* axo_set_typ_def(YYLTYPE* loc, axo_state* st, axo_typ_def td){
         hashmap_set(st->types_def, ptr);
         return ptr;
     }else
-        yyerror(loc, "'%s' already defined as '%s'", td.name, atd->name); //FIX!!!
+        axo_yyerror(loc, "'%s' already defined as '%s'", td.name, atd->name); //FIX!!!
     return NULL;
 }
 
@@ -911,15 +1149,6 @@ axo_scope* axo_new_scope(axo_scope* parent){
     return sc;
 }
 
-const char* axo_identifier_kind_to_str(axo_identifier_kind kind){
-    switch(kind){
-        case axo_identifier_var_kind: return "variable"; break;
-        case axo_identifier_module_kind: return "module"; break;
-        case axo_identifier_typ_kind: return "type"; break;
-        default: return "!!!"; break;
-    }
-}
-
 void axo_add_decl(axo_state* st, axo_decl d){
     resize_dyn_arr_if_needed(axo_decl, st->decls, st->decls_len, axo_decls_cap);
     st->decls[st->decls_len++] = d;
@@ -930,13 +1159,18 @@ void axo_add_statement(axo_scope* sc, axo_statement s){
     sc->statements[sc->statements_len++] = s;
 }
 
-axo_var* axo_set_var(axo_scope* sc, axo_var var){
-    if (sc->to_global) return axo_set_var(sc->to_global, var);
-    // printf("'%s' of type '%s'\n", var.name, axo_typ_to_str(var.typ));
-    new_ptr_one(ptr, axo_var);
-    *ptr = var;
-    hashmap_set(sc->variables, ptr);
-    return ptr;
+void axo_set_var(axo_scope* sc, axo_var var){
+    if (var.typ.kind==axo_literal_kind) var.typ.kind=axo_simple_kind;
+    if (sc->to_global){
+        axo_set_var(sc->to_global, var);
+        return;
+    }
+    // printf("'%s' of type %s->'%s'\n", var.name, axo_typ_kind_to_str(var.typ.kind), axo_typ_to_str(var.typ));
+    if (axo_get_var(sc, var.name)){
+        axo_yyerror(NULL, "Variable '%s' is already declared.", var.name);
+        return;
+    }
+    hashmap_set(sc->variables, &var);
 }
 
 axo_var* axo_get_var(axo_scope* sc, char* name){
@@ -954,7 +1188,6 @@ axo_var* axo_del_var(axo_scope* sc, char* name){
 
 void axo_set_func(axo_state* st, axo_func fn){
     //FIX: Add error of re-declaration!
-    //FIX: Function should just be a variable
     new_ptr_one(fnt, axo_func_typ);
     *fnt = fn.f_typ;
     axo_var var = (axo_var){
@@ -963,8 +1196,7 @@ void axo_set_func(axo_state* st, axo_func fn){
             .kind=axo_func_kind,
             .func_typ=fnt,
             .def=alloc_str("FUNC_DEFAULT")
-        },
-        .is_const=true
+        }
     };
     new_ptr_one(ptr, axo_var);
     *ptr = var;
@@ -975,10 +1207,80 @@ axo_statement axo_scope_to_statement(axo_scope* sc){
     axo_statement ret = (axo_statement){.kind=axo_scope_statement_kind};
     ret.val = sc->defer_used ? alloc_str("{Deferral") : alloc_str("{");
     for (int i = 0; i<sc->statements_len; i++){
-        asprintf(&(ret.val), "%s\n%s", ret.val, axo_scope_statement_to_str(sc, sc->statements[i]));
+        char* st = axo_scope_statement_to_str(sc, sc->statements[i]);
+        strapnd(&ret.val, "\n");
+        strapnd(&ret.val, st);
     }
     strapnd(&(ret.val), "\n}");
     return ret;
+}
+
+void axo_free_scope(axo_scope* sc){
+    for (int i=0; i<sc->statements_len; i++)
+        free(sc->statements[i].val);
+    free(sc->statements);
+    //This produces an error!
+    axo_free_variables(sc->variables);
+    free(sc);
+}
+
+void axo_free_variables(map vars){
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(vars, &iter, &item)) {
+        axo_var* var = item;
+        axo_typ typ = var->typ;
+        // printf("Freeing %s\n", var->name);
+        axo_free_typ(typ);
+    }
+    hashmap_free(vars);
+}
+
+axo_typ axo_deep_copy_typ(axo_typ t){
+    axo_typ* s;
+    axo_typ res = t;
+    switch(t.kind){
+        case axo_ptr_kind:
+            s = alloc_one(axo_typ);
+            *s = axo_deep_copy_typ(*((axo_typ*)(t.subtyp)));
+            res.subtyp = s;
+        default: break;
+    }
+    return res;
+}
+
+void axo_free_typ(axo_typ t){
+    switch(t.kind){
+        case axo_func_kind:
+            axo_free_func_typ(*(axo_func_typ*)(t.func_typ));
+            free(t.func_typ);
+            break;
+        case axo_ptr_kind:
+            axo_free_typ(*(axo_typ*)(t.subtyp));
+            // free(t.subtyp);
+            break;
+        case axo_arr_kind:
+            free(t.arr);
+        default: break;
+    }
+}
+
+void axo_free_func(axo_func fn){
+    int args_len = fn.f_typ.args_len;
+    for (int i=0; i<args_len; i++){
+        free(fn.args_names[i]);
+    }
+    if (fn.args_names) free(fn.args_names);
+    if (fn.body) axo_free_scope(fn.body);
+}
+
+void axo_free_func_typ(axo_func_typ ft){
+    for (int i=0; i<ft.args_len; i++){
+        if (ft.args_defs[i]) free(ft.args_defs[i]);
+        axo_free_typ(ft.args_types[i]);
+    }
+    if (ft.args_types) free(ft.args_types);
+    if (ft.args_defs) free(ft.args_defs);
 }
 
 char* axo_scope_statement_to_str(axo_scope* sc, axo_statement stmnt){
@@ -997,7 +1299,6 @@ char* axo_scope_code(axo_scope* sc){
     for (int i = 0; i<sc->statements_len; i++){
         if (i>0) strapnd(&ret, "\n");
         strapnd(&ret, sc->statements[i].val);
-        free(sc->statements[i].val);
     }
     return ret;
 }
@@ -1016,6 +1317,7 @@ char* axo_type_str(axo_typ typ, char* ret){
     int i;
     char dim_stars[128];
     switch (typ.kind){
+        case axo_literal_kind:
         case axo_simple_kind:
             return typ.simple.name;
             break;
@@ -1064,6 +1366,7 @@ char* axo_c_arr_of_typ(axo_typ typ, char* inside){
     char* ret = NULL;
     axo_func_typ fnt;
     switch(typ.kind){
+        case axo_literal_kind:
         case axo_simple_kind: return fmtstr("%s[%s]", typ.simple.cname, inside); break;
         case axo_arr_kind: return fmtstr("axo__arr[%s]", inside); break;
         case axo_func_kind:
@@ -1077,13 +1380,14 @@ char* axo_c_arr_of_typ(axo_typ typ, char* inside){
             return ret;
             break;
         default:
-            yyerror(NULL, "Unsupported axo_c_arr_of_typ type '%s'!", axo_typ_to_str(typ));
+            axo_yyerror(NULL, "Unsupported axo_c_arr_of_typ type '%s'!", axo_typ_to_str(typ));
             return alloc_str("unsupported_type");
     }
 }
 
 bool axo_is_typ_prim(axo_typ t){
     switch(t.kind){
+        case axo_literal_kind:
         case axo_simple_kind:
         case axo_struct_kind:
         case axo_enum_kind:
@@ -1101,6 +1405,7 @@ bool axo_is_typ_prim(axo_typ t){
 char* axo_prim_typ_to_c_str(axo_typ t){
     switch(t.kind){
         case axo_simple_kind:
+        case axo_literal_kind:
             return t.simple.cname; break;
         case axo_struct_kind:
             return ((axo_struct*)(t.structure))->name; break;
@@ -1124,6 +1429,8 @@ char** axo_typ_to_strings(axo_typ typ, char** dest){
     char* right = empty_str;
     
     axo_typ cur_typ = typ;
+    // typ.is_const = false;
+    // typ.is_volatile = false;
     bool was_left = false;
     while(1){
         if (axo_is_typ_prim(cur_typ))
@@ -1163,30 +1470,31 @@ char** axo_typ_to_strings(axo_typ typ, char** dest){
                 was_left = false;
                 break;
             default:
-                yyerror(NULL, "Wrong type in declaration! (%s)", axo_typ_kind_to_str(cur_typ.kind));
+                axo_yyerror(NULL, "Wrong type in declaration! (%s)", axo_typ_kind_to_str(cur_typ.kind));
                 return dest;
                 break;
         }
     }
     char* prim_typ = alloc_str(axo_prim_typ_to_c_str(cur_typ));
-    dest[0] = prim_typ;
-    dest[1] = left;
-    dest[2] = right;
+    dest[0] = fmtstr("%s%s", typ.is_const?"const ":"", typ.is_volatile?"volatile ":"");
+    dest[1] = prim_typ;
+    dest[2] = left;
+    dest[3] = right;
     return dest;
 }
 
 char* axo_typ_to_c_str(axo_typ typ){
-    char** strs = axo_typ_to_strings(typ, (char*[3]){});
+    char** strs = axo_typ_to_strings(typ, (char*[4]){});
     char* ret;
-    ret = fmtstr("%s%s%s", strs[0], strs[1], strs[2]);
-    for (int i=0; i<3; i++) free(strs[i]);
+    ret = fmtstr("%s%s%s%s", strs[0], strs[1], strs[2], strs[3]);
+    for (int i=0; i<4; i++) free(strs[i]);
     return ret;
 }
 
 char* axo_name_typ_decl(char* name, axo_typ typ){
-    char** strs = axo_typ_to_strings(typ, (char*[3]){});
-    char* ret = fmtstr("%s %s%s%s", strs[0], strs[1], name, strs[2]);
-    for (int i=0; i<3; i++) free(strs[i]);
+    char** strs = axo_typ_to_strings(typ, (char*[4]){});
+    char* ret = fmtstr("%s%s %s%s%s", strs[0], strs[1], strs[2], name, strs[3]);
+    for (int i=0; i<4; i++) free(strs[i]);
     return ret;
 }
 
@@ -1209,7 +1517,9 @@ axo_decl axo_func_decl_to_decl(axo_func func){
 
 axo_decl axo_func_def_to_decl(axo_func func){
     axo_decl ret = axo_func_decl_to_decl(func);
-    strapnd(&(ret.val), axo_scope_to_statement(func.body).val);
+    char* sc_str = axo_scope_to_statement(func.body).val;
+    strapnd(&(ret.val), sc_str);
+    free(sc_str);
     ret.kind = axo_func_def_decl_kind;
     for (int i = 0; i<func.f_typ.args_len; i++)
         axo_del_var(func.body, func.args_names[i]);
@@ -1234,7 +1544,7 @@ char* axo_arr_access_to_str(YYLTYPE* arr_loc, axo_expr arr, YYLTYPE* index_loc, 
             return fmtstr("axo_arr_3d_at(%s,%s,%s,%s,%s)", axo_typ_to_c_str(t), arr.val, index.indexes[0].val, index.indexes[1].val, index.indexes[2].val);
             break;
         default:
-            yyerror(index_loc, "Indexing arrays above 3 dimensions is not yet implemented.");
+            axo_yyerror(index_loc, "Indexing arrays above 3 dimensions is not yet implemented.");
             return alloc_str("invalid_array_access");
             break;
     }
@@ -1249,6 +1559,10 @@ bool axo_typ_valid_arr_index(axo_typ typ, axo_state* st){
 axo_typ axo_clean_typ(axo_typ typ){
     axo_typ new_typ = typ;
     switch(typ.kind){
+        case axo_literal_kind:
+            typ.kind=axo_simple_kind;
+            return typ;
+            break;
         case axo_func_kind:
             new_typ.func_typ = alloc_one(axo_func_typ);
             memcpy(new_typ.func_typ, typ.func_typ, sizeof(axo_func_typ));
@@ -1264,8 +1578,6 @@ axo_typ axo_clean_typ(axo_typ typ){
 }
 
 char* axo_get_code(axo_state* st){
-    //Generate rest of the code
-    //Load args
     char* ret = alloc_str("");
     st->decls[st->modules_decl].val = axo_generate_modules(st);
     // strapnd(&ret, "axo_load_args(args);\n");
@@ -1279,7 +1591,7 @@ char* axo_get_code(axo_state* st){
 void* axo_safe_malloc(size_t n){
     void *p = malloc(n);
     if (p == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate %zu bytes.\n", n);
+        fprintf(stderr, "Fatal: failed to allocate %lu bytes.\n",(long unsigned)n);
         abort();
     }
     return p;
@@ -1309,6 +1621,11 @@ axo_expr axo_call_to_expr(axo_func_call cl){
         strcat(str, cl.params[i].val);
     }
     strcat(str, ")");
+    //Free call params
+    for (int i=0;i<cl.params_len; i++)
+        free(cl.params[i].val);
+    free(cl.params);
+    
     axo_expr ret = (axo_expr){
         .typ=fnt->ret_typ,
         .val=str,
@@ -1341,18 +1658,18 @@ void axo_parse_each_loop(axo_each_loop* lp, axo_state* state, axo_scope* scope, 
             lp->iter_over = (bool*)malloc(lp->dim_count*sizeof(bool));
             axo_arr_typ arr_typ = axo_get_arr_typ(lp->collection.typ);
             if (arr_typ.dim_count != lp->dim_count)
-                yyerror(&(((YYLTYPE*)(lp->locs))[1]), "Cannot iterate over %d dimensional array with a %d dimensional index.", arr_typ.dim_count, lp->dim_count);
+                axo_yyerror(&(((YYLTYPE*)(lp->locs))[1]), "Cannot iterate over %d dimensional array with a %d dimensional index.", arr_typ.dim_count, lp->dim_count);
             //Only create specified indexes
             if (lp->value_iter.data == NULL){
                 for(int i=0; i<lp->dim_count; i++){
                     axo_expr iter = lp->dim_iters[i];
                     if (iter.lval_kind == axo_var_lval_kind && iter.typ.kind == axo_no_kind){
-                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter.val, .is_const=false});
+                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter.val});
                         lp->iter_over[i] = true;
                     }else if (lp->dim_iters[i].val == NULL){
                         lp->iter_over[i] = false;
                     }else if (!axo_typ_valid_arr_index(iter.typ, state)){
-                        yyerror(&(((YYLTYPE*)(lp->locs))[i+3]), "Cannot index array with type '%s'.", axo_typ_to_str(iter.typ));
+                        axo_yyerror(&(((YYLTYPE*)(lp->locs))[i+3]), "Cannot index array with type '%s'.", axo_typ_to_str(iter.typ));
                     }
                 }
             //Create all needed indexes, even those not specified
@@ -1360,21 +1677,21 @@ void axo_parse_each_loop(axo_each_loop* lp, axo_state* state, axo_scope* scope, 
                 for(int i=0; i<lp->dim_count; i++){
                     axo_expr iter = lp->dim_iters[i];
                     if (iter.lval_kind == axo_var_lval_kind && iter.typ.kind == axo_no_kind){
-                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter.val, .is_const=false});
+                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter.val});
                         lp->iter_over[i] = true;
                     }else if (lp->dim_iters[i].val == NULL){
                         char* iter_name = fmtstr("axo__it%dd%d", i, loop_count);
-                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter_name, .is_const=false});
+                        axo_set_var(scope, (axo_var){.typ = axo_int_typ(state), .name = iter_name});
                         lp->dim_iters[i] = (axo_expr){.typ=axo_int_typ(state), .val=iter_name};
                         lp->iter_over[i] = true;
                     }else if (!axo_typ_valid_arr_index(iter.typ, state)){
-                        yyerror(&(((YYLTYPE*)(lp->locs))[i+3]), "Cannot index array with type '%s'.", axo_typ_to_str(iter.typ));
+                        axo_yyerror(&(((YYLTYPE*)(lp->locs))[i+3]), "Cannot index array with type '%s'.", axo_typ_to_str(iter.typ));
                     }else{
                         lp->iter_over[i] = false;
                     }
                 }
                 //Finally, create the value iterator
-                axo_set_var(scope, (axo_var){.typ = arr_typ.subtyp, .name = lp->value_iter.data, .is_const=false});
+                axo_set_var(scope, (axo_var){.typ = arr_typ.subtyp, .name = lp->value_iter.data});
             }
             break;
         default:
@@ -1395,7 +1712,7 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
             strapnd(&val, "{");
             if (lp.value_iter.data != NULL){
                 char* arr_at_str = axo_arr_access_to_str(&(((YYLTYPE*)(lp.locs))[2]), lp.collection, &(((YYLTYPE*)(lp.locs))[1]), (axo_index_access){.indexes=lp.dim_iters, .index_count=lp.dim_count});
-                strapnd(&val, axo_get_var_decl_assign(NULL, lp.value_iter.data, (axo_expr){.typ=arr_typ.subtyp, .val=arr_at_str}));
+                strapnd(&val, axo_get_var_decl_assign(NULL, (axo_var){.name=lp.value_iter.data}, (axo_expr){.typ=arr_typ.subtyp, .val=arr_at_str}));
                 strapnd(&val, ";");
                 free(arr_at_str);
             }
@@ -1403,7 +1720,7 @@ axo_statement axo_each_to_statement(axo_each_loop lp){
             strapnd(&val, "}");
             break;
         default:
-            yyerror(&(((YYLTYPE*)(lp.locs))[2]), "Each cannot iterate over '%s' type values.", axo_typ_kind_to_str(lp.collection.typ.kind));
+            axo_yyerror(&(((YYLTYPE*)(lp.locs))[2]), "Each cannot iterate over '%s' type values.", axo_typ_kind_to_str(lp.collection.typ.kind));
             break;
     }
     return (axo_statement){
@@ -1443,24 +1760,35 @@ axo_statement axo_switch_to_statement(axo_switch swtch){
     return (axo_statement){.val=str, .kind=axo_switch_statement_kind};
 }
 
-char* axo_get_var_decl_assign(YYLTYPE* pos, char* name, axo_expr expr){
+char* axo_get_var_decl_assign(YYLTYPE* pos, axo_var var, axo_expr expr){
+    char* name = var.name;
+    axo_typ typ = var.typ;
     char* var_decl = axo_name_typ_decl(name, expr.typ);
-    char* ret = fmtstr("%s = %s", var_decl, expr.val);
+    char* ret = fmtstr("%s%s%s = %s", typ.is_const?"const ":"", typ.is_volatile?"volatile ":"", var_decl, expr.val);
     free(var_decl);
     return ret;
+}
+
+axo_typ axo_merge_type_with_qualifiers(axo_typ typ, axo_typ type_q){
+    axo_typ res = typ;
+    res.is_const = type_q.is_const;
+    res.is_volatile = type_q.is_volatile;
+    return res;
 }
 
 char* axo_typ_kind_to_str(axo_typ_kind tk){
     switch(tk){
         case axo_simple_kind: return "simple"; break;
         case axo_func_kind: return "function"; break;
-        case axo_c_arg_list_kind: return "C arg list"; break;
         case axo_arr_kind: return "array"; break;
+        case axo_c_arg_list_kind: return "C arg list"; break;
         case axo_ptr_kind: return "pointer"; break;
         case axo_enum_kind: return "enum";
         case axo_no_kind: return "no type"; break;
         case axo_struct_kind: return "struct"; break;
+        case axo_none_kind: return "none"; break;
         case axo_module_kind: return "module"; break;
+        case axo_literal_kind: return "literal"; break;
         default: return "unknown_kind"; break;
     }
     return "undefined kind";
@@ -1468,6 +1796,7 @@ char* axo_typ_kind_to_str(axo_typ_kind tk){
 
 
 bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
+    if ((t1.kind == axo_simple_kind && t2.kind == axo_literal_kind) || (t1.kind == axo_simple_kind && t2.kind == axo_literal_kind)) return true;
     if (t1.kind != t2.kind) return false;
     axo_arr_typ a1, a2;
     axo_func_typ* fnt1;
@@ -1476,6 +1805,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
     axo_typ* subtyp2;
     switch(t1.kind){
         case axo_none_kind: return true; break;
+        case axo_literal_kind:
         case axo_simple_kind: return !(strcmp(t1.simple.cname, t2.simple.cname)); break;
         case axo_enum_kind: return t1.enumerate == t2.enumerate; break;
         case axo_struct_kind: return !(strcmp(((axo_struct*)(t1.structure))->name, ((axo_struct*)(t2.structure))->name)); break;
@@ -1500,7 +1830,7 @@ bool axo_typ_eq(axo_typ t1, axo_typ t2){ //FIX!
             break;
         default: break;
     }
-    yyerror(NULL, "Couldn't tell if type kinds '%s' and '%s' are equal or not", axo_typ_kind_to_str(t1.kind), axo_typ_kind_to_str(t2.kind));
+    axo_yyerror(NULL, "Couldn't tell if type kinds '%s' and '%s' are equal or not", axo_typ_kind_to_str(t1.kind), axo_typ_kind_to_str(t2.kind));
     return true;
 }
 
@@ -1515,16 +1845,16 @@ bool is_simple_typ_eq(axo_typ t1, char* t2){
 axo_expr axo_parse_special_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, const char* assign_op, axo_expr val){
     switch(lval.lval_kind){
         case axo_not_lval_kind:
-            yyerror(lval_loc, "Special assignments need the lval to be declared before.");
+            axo_yyerror(lval_loc, "Special assignments need the lval to be declared before.");
             break;
         case axo_var_lval_kind:
             if (lval.typ.kind == axo_no_kind){
-                yyerror(lval_loc, "Special assignments need the lval to be declared before.");
+                axo_yyerror(lval_loc, "Special assignments need the lval to be declared before.");
                 break;
             }
         default:
         if (!axo_typ_eq(lval.typ, val.typ)){
-            yyerror(val_loc, "Type missmatch, expected type '%s' for the special assignment.", axo_typ_to_str(lval.typ));
+            axo_yyerror(val_loc, "Type missmatch, expected type '%s' for the special assignment.", axo_typ_to_str(lval.typ));
         }else{
             return (axo_expr){
                 .kind=axo_expr_normal_kind,
@@ -1538,65 +1868,33 @@ axo_expr axo_parse_special_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YY
     return (axo_expr){};
 }
 
-axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLTYPE* val_loc, axo_expr lval, axo_func_call fcall){
-    axo_expr val = axo_call_to_expr(fcall);
-    switch(lval.lval_kind){
-        case axo_not_lval_kind:
-            yyerror(lval_loc, "Error assignments need the lval to be declared before.");
-            break;
-        case axo_var_lval_kind:
-            if (lval.typ.kind == axo_no_kind){
-                yyerror(lval_loc, "Error assignments need the lval to be declared before.");
-                break;
-            }
-        default:
-        if (!axo_typ_eq(lval.typ, ((axo_func_typ*)(fcall.typ.func_typ))->ret_typ)){
-            yyerror(val_loc, "Type missmatch, expected type '%s' for the error assignment, but the call returns a different type.", axo_typ_to_str(lval.typ));
-        }else{
-            axo_typ t = (axo_typ){
-                .kind=axo_ptr_kind,
-                .subtyp=&(axo_typ){
-                    .kind=axo_struct_kind,
-                    .structure=&(axo_struct){
-                        .name="error"
-                    }
-                }
-            };
-            axo_expr err_ptr = (axo_expr){.typ=axo_no_typ};
-            for (int i = fcall.params_len-1; i>=0; i--){
-                if (axo_typ_eq(t, fcall.params[i].typ)){
-                    err_ptr = fcall.params[i];
-                }
-            }
-            if (err_ptr.typ.kind == axo_no_kind)
-                yyerror(val_loc, "The called function doesn't take an error pointer as any of its parameters.");
-            return (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .lval_kind=err_ptr.lval_kind,
-                .val=fmtstr("({%s=%s; %s;})", lval.val, val.val, err_ptr.val),
-                .typ=err_ptr.typ
-            };
-            // printf("Resulting typ: %s\n", axo_typ_to_str(err_ptr.typ));
-        }
-        break;
-    }
-    return (axo_expr){};
-}
-
 void parse_operator(YYLTYPE* loc, axo_expr* dest, axo_expr val1, char* op, axo_expr val2){
     if (val1.typ.kind != axo_simple_kind || !axo_typ_eq(val1.typ, val2.typ)){
-        yyerror(loc, "The '%s' operator cannot be used with %s and %s!", op, axo_typ_to_str(val1.typ), axo_typ_to_str(val2.typ));
+        axo_yyerror(loc, "The '%s' operator cannot be used with %s and %s!", op, axo_typ_to_str(val1.typ), axo_typ_to_str(val2.typ));
         return;
     }else{
         dest->typ = val1.typ;
-        asprintf(&(dest->val), "%s%s%s", val1.val, op, val2.val);
+        dest->val = fmtstr("%s%s%s", val1.val, op, val2.val);
         dest->kind = axo_expr_normal_kind;
+        free(val1.val);
+        free(val2.val);
     }
 }
 
 void set_val(axo_expr* dest, axo_typ typ, char* val){
     dest->typ = typ;
-    asprintf(&(dest->val), "%s", val);
+    dest->val = fmtstr("%s", val);
+}
+
+
+const char* axo_identifier_kind_to_str(axo_identifier_kind iden){
+    switch(iden){
+        case axo_identifier_var_kind: return "variable"; break;
+        case axo_identifier_module_kind: return "module"; break;
+        case axo_identifier_typ_kind: return "type"; break;
+        case axo_no_identifier_kind: return "nothing"; break;
+    }
+    return "unknown";
 }
 
 axo_scope* axo_scopes_top(axo_scopes* scopes){
@@ -1631,30 +1929,32 @@ unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii){
     return ' ';
 }
 
-void axo_verrorf(const char* fmt, va_list args){
-    #ifdef __EMSCRIPTEN__
-        axo_add_wasm_error(fmt, args);
-    #else
-        vfprintf(stderr, fmt, args);
-    #endif
-}
-
-void axo_errorf(const char* fmt, ...){
-    va_list args;
-    va_start(args, fmt);
-    axo_verrorf(fmt, args);
-    va_end(args);
-}
-
 char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     #ifdef __EMSCRIPTEN__
-        return fmtstr("%s > %d:%d -> %s", axo_src_file(st)?axo_src_path(st):"input.axo", loc->first_line, loc->first_column, msg);
+        return fmtstr("Error at %d:%d: %s", loc->first_line, loc->first_column);
     #endif
     bool e_ascii = st->config.extended_ascii;
     //Produce the error string from fmt and args
     char* line_num;
     //Add position and context to the error message
-    char* code = axo_file_to_str(axo_source(st)->path);
+    // for (int i=st->sources_len; i>0; i--){
+    //     printf("in %s", st->sources[i-1].name);
+    //     if (i!=1) printf("\n");
+    // }
+    char cwd[1024];
+    axo_cwd(cwd, 1024);
+    if (st->sources_len==1){
+        axo_chdir(st->orig_cwd);
+    }else if (axo_get_source(st)->kind == axo_file_source_kind){
+        axo_chdir(axo_get_parent_dir(axo_tmp_path_str, st->sources[st->sources_len-1].path));
+    }
+    char* code = axo_get_source(st)->kind == axo_string_source_kind ?
+    axo_get_source(st)->str
+    : axo_file_to_str(axo_src_path(st));
+    if (!code){
+        fprintf(stderr, "Error while getting code from src! Null string from file '%s' while in '%s'.\n", axo_src_path(st), axo_cwd((char[512]){}, 512));
+        return alloc_str("Couldn't get an error message");
+    }
     int up_lines = 2;
     int down_lines = 2;
     int i = 0;
@@ -1672,15 +1972,15 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
     line = line > 1 ? line : 1;
     char* ret;
     char website[] = "https://github.com/MightyPancake/axl/blob/main/errors/error_1.md";
-    char* full_filepath = axo_resolve_path(axo_source(st)->path);
-    asprintf(&ret, axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_source(st)->path, axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
+    char* full_filepath = axo_resolve_path(axo_src_path(st));
+    ret = fmtstr(axo_green_fgs axo_terminal_link("file://%s","%s") axo_reset_style axo_cyan_fgs " %c" axo_blue_fgs " %u:%u" axo_cyan_fgs " -> " axo_red_fgs axo_terminal_link("%s","ERROR: %s") "\n" axo_reset_style, full_filepath, axo_src_path(st), axo_symbol(axo_arrow_symbol, e_ascii), loc->first_line, loc->first_column, website, msg);
     while (line<=loc->last_line+down_lines){
       if (code[i] == '\0') break;
       else if (col == loc->first_column && line == loc->first_line){
         char c = code[i];
         code[i] = '\0';
         line_num = itoa_spaced(line);
-        asprintf(&ret, "%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
+        ret = fmtstr("%s" axo_red_fgs axo_terminal_blink("->%s") axo_cyan_fg " %c" axo_white_fg " %s", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
         last_i = i;
         code[i] = c;
         while (!(col==loc->last_column && line==loc->last_line)){
@@ -1695,16 +1995,16 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
         }
         c = code[i];
         code[i] = '\0';
-        asprintf(&ret, "%s" axo_red_bg axo_black_fg "%s" axo_reset_style, ret, &(code[last_i]));
+        ret = fmtstr("%s" axo_red_bg axo_black_fg "%s" axo_reset_style, ret, &(code[last_i]));
         code[i] = c;
         last_i = i;
       }else if (code[i] == '\n'){
         code[i] = '\0';
         if (line == loc->first_line)
-            asprintf(&ret, "%s" "%s\n", ret, &(code[last_i]));
+            ret = fmtstr("%s" "%s\n", ret, &(code[last_i]));
         else{
             line_num=itoa_spaced(line);
-            asprintf(&ret, "%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));   
+            ret = fmtstr("%s" axo_yellow_fgs "  %s" axo_cyan_fgs " %c" axo_white_fgs " %s\n", ret, line_num, axo_symbol(axo_vertical_line_symbol, e_ascii), &(code[last_i]));
             free(line_num);
         }
         last_i = i+1;
@@ -1713,8 +2013,9 @@ char* axo_error_with_loc(axo_state* st, YYLTYPE *loc, char* msg){
       }else col++;
       i++;
     }
-    free(msg);
     strapnd(&ret, axo_reset_style);
+    free(code);
+    axo_chdir(cwd);
     return ret;
 }
 
@@ -1846,7 +2147,7 @@ char* axo_decode_easter(long long int* data){
     // printf("realpath: %s\n", filename);
     char* res = realpath(filename, ret);
     if (res == NULL) {
-        printf("ERROR IN REALPATH\n");
+        axo_err_printf("Couldn't get realpath for '%s'. cwd: '%s'\n", filename, axo_cwd(axo_tmp_path_str, 1024));
         free(ret);
         return NULL;
     }
@@ -1936,19 +2237,22 @@ char* axo_decode_easter(long long int* data){
 #endif
 
 #ifdef _WIN32
-
-#elif __linux
+char* axo_cwd(char* dest, size_t sz) {
+    if (GetCurrentDirectory((DWORD)sz, dest) == 0) {
+        DWORD errorMessageID = GetLastError();
+        fprintf(stderr, "axo_cwd() error: %lu\n", errorMessageID);
+        return NULL;
+    }
+    return dest;
+}
+#elif __linux || __APPLE__
     char* axo_cwd(char* dest, size_t sz){
         if (getcwd(dest, sz) == NULL)
             perror("axo_cwd() error");
         return dest;
     }
-
-#elif __APPLE__
-
 #elif __EMSCRIPTEN__
 char* axo_cwd(char* dest, size_t sz) {
-    // JavaScript code to get the current working directory
     EM_ASM({
         var currentDir = FS.cwd();
         stringToUTF8(currentDir, $0, $1);
@@ -1959,21 +2263,120 @@ char* axo_cwd(char* dest, size_t sz) {
     
 #endif
 
-char* axo_get_parent_dir(char* path) {
+char* axo_get_parent_dir(char* dest, char* path) {
+    strcpy(dest, path);
     char *last_slash;
     #ifdef _WIN32
         /* Replace all '\' with '/' for Windows paths */
-        for (char *p = path; *p != '\0'; p++) {
+        for (char *p = dest; *p != '\0'; p++) {
             if (*p == '\\') {
                 *p = '/';
             }
         }
     #endif
 
-    last_slash = strrchr(path, '/');
+    last_slash = strrchr(dest, '/');
     if (last_slash != NULL) {
         *last_slash = '\0';  /* Null-terminate the path at the last slash */
     }
-    return path;
+    return dest;
 }
 
+void axo_err_vprintf(const char* fmt, va_list vargs){
+    #ifdef __EMSCRIPTEN__
+        vprintf(fmt, vargs);
+    #else
+        vfprintf(stderr, fmt, vargs);
+    #endif
+}
+
+void axo_err_printf(const char* fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    axo_err_vprintf(fmt, args);
+    va_end(args);
+}
+
+//Returns error string or null if everything went correctly
+const char* axo_lua_dofile(axo_state* st, const char* lua_file, bool* ok){
+    *ok = false;
+    lua_State* L = st->lua_state;
+    if (luaL_dofile(L, lua_file)) {
+        return lua_tostring(L, -1);
+    }
+    *ok = true;
+    return NULL;
+}
+
+char* axo_typ_to_lua(axo_typ t){
+    char* s = NULL;
+    char* res = NULL;
+    switch (t.kind){
+        case axo_simple_kind:
+            return fmtstr("{primitive=\"%s\"}", t.simple.name);
+            break;
+        case axo_ptr_kind:
+            s = axo_typ_to_lua(*axo_subtyp(t));
+            res = fmtstr("{pointer=%s}", s);
+            free(s);
+            return res;
+            break;
+        default:
+            return alloc_str("unknown");
+            break;
+    }
+}
+
+int axo_lua_dostring_with_source(lua_State *L, const char *code, const char *source_name) {
+    int load_status = luaL_loadbuffer(L, code, strlen(code), source_name);
+    if (load_status != LUA_OK) {
+        return load_status;
+    }
+    int call_status = lua_pcall(L, 0, LUA_MULTRET, 0);
+    return call_status;
+}
+
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok, const char* src_name){
+    *ok = false;
+    lua_State* L = st->lua_state;
+    if (axo_lua_dostring_with_source(L, lua_code, src_name)) {
+        return lua_tostring(L, -1);
+    }
+    if (lua_isstring(L, -1)) {
+        *ok = true;
+        return lua_tostring(L, -1);
+    }else{
+        //error! Expected string
+        lua_pop(L, 1);
+        return "Returned a non-string value!";
+    }
+}
+
+axo_expr ret_expr;
+axo_expr axo_parse_string_for_expr(axo_state* st, const char* code){
+    char* parse_input = fmtstr("__AXO_EXPR_AS_PARSE_RESULT %s __AXO_ARTIFICIAL_EOF_TOKEN", code);
+    yyscan_t lexer;
+    yylex_init(&lexer);
+    axo_new_string_source(st, parse_input);
+    yyparse(lexer);
+    // axo_pop_source(st);
+    return ret_expr;
+}
+
+char* ret_declarations;
+axo_decl axo_parse_string_for_decl(axo_state* st, const char* code){
+    char* parse_input = fmtstr("%s __AXO_ARTIFICIAL_EOF_TOKEN", code);
+    yyscan_t lexer;
+    yylex_init(&lexer);
+    axo_new_string_source(st, parse_input);
+    yyparse(lexer);
+    axo_pop_source(st);
+    return (axo_decl){
+        .kind=axo_comptime_block_decl_kind,
+        .val=ret_declarations
+    };
+}
+
+void axo_test_lua(axo_state* st){
+    
+}

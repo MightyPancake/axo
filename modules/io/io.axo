@@ -3,7 +3,7 @@ module(
   author: "mightypancake"
   description: "I/O module"
 )
-
+  
 #include <stdio.h>
 
 #typ FILE
@@ -55,19 +55,33 @@ module(
 #provided @FILE stdin
 #provided @FILE stdout
 
-struct file (
-  @FILE    file
-)
+use aesc
+use str
 
-file fn io.open(@byte filename, @byte mode="r", @error errptr){
-  f = file{file=fopen(filename, mode)}
-  errptr$get_c()
-  ret f
+fn error:get_c(){
+	ret $:set(errno, strerror(errno))
 }
 
 fn error:oops(){
-  if !(self^.code) ret;
-	printf("%sError: %s%s\n", aesc.red, self^.msg, aesc.reset)
-	exit(self^.code)
+  if $:ok() ret;
+	fprintf(stderr, "%sError: %s%s\n", aesc::red, $..msg, aesc::reset)
 }
 
+fn io::open(@byte filename, @byte mode="r", @error ep){
+  ep:oops()
+  f = fopen(filename, mode)
+  errptr:get_c()
+  ret f
+}
+
+fn FILE:to_str(@byte o, size_t r_sz=1024, @error ep){
+  ep:oops()
+  while (fread(o, 1, r_sz, $) == r_sz) ;
+  ep:get_c()
+  ret $
+}
+
+fn FILE:close(@error ep){
+  ep:oops()
+  ret fclose($)
+}

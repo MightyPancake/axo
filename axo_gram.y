@@ -1,18 +1,20 @@
 %{
   #define test_playground 0
-  #define YY_DECL int yylex (YYSTYPE* yylval, struct YYLTYPE* yylloc)
   #include "src/utils/utils.h"
   #include <stdint.h>
   #include "src/axo.h"
   #include "axo_gram.tab.h"
   //Bison extern
   extern int yylineno;
-  extern FILE *yyin;
   extern YYLTYPE yylloc;
   extern YYSTYPE yylval;
-  int yylex(YYSTYPE* yylval_param, YYLTYPE* yyloc_param);
-  void yyerror(YYLTYPE* loc, const char *, ...);
-  int yyparse(void);
+  YY_DECL;
+  //For returning from comptime
+  extern axo_expr ret_expr;
+  extern char* ret_declarations;
+  
+  void yyerror(yyscan_t scanner, YYLTYPE* loc, const char * fmt, ...);
+  void axo_yyerror(YYLTYPE* loc, const char * fmt, ...);
   //Axo extern
   extern int (*axo_printf)(const char* fmt, ...);
   int axo_no_printf(const char* fmt, ...){
@@ -37,11 +39,11 @@
     if (!axo_is_valid_rval(EXPR)){ \
       AXO_RVAL_WAS_VALID=false; \
       if ((EXPR).kind == axo_expr_assigned_declaration_kind) \
-        yyerror(LOC, axo_err_msg(axo_undeclared_assignment_expr_err_code)); \
+        axo_yyerror(LOC, axo_err_msg(axo_undeclared_assignment_expr_err_code)); \
       else if (EXPR.lval_kind==axo_var_lval_kind) \
-        yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
+        axo_yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
       else \
-        yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
+        axo_yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
     } \
     AXO_RVAL_WAS_VALID; \
   })
@@ -52,9 +54,9 @@
     if (!axo_is_valid_expr_as_statement(EXPR)){ \
       AXO_RVAL_WAS_VALID=false; \
       if (EXPR.lval_kind==axo_var_lval_kind) \
-        yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
+        axo_yyerror(LOC, axo_err_msg(axo_undeclared_var_err_code)); \
       else \
-        yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
+        axo_yyerror(LOC, axo_err_msg(axo_invalid_rval_err_code)); \
     } \
     AXO_RVAL_WAS_VALID; \
   })
@@ -65,6 +67,8 @@
 %define parse.error verbose
 %locations
 %define api.pure full
+%lex-param { yyscan_t scanner }
+%parse-param { yyscan_t scanner }
 
 %token<str> STRING_LITERAL "string literal"
 %token<str> INTEGER_LITERAL "integer literal"
@@ -123,15 +127,22 @@
 %token<str> LINE_TAG "#line"
 %token<str> COLUMN_TAG "#column"
 %token<str> FILE_TAG "#file"
+%token<str> FLAG_TAG "#flag"
 %token<str> SOURCE_TAG "#source"
+%token<str> C_TAG "#C"
 %token<str> CONST_KWRD "const"
+%token<str> MODULE_ACCESS "::"
+%token<str> VOLATILE_KWRD "volatile"
+%token<str> COMPTIME_VAR COMPTIME_CALL
+%token<str> AXO_EXPR_AS_PARSE_RESULT
+%token<str> COMPTIME_LUA_BLOCK "comptime lua block"
 %type<scope> code_scope code_scope_start global_code_scope global_code_scope_start
 %type<function> func_def func_args func_def_start func_def_name
 %type<function_call> func_call_start func_call called_expr
-%type<expression> expr incr_decr_op if_condition assignment special_assignment call_error_assignment arr_literal
+%type<expression> expr incr_decr_op if_condition assignment special_assignment arr_literal comptime_expr
 %type<declaration_type> declaration
-%type<str> statements declarations while_loop_base
-%type<typ_type> func_def_ret_typ val_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args
+%type<str> statements declarations while_loop_base c_code
+%type<typ_type> func_def_ret_typ val_typ no_q_typ arr_typ arr_multidim_typ func_typ func_typ_start func_typ_args type_qualifier typ_q
 %type<function_argument> func_arg
 %type<for_loop_type> for_loop_start for_loop_init for_loop_base
 %type<till_loop_type> till_loop_start
@@ -148,6 +159,7 @@
 %type<bool_type> arr_lit_start
 %type<case_type> switch_expr_list switch_case switch_branch
 %type<switch_type> switch_statement switch_statement_start switch_body
+%type<comptime_function_call> comptime_call_start
 
 //Prec
 %left IDENTIFIER_PREC
@@ -165,13 +177,13 @@
 %left '*' '/' '%'
 %left "in" LOOP_PREC
 %left '.'
+%left '!'
 %left '(' ':'
 %left UMINUS '@' '^'
-%left '!'
+%left IF_KWRD
 %left CALL_PREC
 %left INCR_OP DECR_OP '[' DOT_FIELD
-%left IF_KWRD
-%left STRUCT_LIT_NAMED_FIELD
+%left STRUCT_LIT_NAMED_FIELD TYPE_Q_PREC
 
 %union {
   char* str;
@@ -182,6 +194,7 @@
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
+  axo_comptime_call comptime_function_call;
   axo_typ typ_type;
   axo_for_loop for_loop_type;
   axo_till_loop till_loop_type;
@@ -198,13 +211,25 @@
   bool bool_type;
   axo_switch_case case_type;
   axo_switch switch_type;
+  axo_var variable_type;
 }
 
 %%
 
-declarations : /* EMPTY */ {}
+code : declarations {
+    ret_declarations = $1;
+  }
+  | AXO_EXPR_AS_PARSE_RESULT expr {
+    ret_expr = $expr;
+  }
+  ;
+
+declarations : /* EMPTY */ {
+    $$ = alloc_str("");
+  }
   | declarations func_def {
     axo_add_decl(state, axo_func_def_to_decl($2));
+    axo_free_func($func_def);
   }
   | declarations C_INCLUDE {
     if ($C_INCLUDE[0] == '<'){
@@ -242,7 +267,7 @@ declarations : /* EMPTY */ {}
       if(i>0) strcat(decl, ",\n");
       char* field = fmtstr("%s$%s", $3, $5.names[i]);
       strcat(decl, field);
-      axo_set_var(state->global_scope, (axo_var){.name=field, .typ=axo_no_typ, .is_const=true});
+      axo_set_var(state->global_scope, (axo_var){.name=field, .typ=axo_no_typ});
     }
     strcat(decl, "\n}");
     strcat(decl, $3);
@@ -259,6 +284,7 @@ declarations : /* EMPTY */ {}
     axo_add_decl(state, (axo_decl){.val=decl, .kind=axo_enum_decl_kind});
   }
   | declarations declaration {
+    $$ = strapnd(&$1, $declaration.val);
     axo_add_decl(state, $declaration);
   }
   ;
@@ -271,8 +297,10 @@ declaration : struct_def { //Fix! Make this use realloc less
     strapnd(&decl, $struct_def.name);
     strapnd(&decl, "{\n");
     for (int i=0; i<$struct_def.fields_len; i++){
-      strapnd(&decl, axo_name_typ_decl(strct->fields[i].name, strct->fields[i].typ));
+      char* ntd = axo_name_typ_decl(strct->fields[i].name, strct->fields[i].typ);
+      strapnd(&decl, ntd);
       strapnd(&decl, ";\n");
+      free(ntd);
     }
     strapnd(&decl, "}");
     strapnd(&decl, $struct_def.name);
@@ -319,11 +347,16 @@ declaration : struct_def { //Fix! Make this use realloc less
     }
     fn.f_typ.ret_typ = ($func_def_ret_typ.kind==axo_no_kind) ? axo_none_typ : $func_def_ret_typ;
     $$ = axo_func_decl_to_decl(fn);
+    axo_free_func($func_args);
+    axo_free_scope(top_scope);
     strapnd(&($$.val), ";");
   }
   | "#provided" val_typ IDEN {
-    axo_set_var(state->global_scope, (axo_var){.typ = $val_typ, .name = alloc_str($IDEN), .is_const=true});
-    $$ = (axo_decl){.val=fmtstr("//provided %s", axo_name_typ_decl($IDEN, $val_typ))};
+    // printf("providing '%s'\n", $IDEN);
+    axo_set_var(state->global_scope, (axo_var){.typ = $val_typ, .name = alloc_str($IDEN)});
+    char* ntd = axo_name_typ_decl($IDEN, $val_typ);
+    $$ = (axo_decl){.val=fmtstr("//provided %s", ntd)};
+    free(ntd);
   }
   | "use" IDEN {
     $$ = axo_use_module(state, &@2, $IDEN);
@@ -359,6 +392,7 @@ declaration : struct_def { //Fix! Make this use realloc less
   }
   | global_code_scope {
     $$ = (axo_decl){.val=axo_scope_code($global_code_scope)};
+    axo_free_scope($global_code_scope);
   }
   | "#source" STRING_LITERAL {
       char* res = alloc_str(&($STRING_LITERAL[1]));
@@ -368,9 +402,53 @@ declaration : struct_def { //Fix! Make this use realloc less
       resize_dyn_arr_if_needed(char*, state->extra_c_sources, state->extra_c_sources_len, axo_c_sources_cap);
       state->extra_c_sources[state->extra_c_sources_len++] = resolved;
     }else{
-      yyerror(&@2, "File '%s' doesn't exist.", res);
+      axo_yyerror(&@2, "File '%s' doesn't exist.", res);
+      YYERROR;
     }
     $$ = (axo_decl){.val=fmtstr("//sourced %s", res)};
+  }
+  | "#flag" STRING_LITERAL {
+    char* res = alloc_str(&($STRING_LITERAL[1]));
+    res[strlen($STRING_LITERAL)-2] = '\0';
+    resize_dyn_arr_if_needed(char*, state->cc_flags, state->cc_flags_len, axo_cc_flags_len);
+    state->cc_flags[state->cc_flags_len++] = alloc_str(res);
+    $$ = (axo_decl){.val=fmtstr("//flag %s", res)};
+  }
+  | c_code {
+    $$ = (axo_decl){
+      .kind=axo_c_code_decl_kind,
+      .val=$c_code
+    };
+  }
+  | IDEN "->" val_typ {
+    axo_typ_def td = (axo_typ_def){
+      .name=alloc_str($IDEN),
+      .typ=$val_typ
+    };
+    td.typ.simple.name=td.typ.simple.cname=td.name;
+    axo_set_typ_def(&@$, state, td);
+    $$ = (axo_decl){
+      .kind=axo_typedef_decl_kind,
+      .val=fmtstr("typedef %s %s;", axo_typ_to_c_str($val_typ), $IDEN)
+    };
+  }
+  | COMPTIME_LUA_BLOCK {
+    const char* lua_code = alloc_str($1);
+    bool ok;
+    const char* res = axo_lua_dostring(state, lua_code, &ok, alloc_str("block"));
+    if (!ok){
+      axo_yyerror(&@$, res);
+      YYERROR;
+    }
+    $$ = axo_parse_string_for_decl(state, res);
+    $$.val = alloc_str("");
+  }
+  ;
+
+c_code : "#C" STRING_LITERAL {
+    char* ret = alloc_str(&($STRING_LITERAL[1]));
+    ret[strlen(ret)-1] = '\0';
+    $$ = ret;
   }
   ;
 
@@ -391,11 +469,14 @@ struct_def : STRUCT_KWRD IDEN '(' func_args ')' {
     axo_struct_field* fields = (axo_struct_field*)malloc($4.f_typ.args_len*sizeof(axo_struct_field));
     for (int i = 0; i<$4.f_typ.args_len; i++){
       fields[i] = (axo_struct_field){
-        .name = alloc_str($func_args.args_names[i]),
+        .name = $func_args.args_names[i],
         .typ = $func_args.f_typ.args_types[i],
         .def = $func_args.f_typ.args_defs[i]
       };
     }
+    free($func_args.args_names);
+    free($func_args.f_typ.args_types);
+    free($func_args.f_typ.args_defs);
     $$ = (axo_struct){
       .name=alloc_str($IDEN),
       .fields=fields,
@@ -426,17 +507,22 @@ module_info : '(' {
       $$.license = str_val;
     }else if (strcmp($IDEN, "description") == 0){
       $$.description = str_val;
-    }else
-      yyerror(&@2, "Not a valid module information field.");
-    // printf("Setting %s to %s\n", $IDEN, $STRING_LITERAL);
+    }else{
+      axo_yyerror(&@2, "Not a valid module information field.");
+      YYERROR;
+    }
   }
   ;
 
 statements : /* EMPTY */ { }
-  | statements statement {axo_add_statement(top_scope, $statement);}
+  | statements statement {
+    // printf("Adding statement to %p\n", top_scope);
+    axo_add_statement(top_scope, $statement);
+  }
   ;
 
 index_access : '[' expr {
+    //TODO: Dynamic?
     axo_validate_rval(&@expr, $expr);
     $$ = (axo_index_access){
       .index_count=1,
@@ -458,18 +544,10 @@ identifier : IDEN {
         .typ_def = *td
       };
     }else{
-      axo_module* mod = axo_get_module(state, $IDEN);
-      if (mod){
-        $$ = (axo_identifier){
-          .kind = axo_identifier_module_kind,
-          .data = mod
-        };
-      }else{
-        $$ = (axo_identifier){
-          .kind = axo_identifier_var_kind,
-          .data = (void*)alloc_str($1)
-        };
-      }
+      $$ = (axo_identifier){
+        .kind = axo_identifier_var_kind,
+        .data = (void*)alloc_str($1)
+      };
     }
   } %prec IDENTIFIER_PREC
   ;
@@ -486,18 +564,109 @@ incr_decr_op : expr INCR_OP {
   }
   ;
 
+comptime_expr : COMPTIME_VAR {
+    // printf("got comptime: %s\n", &($1[1]));
+    char* lua_input = fmtstr("return axo.get(%s)", &($1[1]));
+    // printf("Running Lua: %s\n", lua_input);
+    bool ok = false;
+    const char* res = axo_lua_dostring(state, lua_input, &ok, &($1[1]));
+    if (!ok){
+      axo_yyerror(&@$, "Macro error: %s\n", res);
+      YYERROR;
+    }
+    $$ = axo_parse_string_for_expr(state, res);
+    // printf("Got expression: %s\nof type: %s\n\n", $$.val, axo_typ_to_str($$.typ));
+    axo_pop_source(state);
+    free(lua_input);
+  }
+  | comptime_call_start ')' {
+    char* param = alloc_str("{");
+    for (int i=0;i<$1.params_len; i++){
+      axo_expr e = $1.params[i];
+      char* lua_typ = axo_typ_to_lua(e.typ);
+      char* estr = fmtstr("{typ=%s,\nvalue=\'%s\'}", lua_typ, e.val);
+      //Write the param in...
+      if (i>0) strapnd(&param, ",");
+      strapnd(&param, estr);
+      free(lua_typ);
+      free(estr);
+    }
+    strapnd(&param, "}");
+    const char* lua_code = fmtstr("return axo.get(axo.%s%s))", $1.name, param);
+    free(param);
+    // printf("comptime lua code: %s\n", lua_code);
+    bool ok;
+    const char* res = axo_lua_dostring(state, lua_code, &ok, $1.name);
+    if (!ok){
+      yyerror(state->scanner, &@$, res);
+      YYERROR;
+    }
+    // printf("Result: '%s'\n", res);
+    $$ = axo_parse_string_for_expr(state, res);
+    axo_pop_source(state);
+    // printf("Got expression: %s\nof type: %s\n\n", $$.val, axo_typ_to_str($$.typ));
+  }
+  ;
+
+comptime_call_start : COMPTIME_CALL {
+    $$ = (axo_comptime_call){
+      .name = alloc_str(&($1[1])),
+      .params = NULL,
+      .params_len = 0
+    };
+  }
+  | COMPTIME_CALL expr {
+    $$ = (axo_comptime_call){
+      .name = alloc_str(&($1[1])),
+      .params = (axo_expr*)malloc(axo_comptime_params_cap*sizeof(axo_expr)),
+      .params_len = 1
+    };
+    $$.params[0] = $expr;
+  }
+  | comptime_call_start ',' expr {
+    resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_comptime_params_cap);
+    $$.params[$$.params_len++] = $expr;
+  }
+  ;
+
 //String literal should be a pointer!
-expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
-  | INTEGER_LITERAL {set_val(&$$, axo_int_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+expr : STRING_LITERAL {set_val(&$$, axo_deep_copy_typ(axo_str_typ(state)), $1); $$.kind=axo_expr_normal_kind;}
+// expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_normal_kind;}
+  | INTEGER_LITERAL {
+    $$ = (axo_expr){
+      .kind=axo_expr_normal_kind,
+      .lval_kind=axo_not_lval_kind,
+      .val=$1,
+      .typ=axo_int_typ(state)
+    };
+    $$.typ.kind=axo_literal_kind;
+  }
   | FLOAT_LITERAL {set_val(&$$, axo_float_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
+  | comptime_expr
   | BYTE_LITERAL {set_val(&$$, axo_byte_typ(state), $1); $$.kind=axo_expr_normal_kind; $$.lval_kind = axo_not_lval_kind;}
   | "null" {
     $$ = (axo_expr){
       .kind=axo_expr_normal_kind,
       .lval_kind=axo_not_lval_kind,
-      .val="((char*)(NULL))",
-      .typ=axo_str_typ(state)
+      .val="NULL",
+      .typ=axo_none_ptr_typ
     };
+  }
+  | IDEN "::" IDEN {
+      axo_module* mod = axo_get_module(state, $1);
+      if (!mod){
+        axo_yyerror(&@1, "Module '%s'is not loaded. Did you forget to use it?", $1);
+        YYERROR;
+      }
+      axo_var* var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $3));
+      if (var == NULL && rval_now)
+        axo_yyerror(&@$, "Module '%s' doesn't have variable '%s'.", mod->name, $3);
+      $$ = (axo_expr){
+        .val = fmtstr("%s%s", mod->prefix, $3),
+        .typ=(var ? var->typ : axo_no_typ),
+        .kind = axo_expr_normal_kind,
+        .lval_kind = axo_var_lval_kind
+      };
   }
   | expr '+' expr {parse_operator(&@2, &$$, $1, "+", $3); }
   | expr '-' expr {parse_operator(&@2, &$$, $1, "-", $3); }
@@ -505,46 +674,42 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
   | expr '*' expr {parse_operator(&@2, &$$, $1, "*", $3); }
   | expr '/' expr {parse_operator(&@2, &$$, $1, "/", $3); }
   | expr '%' expr {parse_operator(&@2, &$$, $1, "%", $3); }
-  | '(' expr ')' {$$.val = fmtstr("(%s)", $2.val); $$.typ = $2.typ; $$.kind = axo_expr_normal_kind; }
+  | '(' expr ')' {
+    $$.val = fmtstr("(%s)", $2.val);
+    $$.typ = $2.typ;
+    $$.kind = $2.kind == axo_expr_assigned_declaration_kind?axo_expr_assigned_declaration_kind:axo_expr_normal_kind;
+    free($2.val);
+  }
   | expr '@' { //Referencing
     if ($1.lval_kind == axo_not_lval_kind)
-      yyerror(&@1, "Cannot reference a non l-value.");
+      axo_yyerror(&@1, "Cannot reference a non l-value.");
     $$.typ.kind = axo_ptr_kind;
     $$.typ.subtyp = malloc(sizeof(axo_typ));
-    *axo_subtyp($$.typ) = $1.typ;
     $$.val = fmtstr("&%s", $1.val);
+    $$.lval_kind = axo_not_lval_kind;
+    *axo_subtyp($$.typ) = $1.typ;
+    free($1.val);
   }
-  | expr '^' { //Dereferencing
+  | expr '.' { //Dereferencing
     axo_validate_rval(&@1, $1);
     if ($1.typ.kind != axo_ptr_kind)
-      yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
+      axo_yyerror(&@1, "Cannot dereference a value of non-pointer type '%s'.", axo_typ_to_str($1.typ));
     $$.typ = *axo_subtyp($1.typ);
     $$.lval_kind=$1.lval_kind;
     $$.val=fmtstr("(*(%s))", $1.val);
+    free($1.val);
   }
   | assignment
   | special_assignment
-  | call_error_assignment
   | identifier {
     char* var_name = "";
     axo_typ_def td;
     switch($1.kind){
-      case axo_identifier_module_kind:
-        $$ = (axo_expr){
-          .val = alloc_str(""),
-          .typ = (axo_typ){
-            .kind = axo_module_kind,
-            .module = $identifier.data
-          },
-          .kind = axo_expr_module_kind,
-          .lval_kind=axo_not_lval_kind
-        };
-        break;
       case axo_identifier_var_kind:
         var_name = (char*)($identifier.data);
         axo_var* var = axo_get_var(top_scope, (char*)($1.data));
         if (var == NULL && rval_now)
-          yyerror(&@1, "Variable '%s' undefined before usage.", (char*)($1.data));
+          axo_yyerror(&@1, "Variable '%s' undefined before usage.", (char*)($1.data));
         else{
            $$ = (axo_expr){
             .val=var_name,
@@ -565,12 +730,12 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
             };
             break;
           default:
-            yyerror(&@1, "Non-enum type '%s' is not an expression.", td.name);
+            axo_yyerror(&@1, "Non-enum type '%s' is not an expression.", td.name);
             break;
         }
         break;
       default:
-        yyerror(&@1, "Invalid identifier as expression.");
+        axo_yyerror(&@1, "Invalid identifier as expression.");
         break;
     }
   }
@@ -583,8 +748,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
           .val=fmtstr("(%s?%s:%s)", $1.val, $3.val, $5.val),
           .typ=$3.typ
         };
+        free($1.val);
+        free($3.val);
+        free($5.val);
       }else{
-        yyerror(&@$, "Ternary expression cannot return both '%s' and '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str($5.typ));
+        axo_yyerror(&@$, "Ternary expression cannot return both '%s' and '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str($5.typ));
       }
     }
   }
@@ -597,6 +765,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s<%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr '>' expr {
     axo_validate_rval(&@1, $1);
@@ -606,6 +776,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s>%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "==" expr {
     axo_validate_rval(&@1, $1);
@@ -615,6 +787,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s==%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "!=" expr {
     axo_validate_rval(&@1, $1);
@@ -624,6 +798,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s!=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr ">=" expr {
     axo_validate_rval(&@1, $1);
@@ -633,6 +809,8 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s>=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "<=" expr {
     axo_validate_rval(&@1, $1);
@@ -642,29 +820,28 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
       .typ = axo_bool_typ(state),
       .val = fmtstr("%s<=%s", $1.val, $3.val)
     };
+    free($1.val);
+    free($3.val);
   }
   | expr "||" expr {
     axo_validate_rval(&@1, $1);
     axo_validate_rval(&@3, $3);
-    if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
-      $$ = (axo_expr){
-        .kind = axo_expr_normal_kind,
-        .typ = axo_bool_typ(state),
-        .val = fmtstr("%s||%s", $1.val, $3.val)
-      };
-    }
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .typ = axo_bool_typ(state),
+      .val = fmtstr("%s||%s", $1.val, $3.val)
+    };
   }
   | '!' expr {
-    if (axo_validate_rval(&@2, $2)) {
-      $$ = (axo_expr){
-        .kind = axo_expr_normal_kind,
-        .typ = axo_bool_typ(state),
-        .val = fmtstr("!(%s)", $2.val),
-        .lval_kind = axo_not_lval_kind
-      };
-      if ($2.typ.kind != axo_simple_kind)
-        yyerror(&@2, "Negation can only be used on primitive types (byte, int etc.)");
-    }
+    axo_validate_rval(&@2, $2);
+    $$ = (axo_expr){
+      .kind = axo_expr_normal_kind,
+      .typ = axo_bool_typ(state),
+      .val = fmtstr("!(%s)", $2.val),
+      .lval_kind = axo_not_lval_kind
+    };
+    if ($2.typ.kind != axo_simple_kind)
+      axo_yyerror(&@2, "Negation can only be used on primitive types (byte, int etc.)");
   }
   | expr "&&" expr {
     if (axo_validate_rval(&@1, $1) && axo_validate_rval(&@3, $3)){
@@ -725,7 +902,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         arr_typ = axo_get_arr_typ($1.typ);
         @2.last_column = @3.last_column;
         if (arr_typ.dim_count != $index_access.index_count){
-          yyerror(&@2, "Cannot index %d dimensional array with %d dimensional index.", arr_typ.dim_count, $index_access.index_count);
+          axo_yyerror(&@2, "Cannot index %d dimensional array with %d dimensional index.", arr_typ.dim_count, $index_access.index_count);
         }else{
           $$.val = axo_arr_access_to_str(&@1, $1, &@2, $2);
           $$.typ = arr_typ.subtyp;
@@ -734,86 +911,23 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         break;
       case axo_ptr_kind:
         if ($index_access.index_count != 1)
-          yyerror(&@2, "Expected a 1 dimensional index to access a pointer, but got %d dimensional index.", $index_access.index_count);
+          axo_yyerror(&@2, "Expected a 1 dimensional index to access a pointer, but got %d dimensional index.", $index_access.index_count);
         $$.typ = *axo_subtyp($1.typ);
         $$.val = fmtstr("%s[%s]", $1.val, $2.indexes[0].val);
         break;
       default:
-        yyerror(&@1, "Cannot index an expression of type '%s'.", axo_typ_to_str($1.typ));
+        axo_yyerror(&@1, "Cannot index an expression of type '%s'.", axo_typ_to_str($1.typ));
         break;
     }
     $$.kind=axo_expr_normal_kind;
+    axo_free_index_access($index_access);
   }
   | expr DOT_FIELD {
     axo_validate_rval(&@1, $1);
-    axo_enum* enumerate;
-    axo_struct* structure;
-    axo_var* var;
-    axo_module* mod;
-    switch($1.kind){
-      case axo_expr_module_kind:
-        mod = (axo_module*)($1.typ.module);
-        var = axo_get_var(state->global_scope, fmt_str(s_str(1024), "%s%s", mod->prefix, $DOT_FIELD));        
-        if (var == NULL && rval_now)
-          yyerror(&@2, "Module '%s' doesn't have variable '%s'.", mod->name, $DOT_FIELD);
-        $$ = (axo_expr){
-          .val = fmtstr("%s%s", mod->prefix, $DOT_FIELD),
-          .typ=(var ? var->typ : axo_no_typ),
-          .kind = axo_expr_normal_kind,
-          .lval_kind = axo_var_lval_kind
-        };
-        break;
-      case axo_expr_enum_typ_kind:
-        enumerate = (axo_enum*)($1.typ.enumerate);
-        int index = -1;
-        for (int i=0; i<enumerate->len; i++){
-          if (strcmp(enumerate->names[i], $2)==0){
-            index = i;
-            break;
-          }
-        }
-        if (index<0)
-         yyerror(&@$, "Enum '%s' doesn't have a field named '%s'.", enumerate->name, $2);
-        else{
-          $$ = (axo_expr){
-            .kind=axo_expr_normal_kind,
-            .typ=$1.typ,
-            .val=fmtstr("%s$%s", enumerate->name, enumerate->names[index])
-          };
-        }
-        break;
-      default:
-        switch($1.typ.kind){
-          case axo_struct_kind:
-            structure = (axo_struct*)($1.typ.structure);
-            int index = -1;
-            for (int i=0;i<structure->fields_len; i++){
-              if (strcmp(structure->fields[i].name, $2)==0){
-                index = i;
-                break;
-              }
-            }
-            if (index<0) yyerror(&@$, "Struct '%s' doesn't have a field named '%s'.", structure->name, $2);
-            else{
-              $$ = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .val=fmtstr("%s.%s", $1.val, $2),
-                .typ=structure->fields[index].typ
-              };
-            }
-            break;
-          case axo_arr_kind: //.len, .data, .dims
-            $$ = axo_get_array_field(state, &@1, &@2, $1, $2);
-            break;
-          default:
-            yyerror(&@1, "Cannot get field of type '%s'", axo_typ_to_str($1.typ));
-          break;
-        }
-        break;
-    }
+    $$ = axo_expr_dot_field(state, &@$, &@1, &@2, $1, $2);
   }
   | "sz_of" '(' expr ')' {
-    const axo_typ_def* lu_def = axo_get_typ_def(state, "u64");
+    const axo_typ_def* lu_def = axo_get_typ_def(state, "size_t");
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
       .lval_kind = axo_not_lval_kind,
@@ -822,11 +936,11 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     };
   }
   | "type_sz" '(' val_typ ')' {
-    const axo_typ_def* lu_def = axo_get_typ_def(state, "u64");
+    const axo_typ_def* lu_def = axo_get_typ_def(state, "size_t");
     $$ = (axo_expr){
       .kind = axo_expr_normal_kind,
       .lval_kind = axo_not_lval_kind,
-      .val = fmtstr("sizeof(%s)", axo_typ_to_str($val_typ)),
+      .val = fmtstr("sizeof(%s)", axo_typ_to_c_str($val_typ)),
       .typ = lu_def->typ
     };
   }
@@ -860,8 +974,9 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
     axo_validate_rval(&@1, $1);
     switch($1.typ.kind){
       case axo_simple_kind:
+      case axo_literal_kind:
         if ($val_typ.kind != axo_simple_kind)
-          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+          axo_yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
         else
           $$ = (axo_expr){
             .typ=$val_typ,
@@ -872,7 +987,7 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
         break;
       case axo_ptr_kind:
         if ($val_typ.kind != axo_ptr_kind)
-          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+          axo_yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
         else
           $$ = (axo_expr){
             .typ=$val_typ,
@@ -882,9 +997,22 @@ expr : STRING_LITERAL {set_val(&$$, axo_str_typ(state), $1); $$.kind=axo_expr_no
           };
         break;
       default:
-          yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
+          axo_yyerror(&@$, "Cannot cast type '%s' to '%s'.", axo_typ_to_str($1.typ), axo_typ_to_str($val_typ));
         break;
     }
+  }
+  | '$' {
+    axo_var* var = axo_get_var(top_scope, "_axo_self_param");
+    if (!var){
+      axo_yyerror(&@$, "Cannot use self param '$' outside of a method.");
+      YYERROR;
+    }
+    $$ = (axo_expr){
+      .val=alloc_str("_axo_self_param"),
+      .typ=(var ? var->typ : axo_no_typ),
+      .kind=axo_expr_normal_kind,
+      .lval_kind=axo_var_lval_kind
+    };
   }
   ;
 
@@ -892,7 +1020,7 @@ stat_arr_literal_start : arr_lit_start expr ',' expr {
     axo_validate_rval(&@2, $2);
     axo_validate_rval(&@4, $4);
     if (!axo_typ_eq($2.typ, $4.typ)){
-            yyerror(&@4, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($4.typ), axo_typ_to_str($2.typ));
+            axo_yyerror(&@4, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($4.typ), axo_typ_to_str($2.typ));
     }
     $$ = (axo_arr_lit){
       .dynamic=$arr_lit_start,
@@ -907,7 +1035,7 @@ stat_arr_literal_start : arr_lit_start expr ',' expr {
     axo_validate_rval(&@4, $4);
     axo_validate_rval(&@6, $6);
     if (!axo_typ_eq($4.typ, $6.typ)){
-            yyerror(&@6, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($6.typ), axo_typ_to_str($4.typ));
+            axo_yyerror(&@6, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($6.typ), axo_typ_to_str($4.typ));
     }
     $$ = (axo_arr_lit){
       .dynamic=$empty_arr_dims.dynamic,
@@ -921,7 +1049,7 @@ stat_arr_literal_start : arr_lit_start expr ',' expr {
   | stat_arr_literal_start ',' expr {
     axo_validate_rval(&@3, $3);
     if (!axo_typ_eq($$.typ, $3.typ)){
-            yyerror(&@3, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($3.typ), axo_typ_to_str($$.typ));
+            axo_yyerror(&@3, "A '%s' value cannot be an element of a '%s' array.", axo_typ_to_str($3.typ), axo_typ_to_str($$.typ));
     }
     strapnd(&$$.val, ",");
     strapnd(&$$.val, $3.val);
@@ -944,9 +1072,11 @@ empty_arr_dims : arr_lit_start INTEGER_LITERAL {
       .dim_count=1
     };
     $$.len[0] = atoi($2);
+    free($INTEGER_LITERAL);
   }
   | empty_arr_dims '|' INTEGER_LITERAL {
     $$.len[$$.dim_count++] = atoi($3);
+    free($INTEGER_LITERAL);
   }
   ;
 
@@ -974,7 +1104,7 @@ stat_arr_literal : arr_lit_start expr ',' ']' {
       for (int i=0; i<$$.dim_count; i++)
         expected *= $$.len[i];
       if (expected != $$.count)
-        yyerror(&@$, "Expected %u elements, but provided %u.", expected, $$.count);
+        axo_yyerror(&@$, "Expected %u elements, but provided %u.", expected, $$.count);
     }else{
       $$.len = (int[]){$$.count};
       $$.dim_count = 1;
@@ -1021,7 +1151,6 @@ arr_literal : stat_arr_literal {
       if (i>0) strapnd(&dims_str, ",");
       strapnd(&dims_str, fmt_str((char[16]){}, "%d", $1.len[i]));
     }
-    strapnd(&dims_str, "");
     axo_typ typ = (axo_typ){
       .kind=axo_arr_kind,
       .arr=malloc(sizeof(axo_arr_typ)),
@@ -1039,6 +1168,7 @@ arr_literal : stat_arr_literal {
           : fmtstr("axo_arr_new_stat((%s){}, ((axo_arr_dim_t[]){%s}))", axo_c_arr_of_typ($val_typ, sz_str), dims_str),
       .typ=typ
     };
+    free(dims_str);
   }
   ;
 
@@ -1050,6 +1180,12 @@ matching_statement : expr {
     strapnd(&($$.val), ";");
     $$.kind = axo_call_statement_kind;
   } %prec EXPR_AS_STATEMENT
+  | ';' {
+    $$ = (axo_statement){
+      .kind=axo_empty_statement_kind,
+      .val=alloc_str(";")
+    };
+  }
   | "ret" expr {
     axo_validate_rval(&@expr, $expr);
     $$.val=fmtstr("return %s;", $expr.val);
@@ -1062,14 +1198,15 @@ matching_statement : expr {
       }else if(!axo_typ_eq(*ret_typ, $expr.typ)){
         char hlpr[64] = "";
         strcpy(hlpr, axo_typ_to_str(*ret_typ));
-        yyerror(&@expr, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str($2.typ), hlpr);
+        axo_yyerror(&@expr, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str($2.typ), hlpr);
       }
     }else{
-      yyerror(&@1, "Couldn't return outside of a function body.");
+      axo_yyerror(&@1, "Couldn't return outside of a function body.");
     }
+    free($expr.val);
   }
   | "ret" ';' {
-    $$.val=fmtstr("return;");
+    $$.val=alloc_str("return;");
     $$.kind = axo_ret_statement_kind;
     axo_var* parent_func = (axo_var*)(top_scope->parent_func);
     if (parent_func){
@@ -1079,39 +1216,42 @@ matching_statement : expr {
       }else if(!axo_typ_eq(*ret_typ, axo_none_typ)){
         char hlpr[64] = "";
         strcpy(hlpr, axo_typ_to_str(*ret_typ));
-        yyerror(&@2, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str(axo_none_typ), hlpr);
+        axo_yyerror(&@2, "Cannot return %s type, expected %s type to be returned.", axo_typ_to_str(axo_none_typ), hlpr);
       }
     }else{
-      yyerror(&@1, "Couldn't return outside of a function body.");
+      axo_yyerror(&@1, "Couldn't return outside of a function body.");
     }
   }
   | code_scope {
     $$ = axo_scope_to_statement($code_scope);
+    axo_free_scope($code_scope);
   }
   | expr '=' "none"  val_typ {
     if ($expr.lval_kind == axo_var_lval_kind){
+      char* ntd = axo_name_typ_decl($expr.val, $val_typ);
       $$ = (axo_statement){
         .kind=axo_var_is_decl_statement_kind,
-        .val=axo_name_typ_decl($expr.val, $val_typ)
+        .val=ntd
       };
       strapnd(&($$.val), ";");
-      axo_set_var(top_scope, (axo_var){.name=$expr.val, .typ=axo_clean_typ($val_typ), .is_const=false});
+      axo_set_var(top_scope, (axo_var){.name=$expr.val, .typ=axo_clean_typ($val_typ)});
     }else{
-      yyerror(&@expr, "Cannot declare non-variable value '%s'.", $expr.val);
+      axo_yyerror(&@expr, "Cannot declare non-variable value '%s'.", $expr.val);
     }
+    free($expr.val);
   }
   | "continue" {
-    if (in_loop_count<=0) yyerror(&@1, "No loop/switch to continue from.");
+    if (in_loop_count<=0) axo_yyerror(&@1, "No loop/switch to continue from.");
     $$ = (axo_statement){
       .kind = axo_continue_statement_kind,
-      .val = "continue;"
+      .val = alloc_str("continue;")
     };
   }
   | "break" {
-    if (in_loop_count<=0) yyerror(&@1, "No loop/switch to break out of.");
+    if (in_loop_count<=0) axo_yyerror(&@1, "No loop/switch to break out of.");
     $$ = (axo_statement){
       .kind = axo_break_statement_kind,
-      .val = "break;"
+      .val = alloc_str("break;")
     };
   }
   | switch_statement {
@@ -1123,6 +1263,24 @@ matching_statement : expr {
       .kind=axo_defer_statement_kind,
       .val=fmtstr("Defer({%s});", $2.val)
     };
+    free($2.val);
+  }
+  | type_qualifier identifier '=' expr {
+    axo_typ typ = axo_merge_type_with_qualifiers($expr.typ, $type_qualifier);
+    axo_validate_rval(&@expr, $expr);
+    char* var_name = ((char*)($identifier.data));
+    if ($identifier.kind != axo_identifier_var_kind || axo_get_var(top_scope, var_name) != NULL){
+      axo_yyerror(&@2, "Cannot declare variable, it's already a %s.", axo_identifier_kind_to_str($identifier.kind));
+      YYERROR;
+    }
+    axo_var var = (axo_var){.name=var_name, .typ=typ};
+    axo_set_var(top_scope, var);
+    char* assign_decl = axo_get_var_decl_assign(&@$, var, $expr);
+    $$ = (axo_statement){
+      .kind=axo_assignment_statement_kind,
+      .val = fmtstr("%s;", assign_decl)
+    };
+    free(assign_decl);
   }
   | matching_if_statement
   | matching_for_loop
@@ -1132,7 +1290,7 @@ matching_statement : expr {
 
 switch_statement_start : "switch" expr {
     if ($expr.typ.kind != axo_simple_kind)
-      yyerror(&@expr, "Cannot switch on a non-primitive (%s) value.", axo_typ_to_str($expr.typ));
+      axo_yyerror(&@expr, "Cannot switch on a non-primitive (%s) value.", axo_typ_to_str($expr.typ));
     $$ = (axo_switch){
       .root = $expr
     };
@@ -1175,15 +1333,15 @@ switch_branch : switch_case "none" "break" {
 switch_case : switch_expr_list "case" {
     $$ = $switch_expr_list;
   }
-  | expr '.' '.' '.' expr "case" {
-    $$ = (axo_switch_case){
-      .exprs = (axo_expr*)malloc(2*sizeof(axo_expr)),
-      .exprs_len = 2,
-      .kind = axo_range_case_kind
-    };
-    $$.exprs[0] = $1;
-    $$.exprs[1] = $5;
-  }
+  // | expr '.' '.' '.' expr "case" {
+  //   $$ = (axo_switch_case){
+  //     .exprs = (axo_expr*)malloc(2*sizeof(axo_expr)),
+  //     .exprs_len = 2,
+  //     .kind = axo_range_case_kind
+  //   };
+  //   $$.exprs[0] = $1;
+  //   $$.exprs[1] = $5;
+  // }
   ;
 
 switch_expr_list : expr {
@@ -1231,7 +1389,7 @@ till_loop_start : TILL_KWRD '(' IDEN  '=' expr ')' {
     $$.lim = $5;
     printf("till iter %s created scope\n", $$.iter);
     axo_push_scope(scopes, axo_new_scope(top_scope));
-    axo_set_var(top_scope, (axo_var){.typ=state->int_def->typ, .name=$$.iter, .is_const=false});
+    axo_set_var(top_scope, (axo_var){.typ=state->int_def->typ, .name=$$.iter});
   }
   ;
 
@@ -1408,19 +1566,20 @@ assignment : expr assign_op expr {
       case axo_var_lval_kind:
         if ($1.typ.kind == axo_no_kind){
           l_typ = axo_clean_typ($3.typ);
-          $$.val = axo_get_var_decl_assign(&@$, $1.val, (axo_expr){.typ=l_typ, .val=$3.val});
-          axo_set_var(top_scope, (axo_var){.typ = l_typ, .name = $1.val, .is_const=false});
+          axo_var var = (axo_var){.name=$1.val, .typ=$3.typ};
+          $$.val = axo_get_var_decl_assign(&@$, var, (axo_expr){.typ=l_typ, .val=$3.val});
+          axo_set_var(top_scope, (axo_var){.typ = l_typ, .name = $1.val});
           $$.kind = axo_expr_assigned_declaration_kind;
         }else{
           $$.val = fmtstr("%s=%s",$1.val, $3.val);
         }
         break;
       case axo_not_lval_kind:
-        yyerror(&@1, "Cannot assign to a non-lvalue");
+        axo_yyerror(&@1, "Cannot assign to a non-lvalue");
         break;
       default:
         if (!axo_typ_eq(l_typ, $3.typ))
-          yyerror(&@$, "Cannot assign '%s' to '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str(l_typ));
+          axo_yyerror(&@$, "Cannot assign '%s' to '%s'.", axo_typ_to_str($3.typ), axo_typ_to_str(l_typ));
         else{
           $$.val = fmtstr("%s=%s",$1.val, $3.val);
         }
@@ -1448,11 +1607,6 @@ special_assignment : expr "+=" expr {
   }
   ;
 
-call_error_assignment : expr "?=" func_call '!' {
-    $$ = axo_parse_error_assignment(&@1, &@2, &@3, $1, $func_call);
-  }
-  ;
-
 arr_multidim_typ : '[' '|' {
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
@@ -1471,7 +1625,7 @@ arr_multidim_typ : '[' '|' {
 
 arr_typ : '[' ']' val_typ {
     if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "None arrays are not a type.");
+      axo_yyerror(&@val_typ, "None arrays are not a type.");
     axo_arr_typ* arr_typ = alloc_one(axo_arr_typ);
     *arr_typ = (axo_arr_typ){
       .subtyp=$val_typ,
@@ -1484,7 +1638,7 @@ arr_typ : '[' ']' val_typ {
   }
   | arr_multidim_typ ']' val_typ {
     if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "None arrays are not a type.");
+      axo_yyerror(&@val_typ, "None arrays are not a type.");
     $$ = $arr_multidim_typ;
     axo_get_arr_typ($$).subtyp = $val_typ;
   }
@@ -1500,7 +1654,7 @@ func_typ_start : '(' val_typ FN_KWRD {
       .kind = axo_func_kind,
       .func_typ=func_typ
     };
-  } 
+  }
   | '(' FN_KWRD {
     axo_func_typ* func_typ = alloc_one(axo_func_typ);
     func_typ->args_len=0;
@@ -1534,22 +1688,24 @@ func_typ_args : func_typ_start val_typ {
   }
   ;
 
-func_typ : func_typ_start ')' {$$=$1;}
-  | func_typ_args ')' {$$=$1;}
+func_typ : func_typ_start ')'
+  | func_typ_args ')'
   ;
 
-val_typ : IDEN {
+no_q_typ : IDEN {
     const axo_typ_def* def = axo_get_typ_def(state, $1);
     if (def==NULL){
-      yyerror(&@1, "Type '%s' isn't defined.", $1);
+      axo_yyerror(&@1, "Type '%s' isn't defined.", $1);
     }else{
       $$=def->typ;
     }
   }
   | '@' val_typ {
-    $$.kind = axo_ptr_kind;
-    $$.subtyp = malloc(sizeof(axo_typ));
-    $$.def = NULL;
+    $$ = (axo_typ){
+      .kind = axo_ptr_kind,
+      .subtyp = malloc(sizeof(axo_typ)),
+      .def = NULL,
+    };
     *axo_subtyp($$)=$2;
   }
   | "none" {
@@ -1558,10 +1714,40 @@ val_typ : IDEN {
   | func_typ
   | arr_typ
   | '.' '.' '.' {
-    $$.kind = axo_c_arg_list_kind;
-    $$.def = NULL;
+    $$ = (axo_typ){
+      .kind = axo_c_arg_list_kind,
+      .def = NULL,
+    };
   }
   ;
+
+val_typ : no_q_typ {
+    $$.is_const=false;
+    $$.is_volatile=false;
+  }
+  | type_qualifier no_q_typ {
+    $$ = $2;
+    $$.is_const=$1.is_const;
+    $$.is_volatile=$1.is_volatile;
+  }
+  ;
+
+type_qualifier : typ_q
+    | type_qualifier typ_q {
+      $$ = (axo_typ){
+        .is_const=$1.is_const||$2.is_const,
+        .is_volatile=$1.is_volatile||$2.is_volatile
+      };
+    }
+    ;
+
+typ_q : "const" {
+      $$ = (axo_typ){.is_const=true, .is_volatile=false};
+    }
+    | "volatile" {
+      $$ = (axo_typ){.is_const=false, .is_volatile=true};
+    }
+    ;
   
 called_expr : expr '(' {
     if (axo_validate_rval(&@expr, $expr)){
@@ -1575,115 +1761,25 @@ called_expr : expr '(' {
           };
           break;
         default:
-          yyerror(&@1, "Cannot call an expression of non-function type '%s'.", axo_typ_to_str($expr.typ));
+          axo_yyerror(&@1, "Cannot call an expression of non-function type '%s'.", axo_typ_to_str($expr.typ));
           break;
       }
     }else{
-      yyerror(&@1, "Cannot call an invalid rval.");
+      axo_yyerror(&@1, "Cannot call an invalid rval.");
     }
     // printf("ret_typ: %s\n", axo_typ_to_str(((axo_func*)($$.typ.func_typ))->f_typ.ret_typ));
   } %prec CALL_PREC
   | expr ':' IDEN '(' {
     axo_validate_rval(&@expr, $expr);
-    axo_expr passed_expr;
-    switch($expr.typ.kind){
-      case axo_enum_kind:
-      case axo_simple_kind:
-      case axo_struct_kind:
-        if ($expr.lval_kind == axo_not_lval_kind){
-          yyerror(&@1, "Cannot reference a non-lvalue expression to call a method.");
-        }else{
-          char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str($expr.typ), $IDEN);
-          axo_var* var = axo_get_var(top_scope, fn_name);
-          if (var == NULL && rval_now)
-            yyerror(&@1, "Method '%s' undefined before usage.", $IDEN);
-          else{
-            if (var->typ.kind != axo_func_kind){
-              yyerror(&@3, "Attempted to call a non-function method. (Naming clash?)");  
-            }else{
-              passed_expr = (axo_expr){
-                .kind=axo_expr_normal_kind,
-                .lval_kind=axo_not_lval_kind,
-                .val=fmtstr("(&(%s))", $expr.val),
-                .typ=(axo_typ){
-                  .kind=axo_ptr_kind,
-                  .subtyp=alloc_one(axo_typ)
-                }
-              };
-              *axo_subtyp(passed_expr.typ) = $expr.typ;
-              $$ = (axo_func_call){
-                .typ = var->typ,
-                .called_val = fn_name,
-                .params_len=1,
-                .params=(axo_expr*)malloc(axo_func_args_cap*sizeof(axo_expr))
-              };
-              $$.params[0] = passed_expr;
-            }
-          }
-        }        
-        break;
-        case axo_arr_kind:
-          passed_expr = (axo_expr){
-            .kind=axo_expr_normal_kind,
-            .lval_kind=axo_not_lval_kind,
-            .val=fmtstr("(&(%s))", $expr.val),
-            .typ=(axo_typ){
-              .kind=axo_ptr_kind,
-              .subtyp=alloc_one(axo_typ)
-            }
-          };
-          *axo_subtyp(passed_expr.typ) = $expr.typ;
-          $$ = axo_get_array_method(state, &@expr, &@IDEN, passed_expr, $IDEN);
-          break;
-      default:
-        yyerror(&@1, "Methods can only operate on simple types (primitives, enums or structures), not '%s'.", axo_typ_to_str($expr.typ));
-        break;
-    }
+    $$ = axo_method_call(state, top_scope, &@$, &@expr, &@IDEN, $expr, $IDEN, rval_now);
   }
-  | expr '$' IDEN '(' {
-    axo_validate_rval(&@expr, $expr);
-    if ($expr.typ.kind != axo_ptr_kind){
-      yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
-    }else{
-      axo_typ subtyp = *axo_subtyp($expr.typ);
-      char* fn_name = fmtstr("met_%s_%s", axo_typ_to_str(subtyp), $IDEN);
-      axo_var* var = axo_get_var(top_scope, fn_name);
-      switch(subtyp.kind){
-        case axo_enum_kind:
-        case axo_simple_kind:
-        case axo_struct_kind:
-          if (var == NULL && rval_now)
-            yyerror(&@1, "Method '%s' undefined before usage.", $IDEN);
-          else{
-            if (var->typ.kind != axo_func_kind){
-              yyerror(&@3, "Attempted to call a non-function method. (Naming clash?)");  
-            }else{
-              $$ = (axo_func_call){
-                .typ = var->typ,
-                .called_val = fn_name,
-                .params_len=1,
-                .params=(axo_expr*)malloc(axo_func_args_cap*sizeof(axo_expr))
-              };
-              $$.params[0] = $expr;
-            }
-          }
-          break;
-        case axo_arr_kind:
-          $$ = axo_get_array_method(state, &@expr, &@IDEN, $expr, $IDEN);
-          break;
-        default:
-          yyerror(&@1, "Methods cannot operate on '%s', only on pointers to simple types (primitives, enums or structures).", axo_typ_to_str($expr.typ));
-          break;
-      }
-    }
-  } %prec CALL_PREC
   ;
 
 func_call_start : called_expr {
     axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
     if ($$.params_len<fnt->args_len){
       resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
-      $$.params[$$.params_len].val = fnt->args_defs[$$.params_len];
+      $$.params[$$.params_len].val = alloc_str(fnt->args_defs[$$.params_len]);
       $$.params_len++;
     }
   }
@@ -1692,14 +1788,14 @@ func_call_start : called_expr {
       axo_func_typ* fnt = (axo_func_typ*)($1.typ.func_typ);
       if ($$.params_len <= fnt->args_len){
         if (!axo_typ_eq(fnt->args_types[$$.params_len], $expr.typ)){
-          yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len]), $$.params_len+1, axo_typ_to_str($expr.typ));
+          axo_yyerror(&@2, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[$$.params_len]), $$.params_len+1, axo_typ_to_str($expr.typ));
         }else{
           resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
           $$.params[$$.params_len++] = $expr;
         }
       }else{
         if (fnt->args_types[0].kind != axo_c_arg_list_kind)
-          yyerror(&@1, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
+          axo_yyerror(&@1, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
       }
     }
   }
@@ -1711,9 +1807,9 @@ func_call_start : called_expr {
     if (fnt->args_types[fnt->args_len-1].kind != axo_c_arg_list_kind){
       if (i < fnt->args_len){
         if (!axo_typ_eq(fnt->args_types[i], $expr.typ))
-          yyerror(&@expr, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[i]), i, axo_typ_to_str($expr.typ));
+          axo_yyerror(&@expr, "Expected value of type "axo_underline_start"%s"axo_reset_style axo_red_fgs " for argument #%d, got type "axo_underline_start"%s"axo_reset_style axo_red_fgs" instead.", axo_typ_to_str(fnt->args_types[i]), i, axo_typ_to_str($expr.typ));
       }else{
-          yyerror(&@expr, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
+          axo_yyerror(&@expr, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
       }
     }
     $$.params[i] = $expr;
@@ -1726,10 +1822,10 @@ func_call_start : called_expr {
     resize_dyn_arr_if_needed(axo_expr, $$.params, $$.params_len, axo_func_args_cap);
     int i = $$.params_len;
     if (i >= fnt->args_len-1 && fnt->args_types[fnt->args_len-1].kind == axo_c_arg_list_kind)
-        yyerror(&@2, "Cannot generate a default param for '...'.");
+        axo_yyerror(&@2, "Cannot generate a default param for '...'.");
     else if (i >= fnt->args_len)
-        yyerror(&@2, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
-    $$.params[i].val = defaults[i];
+        axo_yyerror(&@2, "Too many parameters for function type '%s'", axo_typ_to_str($1.typ));
+    $$.params[i].val = alloc_str(defaults[i]);
     $$.params_len++;
   }
   ;
@@ -1743,14 +1839,14 @@ func_call : func_call_start ')' {
       for (int i=$func_call_start.params_len; i<fnt->args_len-1; i++){ //Fill with defaults up until pre-last arg!
         // printf("arg #%d\n", i);
         // printf("%s\n", fnt->args_defs[i]);
-        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
+        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=alloc_str(fnt->args_defs[i])};
       }
       $$.params_len=fnt->args_len-1;
       int i = fnt->args_len-1;
       if (fnt->args_types[i].kind != axo_c_arg_list_kind){
         // printf("arg #%d\n", i);
         // printf("%s\n", fnt->args_defs[i]);
-        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=fnt->args_defs[i]};
+        $$.params[i] = (axo_expr){.typ=fnt->args_types[i], .val=alloc_str(fnt->args_defs[i])};
         $$.params_len++;
       }
     }
@@ -1775,13 +1871,13 @@ func_def_name : IDEN {
       .args_names=NULL
     };
   }
-  | IDEN DOT_FIELD {
-    axo_module* mod = axo_get_module(state, $IDEN);
+  | IDEN "::" IDEN {
+    axo_module* mod = axo_get_module(state, $1);
     if (!mod)
-      yyerror(&@IDEN, "Module doesn't exist.");
+      axo_yyerror(&@1, "Module doesn't exist.");
     else
       $$ = (axo_func){
-        .name=fmtstr("%s%s", mod->prefix, $DOT_FIELD),
+        .name=fmtstr("%s%s", mod->prefix, $3),
         .args_names=NULL
       };
   }
@@ -1797,6 +1893,7 @@ func_def_name : IDEN {
       case axo_simple_kind:
       case axo_struct_kind:
       case axo_enum_kind:
+      case axo_none_kind:
         $$ = (axo_func){
           .name=fmtstr("met_%s_%s", axo_typ_to_str($val_typ), $IDEN),
           .args_names = (char**)malloc(sizeof(char*)),
@@ -1808,11 +1905,11 @@ func_def_name : IDEN {
         };
         $$.f_typ.args_defs[0] = typ.def;
         $$.f_typ.args_types[0] = typ;
-        $$.args_names[0] = alloc_str("self");
+        $$.args_names[0] = alloc_str("_axo_self_param");
         break;
       default:
         free(subtyp);
-        yyerror(&@1, "Method are only allowed for structs, enums and primitives, but got %s.", axo_typ_kind_to_str($val_typ.kind));
+        axo_yyerror(&@1, "Method are only allowed for structs, enums and primitives, but got %s.", axo_typ_kind_to_str($val_typ.kind));
         break;
     }
   }
@@ -1853,6 +1950,8 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
         $$.f_typ.args_types[$$.f_typ.args_len] = $func_args.f_typ.args_types[i];
         $$.f_typ.args_defs[$$.f_typ.args_len++] = $func_args.f_typ.args_defs[i];
       }
+    //Free func_args
+    free($func_args.f_typ.args_types);
     }else{
       $$.args_names = $func_args.args_names;
       $$.f_typ.args_defs = $func_args.f_typ.args_defs;
@@ -1861,23 +1960,24 @@ func_def_start : func_def_ret_typ func_def_name '(' func_args ')' {
     }
     $$.f_typ.ret_typ = $func_def_ret_typ;
     for (int i = 0; i<$$.f_typ.args_len; i++)
-      axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i], .is_const=true});
+      axo_set_var(top_scope, (axo_var){.name=$$.args_names[i], .typ=$$.f_typ.args_types[i]});
     //Set the function
     axo_typ typ = (axo_typ){
       .kind=axo_func_kind,
       .func_typ=alloc_one(axo_func_typ)
     };
     *((axo_func_typ*)(typ.func_typ)) = $$.f_typ;
-    top_scope->parent_func = axo_set_var(state->global_scope, (axo_var){.name=$$.name, .typ=typ, .is_const=true});
+    axo_set_var(state->global_scope, (axo_var){.name=$$.name, .typ=typ});
+    top_scope->parent_func = axo_get_var(state->global_scope, $$.name);
   }
   ;
 
 struct_literal_start : STRUCT_LITERAL_START {
     const axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td==NULL){
-      yyerror(&@1, "Structure '%s' undefined before usage.", $1);
+      axo_yyerror(&@1, "Structure '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
-      yyerror(&@1, "Type '%s' is not a struture.", $1);
+      axo_yyerror(&@1, "Type '%s' is not a struture.", $1);
     }else{
     int total_field_count = ((axo_struct*)(td->typ.structure))->fields_len;
     $$ = (axo_struct_val){
@@ -1892,12 +1992,12 @@ struct_literal_start : STRUCT_LITERAL_START {
     axo_validate_rval(&@expr, $expr);
     const axo_typ_def* td = axo_get_typ_def(state, $1);
     if (td==NULL){
-      yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
+      axo_yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
-      yyerror(&@1, "Type '%s' is not a struture.", $1);
+      axo_yyerror(&@1, "Type '%s' is not a struture.", $1);
     }else if (!axo_typ_eq(((axo_struct*)(td->typ.structure))->fields[0].typ, $2.typ)){
       axo_struct* structure = ((axo_struct*)(td->typ.structure));
-      yyerror(&@2,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[0].typ), structure->fields[0].name, structure->name, axo_typ_to_str($2.typ));
+      axo_yyerror(&@2,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[0].typ), structure->fields[0].name, structure->name, axo_typ_to_str($2.typ));
     }else{
       int total_field_count = ((axo_struct*)(td->typ.structure))->fields_len;
       $$ = (axo_struct_val){
@@ -1914,9 +2014,9 @@ struct_literal_start : STRUCT_LITERAL_START {
     const axo_typ_def* td = axo_get_typ_def(state, $1);
     axo_struct* structure = (axo_struct*)(td->typ.structure);
     if (td==NULL){
-      yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
+      axo_yyerror(&@1, "Structure type '%s' undefined before usage.", $1);
     }else if (td->typ.kind!=axo_struct_kind){
-      yyerror(&@1, "Type '%s' is not a structure.", $1);
+      axo_yyerror(&@1, "Type '%s' is not a structure.", $1);
     }else{
       $$ = (axo_struct_val){
         .typ=td->typ,
@@ -1932,9 +2032,9 @@ struct_literal_start : STRUCT_LITERAL_START {
           break;
         }
       }
-      if (index<0) yyerror(&@2, "Structure '%s' doesn't have '%s' field.", structure->name, $2);
+      if (index<0) axo_yyerror(&@2, "Structure '%s' doesn't have '%s' field.", structure->name, $2);
       else if (!axo_typ_eq(structure->fields[index].typ, $4.typ)){
-        yyerror(&@4,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($4.typ));
+        axo_yyerror(&@4,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($4.typ));
       }else{
         $$.fields[index] = $4.val;
       }
@@ -1944,21 +2044,21 @@ struct_literal_start : STRUCT_LITERAL_START {
     $$=$1;
     axo_struct* structure = (axo_struct*)($$.typ.structure);
     if ($$.fields_count==structure->fields_len){
-      yyerror(&@3, "Too many fields provided to structure '%s'.", structure->name);
+      axo_yyerror(&@3, "Too many fields provided to structure '%s'.", structure->name);
     }else if (!axo_typ_eq(structure->fields[$$.fields_count].typ, $3.typ)){
-        yyerror(&@3,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[$$.fields_count].typ), structure->fields[$$.fields_count].name, structure->name, axo_typ_to_str($3.typ));
+        axo_yyerror(&@3,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[$$.fields_count].typ), structure->fields[$$.fields_count].name, structure->name, axo_typ_to_str($3.typ));
     }else if ($$.fields[$$.fields_count]==NULL){
       $$.fields[$$.fields_count] = $3.val;
       $$.fields_count++;
     }else{
-      yyerror(&@3, "Structure field '%s' was arleady assigned a value.", ((axo_struct*)($$.typ.structure))->fields[$$.fields_count].name);    
+      axo_yyerror(&@3, "Structure field '%s' was arleady assigned a value.", ((axo_struct*)($$.typ.structure))->fields[$$.fields_count].name);    
     }
   }
   | struct_literal_start ',' {
     $$=$1;
     axo_struct* structure = (axo_struct*)($$.typ.structure);
     if ($$.fields_count==structure->fields_len){
-      yyerror(&@2, "Too many fields provided to structure '%s'.", structure->name);
+      axo_yyerror(&@2, "Too many fields provided to structure '%s'.", structure->name);
     }else if ($$.fields[$$.fields_count]==NULL){
       $$.fields[$$.fields_count] = ((axo_struct*)($1.typ.structure))->fields[$$.fields_count].def;
       $$.fields_count++;
@@ -1975,13 +2075,13 @@ struct_literal_start : STRUCT_LITERAL_START {
         break;
       }
     }
-    if (index<0) yyerror(&@3, "Structure '%s' doesn't have '%s' field.", structure->name, $3);
+    if (index<0) axo_yyerror(&@3, "Structure '%s' doesn't have '%s' field.", structure->name, $3);
     else if (!axo_typ_eq(structure->fields[index].typ, $5.typ)){
-        yyerror(&@5,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($5.typ));
+        axo_yyerror(&@5,"Expected type '%s' in field '%s' of struct '%s', but got '%s'.", axo_typ_to_str(structure->fields[index].typ), structure->fields[index].name, structure->name, axo_typ_to_str($5.typ));
     }else if ($$.fields[index]==NULL){
       $$.fields[index] = $5.val;
     }else{
-      yyerror(&@3, "Structure field '%s' was arleady assigned a value.", ((axo_struct*)($$.typ.structure))->fields[index].name);    
+      axo_yyerror(&@3, "Structure field '%s' was arleady assigned a value.", ((axo_struct*)($$.typ.structure))->fields[index].name);    
     }
   }
   ;
@@ -2008,31 +2108,31 @@ func_def : func_def_start code_scope {
         .body = $2
       };
     }else{
-      yyerror(NULL, "This should never happen.");
+      axo_yyerror(NULL, "This should never happen.");
     }
   }
   ;
 
 func_arg : val_typ IDEN {
     if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "Cannot declare a none value.");
+      axo_yyerror(&@val_typ, "Cannot declare a none value.");
     $$.name = alloc_str($IDEN);
     $$.typ = $val_typ;
     $$.def = alloc_str(axo_get_typ_default($val_typ));
   }
   | IDEN '=' expr {
     if (axo_none_check($expr.typ))
-      yyerror(&@expr, "Cannot declare a none variable.");
+      axo_yyerror(&@expr, "Cannot declare a none variable.");
     $$.name = alloc_str($IDEN);
     $$.typ = $expr.typ;
     $$.def = alloc_str($expr.val);
   }
   | val_typ IDEN '=' expr {
     if (axo_none_check($val_typ))
-      yyerror(&@val_typ, "Cannot declare a none variable.");
+      axo_yyerror(&@val_typ, "Cannot declare a none variable.");
     if (!axo_typ_eq($val_typ, $expr.typ)){
       char* expected_type_str = alloc_str(axo_typ_to_str($val_typ));
-      yyerror(&@expr, "Default value of type '%s' doesn't match expected type '%s'.", axo_typ_to_str($expr.typ), expected_type_str);
+      axo_yyerror(&@expr, "Default value of type '%s' doesn't match expected type '%s'.", axo_typ_to_str($expr.typ), expected_type_str);
       free(expected_type_str);
     }
     $$.name = alloc_str($IDEN);
@@ -2112,32 +2212,42 @@ int playground(){
   return 0;
 }
 
-void yyerror(YYLTYPE* loc, const char * fmt, ...){
-  // if (prog_return==0)
-  //   axo_errorf("Click an error to learn more.\n");
+
+void vyyerror(yyscan_t scanner, YYLTYPE* loc, const char* fmt, va_list args){
+  if (prog_return==0)
+    axo_err_printf("Click an error to learn more.\n");
   prog_return = 1;
   axo_raise_error;
-  va_list args;
   if (loc==NULL){
-    fprintf(stderr, axo_red_fg "Error: ");
-    va_start(args, fmt);
-    axo_verrorf(fmt, args);
-    va_end(args);
+    axo_err_printf(axo_red_fg "Error: ");
+    axo_err_vprintf(fmt, args);
     printf(axo_reset_style"\n");
   }else{
-    va_start(args, fmt);
     char* msg = NULL;
     if (vasprintf(&msg, fmt, args) < 0)
-      axo_errorf("Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
-    char* err_msg = axo_error_with_loc(state, loc, msg);
-    va_end(args);
-    axo_errorf("%s\n", err_msg);
-    free(msg);
+      axo_err_printf("Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
     #ifdef __EMSCRIPTEN__
+      axo_err_printf("error: %s\n", msg);
       return;
     #endif
+    char* err_msg = axo_error_with_loc(state, loc, msg);
+    axo_err_printf("%s\n", err_msg);
     free(err_msg);
   }
+}
+
+void axo_yyerror(YYLTYPE* loc, const char * fmt, ...){
+  va_list args;
+  va_start(args, fmt);
+  vyyerror(state->scanner, loc, fmt, args);
+  va_end(args);
+}
+
+void yyerror(yyscan_t scanner, YYLTYPE* loc, const char * fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    vyyerror(scanner, loc, fmt, args);
+    va_end(args);
 }
 
 int compile(int argc, char** argv) {
@@ -2149,10 +2259,13 @@ int compile(int argc, char** argv) {
   if (test_playground) return playground();
   
   //Get the root path (the path where the axo compiler lays)
-  char* root_p = axo_get_parent_dir(axo_get_exec_path((char[512]){}, 512));
+  char full_exec_path[1024] = "";
+  char root_p[1024] = "";
+  axo_get_parent_dir(root_p, axo_get_exec_path(full_exec_path, sizeof(full_exec_path)));
   // printf("Root: %s\n", root_p);
   //Initialize state
   state = axo_new_state(root_p);
+  axo_test_lua(state);
   //Save the original working dir
   state->orig_cwd = axo_cwd((char[axo_max_path_len]){}, axo_max_path_len);
   // printf("orig_cwd: %s\n", orig_cwd);
@@ -2165,7 +2278,7 @@ int compile(int argc, char** argv) {
     start = clock();
   }
   if (argc <= 1){
-    yyerror(NULL, "No input.");
+    axo_yyerror(NULL, "No input.");
     return 1;
   }
   char* cmd = argv[1];
@@ -2178,7 +2291,7 @@ int compile(int argc, char** argv) {
     axo_printf = state->silenced ?  axo_no_printf : printf;
     if (state->entry_file || state->input_str){
       if (state->input_str && state->entry_file){
-        yyerror(NULL, "Cannot take input from string and file.");
+        axo_yyerror(NULL, "Cannot take input from string and file.");
         return 1;
       }else if (state->entry_file){
         char* input_file_path = state->entry_file;
@@ -2189,7 +2302,7 @@ int compile(int argc, char** argv) {
         state->output_c_file = state->output_c_file ? state->output_c_file : alloc_str("a.c");
         state->output_file = state->output_file ? state->output_file : alloc_str("a"AXO_BIN_EXT);
       }else{
-        yyerror(NULL, "No input.");
+        axo_yyerror(NULL, "No input.");
         return 1;
       }
       state->entry_point = state->entry_point ? state->entry_point : alloc_str("axo__main");
@@ -2203,25 +2316,26 @@ int compile(int argc, char** argv) {
       else
         state->entry_file = alloc_str("./in.axo");
     }else{
-      yyerror(NULL, "No code provided.\nUsage: axo <source> |options|");
+      axo_yyerror(NULL, "No code provided.\nUsage: axo <source> |options|");
       return 1;
     }
     //Use the core module
     axo_add_decl(state, axo_use_module(state, NULL, "core"));
     state->in_core = true;
     //Set entry point
+    //empty_str should just be null to prevent leaks?
     axo_add_decl(state, (axo_decl){
       .kind=axo_other_decl_kind,
       .val=empty_str
     });
     //Parse
-    yyparse();
+    yyparse(state->scanner);
     // axo_printf("Parsing done.\n");
     // char* cde = axo_get_code(state);
     //Check if the entry point is present
     axo_var* var = axo_get_var(top_scope, (strcmp("axo__main", state->entry_point) == 0) ? "main" : state->entry_point);
     if (var == NULL){
-      yyerror(NULL, "Entry point function '%s' doesn't exist.", state->entry_point);
+      axo_yyerror(NULL, "Entry point function '%s' doesn't exist.", state->entry_point);
     }else{
       axo_func_typ f_typ = *((axo_func_typ*)(var->typ.func_typ));
       if (f_typ.args_len == 0){
@@ -2241,7 +2355,7 @@ int compile(int argc, char** argv) {
           }
         };
         if (f_typ.args_len > 1 || !axo_typ_eq(f_typ.args_types[0], expected_typ)) {
-          yyerror(NULL, "Entry point has to be of type (int fn) or (int fn [][]byte), but is of type '%s'.", axo_typ_to_str(var->typ));
+          axo_yyerror(NULL, "Entry point has to be of type (int fn) or (int fn [][]byte), but is of type '%s'.", axo_typ_to_str(var->typ));
         }else{
           state->decls[1].val=fmtstr("#define AXO_DEFINE_ENTRY_POINT int %s(axo__arr args);\n#define AXO_MAIN_ENTRY_POINT %s", state->entry_point, state->entry_point);
         }
@@ -2267,7 +2381,11 @@ int compile(int argc, char** argv) {
               strapnd(&compiler_cmd, " ");
               strapnd(&compiler_cmd, state->extra_c_sources[i]);
             }
-            printf("Compiling command:\n%s\n", compiler_cmd);
+            for (int i=0; i<state->cc_flags_len; i++){
+              strapnd(&compiler_cmd, " ");
+              strapnd(&compiler_cmd, state->cc_flags[i]);
+            }
+            // printf("Compiling command:\n%s\n", compiler_cmd);
             res = system(compiler_cmd) >> 8;
             break;
           default:
@@ -2307,7 +2425,9 @@ int main(int argc, char** argv){
   #ifdef __EMSCRIPTEN__
     return 0;
   #else
-    return compile(argc, argv);
+    int ret = compile(argc, argv);
+    axo_free_state(state);
+    return ret;
   #endif
 }
 
@@ -2317,6 +2437,8 @@ char* axo_compile_to_c(char* input){
   argv[1] = alloc_str("-i");
   argv[2] = alloc_str(input);
   compile(3, argv);
-  return axo_get_code(state);
+  char* res = axo_get_code(state);
+  // printf("Code: %s\n", res);
+  return res;
 }
 

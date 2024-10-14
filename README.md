@@ -1,6 +1,6 @@
 <div align="center" style="display:grid;place-items:center;">
 <p>
-  <img width="256" src="https://raw.githubusercontent.com/MightyPancake/axo/main/logos/vertical/svg/axologo_v_jerry_rgb.svg?sanitize=true" alt="V logo">
+  <img width="256" src="https://raw.githubusercontent.com/MightyPancake/axo/main/logos/vertical/svg/axologo_v_jerry_rgb.svg?sanitize=true">
 </p>
 
 ![Static Badge](https://img.shields.io/badge/%F0%9F%AB%A7-Write_fast%2C_run_faster!-grey?style=for-the-badge&color=%23fc2f62)
@@ -10,9 +10,9 @@
   ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/MightyPancake/axo/main?style=for-the-badge&logo=GitHub&color=%23fd8889)
 
 
-  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/ubuntu.yml?style=flat&logo=Ubuntu&logoColor=%23E95420&label=build%20)
-  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/windows.yml?style=flat&logo=Windows%2010&logoColor=%2301ccff&label=build%20)
-  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/macos.yml?style=flat&logo=MacOS&label=build%20)
+  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/ubuntu.yml?style=flat&logo=Linux&logoColor=FFFFFF&label=Linux)
+  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/windows.yml?style=flat&label=Windows)
+  ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/MightyPancake/axo/macos.yml?style=flat&logo=Apple&logoColor=FFFFFF&label=MacOS)
 
 -----
 

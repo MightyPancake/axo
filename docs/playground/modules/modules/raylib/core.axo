@@ -1,0 +1,227 @@
+#provided (fn int, int, @byte) InitWindow
+#provided (fn) CloseWindow
+#provided (bool fn) WindowShouldClose
+#provided (bool fn) IsWindowReady
+#provided (bool fn) IsWindowFullscreen
+#provided (bool fn) IsWindowHidden
+#provided (bool fn) IsWindowMinimized
+#provided (bool fn) IsWindowMaximized
+#provided (bool fn) IsWindowFocused
+#provided (bool fn) IsWindowResized
+#provided (bool fn u32) IsWindowState
+#provided (fn u32) SetWindowState
+#provided (fn u32) ClearWindowState
+#provided (fn) ToggleFullscreen
+#provided (fn) ToggleBorderlessWindowed
+#provided (fn) MaximizeWindow
+#provided (fn) MinimizeWindow
+#provided (fn) RestoreWindow
+#provided (fn Image) SetWindowIcon
+#provided (fn @Image, int) SetWindowIcons
+#provided (fn @byte) SetWindowTitle
+#provided (fn int, int) SetWindowPosition
+#provided (fn int) SetWindowMonitor
+#provided (fn int, int) SetWindowMinSize
+#provided (fn int, int) SetWindowMaxSize
+#provided (fn int, int) SetWindowSize
+#provided (fn f32) SetWindowOpacity
+#provided (fn) SetWindowFocused
+#provided (@byte fn) GetWindowHandle
+#provided (int fn) GetScreenWidth
+#provided (int fn) GetScreenHeight
+#provided (int fn) GetRenderWidth
+#provided (int fn) GetRenderHeight
+#provided (int fn) GetMonitorCount
+#provided (int fn) GetCurrentMonitor
+#provided (Vector2 fn int) GetMonitorPosition
+#provided (int fn int) GetMonitorWidth
+#provided (int fn int) GetMonitorHeight
+#provided (int fn int) GetMonitorPhysicalWidth
+#provided (int fn int) GetMonitorPhysicalHeight
+#provided (int fn int) GetMonitorRefreshRate
+#provided (Vector2 fn) GetWindowPosition
+#provided (Vector2 fn) GetWindowScaleDPI
+#provided (@byte fn int) GetMonitorName
+#provided (fn @byte) SetClipboardText
+#provided (@byte fn) GetClipboardText
+#provided (fn) EnableEventWaiting
+#provided (fn) DisableEventWaiting
+
+#provided (fn) ShowCursor
+#provided (fn) HideCursor
+#provided (bool fn) IsCursorHidden
+#provided (fn) EnableCursor
+#provided (fn) DisableCursor
+#provided (bool fn) IsCursorOnScreen
+
+#provided (fn Color) ClearBackground
+#provided (fn) BeginDrawing
+#provided (fn) EndDrawing
+#provided (fn Camera2D) BeginMode2D
+#provided (fn) EndMode2D
+#provided (fn Camera) BeginMode3D
+#provided (fn) EndMode3D
+#provided (fn RenderTexture2D) BeginTextureMode
+#provided (fn) EndTextureMode
+#provided (fn Shader) BeginShaderMode
+#provided (fn) EndShaderMode
+#provided (fn int) BeginBlendMode
+#provided (fn) EndBlendMode
+#provided (fn int, int, int, int) BeginScissorMode
+#provided (fn) EndScissorMode
+#provided (fn VrStereoConfig) BeginVrStereoMode
+#provided (fn) EndVrStereoMode
+
+#provided (VrStereoConfig fn VrDeviceInfo) LoadVrStereoConfig
+#provided (fn VrStereoConfig) UnloadVrStereoConfig
+
+#provided (Shader fn @byte, @byte) LoadShader
+#provided (Shader fn @byte, @byte) LoadShaderFromMemory
+#provided (bool fn Shader) IsShaderReady
+#provided (int fn Shader, @byte) GetShaderLocation
+#provided (int fn Shader, @byte) GetShaderLocationAttrib
+#provided (fn Shader, int, @none, int) SetShaderValue
+#provided (fn Shader, int, @none, int, int) SetShaderValueV
+#provided (fn Shader, int, Matrix) SetShaderValueMatrix
+#provided (fn Shader, int, Texture2D) SetShaderValueTexture
+#provided (fn Shader) UnloadShader
+
+#provided (Ray fn Vector2, Camera) GetMouseRay
+#provided (Matrix fn Camera) GetCameraMatrix
+#provided (Matrix fn Camera2D) GetCameraMatrix2D
+#provided (Vector2 fn Vector3, Camera) GetWorldToScreen
+#provided (Vector2 fn Vector2, Camera2D) GetScreenToWorld2D
+#provided (Vector2 fn Vector3, Camera, int, int) GetWorldToScreenEx
+#provided (Vector2 fn Vector2, Camera2D) GetWorldToScreen2D
+
+#provided (fn int) SetTargetFPS
+#provided (f32 fn) GetFrameTime
+#provided (f64 fn) GetTime
+#provided (int fn) GetFPS
+
+#provided (fn) SwapScreenBuffer
+#provided (fn) PollInputEvents
+#provided (fn f64) WaitTime
+
+#provided (fn u32) SetRandomSeed
+#provided (int fn int, int) GetRandomValue
+#provided (@int fn u32, int, int) LoadRandomSequence
+#provided (fn @int) UnloadRandomSequence
+
+#provided (fn @byte) TakeScreenshot
+#provided (fn u32) SetConfigFlags
+#provided (fn @byte) OpenURL
+
+#provided (fn int, @byte, ...) TraceLog
+#provided (fn int) SetTraceLogLevel
+#provided (@none fn u32) MemAlloc
+#provided (@none fn @none, u32) MemRealloc
+#provided (fn @none) MemFree
+
+#provided (fn @none) SetTraceLogCallback
+#provided (fn @none) SetLoadFileDataCallback
+#provided (fn @none) SetSaveFileDataCallback
+#provided (fn @none) SetLoadFileTextCallback
+#provided (fn @none) SetSaveFileTextCallback
+
+#provided (@byte fn @byte, @int) LoadFileData
+#provided (fn @byte) UnloadFileData
+#provided (bool fn @byte, @none, int) SaveFileData
+#provided (bool fn @byte, @byte, int) ExportDataAsCode
+#provided (@byte fn @byte) LoadFileText
+#provided (fn @byte) UnloadFileText
+#provided (bool fn @byte, @byte) SaveFileText
+
+#provided (bool fn @byte) FileExists
+#provided (bool fn @byte) DirectoryExists
+#provided (bool fn @byte, @byte) IsFileExtension
+#provided (int fn @byte) GetFileLength
+#provided (@byte fn @byte) GetFileExtension
+#provided (@byte fn @byte) GetFileName
+#provided (@byte fn @byte) GetFileNameWithoutExt
+#provided (@byte fn @byte) GetDirectoryPath
+#provided (@byte fn @byte) GetPrevDirectoryPath
+#provided (@byte fn) GetWorkingDirectory
+#provided (@byte fn) GetApplicationDirectory
+#provided (bool fn @byte) ChangeDirectory
+#provided (bool fn @byte) IsPathFile
+#provided (FilePathList fn @byte) LoadDirectoryFiles
+#provided (FilePathList fn @byte, @byte, bool) LoadDirectoryFilesEx
+#provided (fn FilePathList) UnloadDirectoryFiles
+#provided (bool fn) IsFileDropped
+#provided (FilePathList fn) LoadDroppedFiles
+#provided (fn FilePathList) UnloadDroppedFiles
+#provided (i64 fn @byte) GetFileModTime
+
+#provided (@byte fn @byte, int, @int) CompressData
+#provided (@byte fn @byte, int, @int) DecompressData
+#provided (@byte fn @byte, int, @int) EncodeDataBase64
+#provided (@byte fn @byte, @int) DecodeDataBase64
+
+#provided (AutomationEventList fn @byte) LoadAutomationEventList
+#provided (fn AutomationEventList) UnloadAutomationEventList
+#provided (bool fn AutomationEventList, @byte) ExportAutomationEventList
+#provided (fn AutomationEventList) SetAutomationEventList
+#provided (fn int) SetAutomationEventBaseFrame
+#provided (fn) StartAutomationEventRecording
+#provided (fn) StopAutomationEventRecording
+#provided (fn AutomationEvent) PlayAutomationEvent
+
+#provided (bool fn int) IsKeyPressed
+#provided (bool fn int) IsKeyPressedRepeat
+#provided (bool fn int) IsKeyDown
+#provided (bool fn int) IsKeyReleased
+#provided (bool fn int) IsKeyUp
+#provided (int fn) GetKeyPressed
+#provided (int fn) GetCharPressed
+#provided (fn int) SetExitKey
+
+#provided (bool fn int) IsGamepadAvailable
+#provided (int fn int) GetGamepadName
+#provided (bool fn int, int) IsGamepadButtonPressed
+#provided (bool fn int, int) IsGamepadButtonDown
+#provided (bool fn int, int) IsGamepadButtonReleased
+#provided (bool fn int, int) IsGamepadButtonUp
+#provided (int fn int) GetGamepadButtonPressed
+#provided (int fn int) GetGamepadAxisCount
+#provided (f32 fn int, int) GetGamepadAxisMovement
+#provided (int fn int, int) SetGamepadMappings
+
+#provided (bool fn int) IsMouseButtonPressed
+#provided (bool fn int) IsMouseButtonDown
+#provided (bool fn int) IsMouseButtonReleased
+#provided (bool fn int) IsMouseButtonUp
+#provided (int fn) GetMouseX
+#provided (int fn) GetMouseY
+#provided (Vector2 fn) GetMousePosition
+#provided (Vector2 fn) GetMouseDelta
+#provided (fn int) SetMousePosition
+#provided (fn Vector2) SetMouseOffset
+#provided (fn f32) SetMouseScale
+#provided (f32 fn) GetMouseWheelMove
+#provided (f32 fn) GetMouseWheelMoveV
+#provided (fn) SetMouseCursor
+
+#provided (bool fn int) IsTouching
+#provided (int fn) GetTouchX
+#provided (int fn) GetTouchY
+#provided (Vector2 fn int) GetTouchPosition
+#provided (int fn) GetTouchPointCount
+#provided (fn int, int, int) SetGesturesEnabled
+#provided (fn int, int) GetGestureDetected
+#provided (fn int) GetGestureHoldDuration
+#provided (Vector2 fn) GetGestureDragVector
+#provided (f32 fn) GetGestureDragAngle
+#provided (Vector2 fn) GetGesturePinchVector
+#provided (f32 fn) GetGesturePinchAngle
+
+#provided (fn u32) SetGestureCallbacks
+#provided (fn u32) SetGestureHoldCallback
+#provided (fn u32) SetGestureDragCallback
+#provided (fn u32) SetGesturePinchCallback
+#provided (fn u32) SetGestureRotateCallback
+#provided (fn u32) SetGestureSwipeCallback
+
+#provided (fn @Camera, int) UpdateCamera
+#provided (fn @Camera, Vector3, Vector3, f32) UpdateCameraPro
+

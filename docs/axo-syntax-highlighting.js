@@ -20,7 +20,7 @@ Prism.languages.axo = {
             punctuation: /[.\\]/
         }
     },
-    keyword: /\b(?:break|fn|each|ret|continue|do|else|for|if|in|include|null|while|use|none|struct|enum)\b/,
+    keyword: /\b(?:break|fn|each|ret|continue|do|else|for|if|in|include|null|throw|while|use)\b/,
     boolean: /\b(?:false|true)\b/,
     function: /\b\w+(?=\()/,
     number: /\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i,

@@ -1,0 +1,34 @@
+use std
+use raylib
+
+fn main([][]byte args){
+    const w = 1200
+    const h = 1200
+    // SetTraceLogLevel(2)
+    InitWindow(w, h, "Hello raylib!")
+    //Load image
+    image = LoadImage("resources/images/gangbusters_melody_club.png")
+    texture = LoadTextureFromImage(image)
+    UnloadImage(image)
+    InitAudioDevice()
+    music = LoadMusicStream("./resources/audio/portobello.mp3")
+    SetMusicVolume(music, 1.0)
+    SetMasterVolume(1.0)
+    PlayMusicStream(music)
+    SetTargetFPS(60)
+    while !WindowShouldClose() {
+        //Update
+        UpdateMusicStream(music)
+        timePlayed = GetMusicTimePlayed(music)/GetMusicTimeLength(music)
+        //Draw
+        BeginDrawing()
+        ClearBackground(RAYWHITE)
+        DrawTexture(texture, 0, 0, WHITE)
+        EndDrawing()
+    }
+    UnloadMusicStream(music)
+    CloseAudioDevice()
+    CloseWindow()
+    ret 0
+}
+

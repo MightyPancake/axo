@@ -1,0 +1,79 @@
+#provided (fn @Vector3, @Vector3, @Color) DrawLine3D
+#provided (fn @Vector3, @Color) DrawPoint3D
+#provided (fn @Vector3, f32, @Vector3, f32, @Color) DrawCircle3D
+#provided (fn @Vector3, @Vector3, @Vector3, @Color) DrawTriangle3D
+#provided (fn @Vector3, int, @Color) DrawTriangleStrip3D
+#provided (fn @Vector3, f32, f32, f32, @Color) DrawCube
+#provided (fn @Vector3, @Vector3, @Color) DrawCubeV
+#provided (fn @Vector3, f32, f32, f32, @Color) DrawCubeWires
+#provided (fn @Vector3, @Vector3, @Color) DrawCubeWiresV
+#provided (fn @Vector3, f32, @Color) DrawSphere
+#provided (fn @Vector3, f32, int, int, @Color) DrawSphereEx
+#provided (fn @Vector3, f32, int, int, @Color) DrawSphereWires
+#provided (fn @Vector3, f32, f32, f32, int, @Color) DrawCylinder
+#provided (fn @Vector3, @Vector3, f32, f32, int, @Color) DrawCylinderEx
+#provided (fn @Vector3, f32, f32, f32, int, @Color) DrawCylinderWires
+#provided (fn @Vector3, @Vector3, f32, f32, int, @Color) DrawCylinderWiresEx
+#provided (fn @Vector3, @Vector3, f32, int, int, @Color) DrawCapsule
+#provided (fn @Vector3, @Vector3, f32, int, int, @Color) DrawCapsuleWires
+#provided (fn @Vector3, @Vector2, @Color) DrawPlane
+#provided (fn @Ray, @Color) DrawRay
+#provided (fn int, f32) DrawGrid
+
+#provided (Model fn @byte) LoadModel
+#provided (Model fn Mesh) LoadModelFromMesh
+#provided (bool fn Model) IsModelReady
+#provided (fn Model) UnloadModel
+#provided (BoundingBox fn Model) GetModelBoundingBox
+
+#provided (fn Model, Vector3, f32, Color) DrawModel
+#provided (fn Model, Vector3, Vector3, f32, Vector3, Color) DrawModelEx
+#provided (fn Model, Vector3, f32, Color) DrawModelWires
+#provided (fn Model, Vector3, Vector3, f32, Vector3, Color) DrawModelWiresEx
+#provided (fn BoundingBox, Color) DrawBoundingBox
+#provided (fn Camera, Texture2D, Vector3, f32, Color) DrawBillboard
+#provided (fn Camera, Texture2D, Rectangle, Vector3, Vector2, Color) DrawBillboardRec
+#provided (fn Camera, Texture2D, Rectangle, Vector3, Vector3, Vector2, Vector2, f32, Color) DrawBillboardPro
+
+#provided (fn @Mesh, bool) UploadMesh
+#provided (fn @Mesh, int, @byte, int, int) UpdateMeshBuffer
+#provided (fn @Mesh) UnloadMesh
+#provided (fn @Mesh, @Material, @Matrix) DrawMesh
+#provided (fn @Mesh, @Material, @Matrix, int) DrawMeshInstanced
+#provided (bool fn @Mesh, @byte) ExportMesh
+#provided (@BoundingBox fn @Mesh) GetMeshBoundingBox
+#provided (fn @Mesh) GenMeshTangents
+
+#provided (@Mesh fn int, f32) GenMeshPoly
+#provided (@Mesh fn f32, f32, int, int) GenMeshPlane
+#provided (@Mesh fn f32, f32, f32) GenMeshCube
+#provided (@Mesh fn f32, int, int) GenMeshSphere
+#provided (@Mesh fn f32, int, int) GenMeshHemiSphere
+#provided (@Mesh fn f32, f32, int) GenMeshCylinder
+#provided (@Mesh fn f32, f32, int) GenMeshCone
+#provided (@Mesh fn f32, f32, int, int) GenMeshTorus
+#provided (@Mesh fn f32, f32, int, int) GenMeshKnot
+#provided (@Mesh fn @Image, @Vector3) GenMeshHeightmap
+#provided (@Mesh fn @Image, @Vector3) GenMeshCubicmap
+
+#provided (@Material fn @byte, @int) LoadMaterials
+#provided (@Material fn) LoadMaterialDefault
+#provided (bool fn @Material) IsMaterialReady
+#provided (fn @Material) UnloadMaterial
+#provided (fn @Material, int, @Texture2D) SetMaterialTexture
+#provided (fn @Model, int, int) SetModelMeshMaterial
+
+#provided (@ModelAnimation fn @byte, @int) LoadModelAnimations
+#provided (fn Model, ModelAnimation, int) UpdateModelAnimation
+#provided (fn ModelAnimation) UnloadModelAnimation
+#provided (fn @ModelAnimation, int) UnloadModelAnimations
+#provided (bool fn Model, ModelAnimation) IsModelAnimationValid
+
+#provided (bool fn @Vector3, f32, @Vector3, f32) CheckCollisionSpheres
+#provided (bool fn @BoundingBox, @BoundingBox) CheckCollisionBoxes
+#provided (bool fn @BoundingBox, @Vector3, f32) CheckCollisionBoxSphere
+#provided (@RayCollision fn @Ray, @Vector3, f32) GetRayCollisionSphere
+#provided (@RayCollision fn @Ray, @BoundingBox) GetRayCollisionBox
+#provided (@RayCollision fn @Ray, @Mesh, @Matrix) GetRayCollisionMesh
+#provided (@RayCollision fn @Ray, @Vector3, @Vector3, @Vector3) GetRayCollisionTriangle
+#provided (@RayCollision fn @Ray, @Vector3, @Vector3, @Vector3, @Vector3) GetRayCollisionQuad

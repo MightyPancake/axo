@@ -111,14 +111,23 @@ extern int yydebug;
     LINE_TAG = 312,                /* "#line"  */
     COLUMN_TAG = 313,              /* "#column"  */
     FILE_TAG = 314,                /* "#file"  */
-    SOURCE_TAG = 315,              /* "#source"  */
-    CONST_KWRD = 316,              /* "const"  */
-    IDENTIFIER_PREC = 317,         /* IDENTIFIER_PREC  */
-    EXPR_AS_STATEMENT = 318,       /* EXPR_AS_STATEMENT  */
-    LOOP_PREC = 319,               /* LOOP_PREC  */
-    UMINUS = 320,                  /* UMINUS  */
-    CALL_PREC = 321,               /* CALL_PREC  */
-    STRUCT_LIT_NAMED_FIELD = 322   /* STRUCT_LIT_NAMED_FIELD  */
+    FLAG_TAG = 315,                /* "#flag"  */
+    SOURCE_TAG = 316,              /* "#source"  */
+    C_TAG = 317,                   /* "#C"  */
+    CONST_KWRD = 318,              /* "const"  */
+    MODULE_ACCESS = 319,           /* "::"  */
+    VOLATILE_KWRD = 320,           /* "volatile"  */
+    COMPTIME_VAR = 321,            /* COMPTIME_VAR  */
+    COMPTIME_CALL = 322,           /* COMPTIME_CALL  */
+    AXO_EXPR_AS_PARSE_RESULT = 323, /* AXO_EXPR_AS_PARSE_RESULT  */
+    COMPTIME_LUA_BLOCK = 324,      /* "comptime lua block"  */
+    IDENTIFIER_PREC = 325,         /* IDENTIFIER_PREC  */
+    EXPR_AS_STATEMENT = 326,       /* EXPR_AS_STATEMENT  */
+    LOOP_PREC = 327,               /* LOOP_PREC  */
+    UMINUS = 328,                  /* UMINUS  */
+    CALL_PREC = 329,               /* CALL_PREC  */
+    STRUCT_LIT_NAMED_FIELD = 330,  /* STRUCT_LIT_NAMED_FIELD  */
+    TYPE_Q_PREC = 331              /* TYPE_Q_PREC  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -127,7 +136,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 176 "axo_gram.y"
+#line 188 "axo_gram.y"
 
   char* str;
   axo_strings strings_type;
@@ -137,6 +146,7 @@ union YYSTYPE
   axo_func function;
   axo_func_arg function_argument;
   axo_func_call function_call;
+  axo_comptime_call comptime_function_call;
   axo_typ typ_type;
   axo_for_loop for_loop_type;
   axo_till_loop till_loop_type;
@@ -153,8 +163,9 @@ union YYSTYPE
   bool bool_type;
   axo_switch_case case_type;
   axo_switch switch_type;
+  axo_var variable_type;
 
-#line 158 "axo_gram.tab.h"
+#line 169 "axo_gram.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -179,7 +190,7 @@ struct YYLTYPE
 
 
 
-int yyparse (void);
+int yyparse (yyscan_t scanner);
 
 
 #endif /* !YY_YY_AXO_GRAM_TAB_H_INCLUDED  */
