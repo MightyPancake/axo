@@ -49,9 +49,9 @@ function axo.getOS()
         return "Windows"
     end
 
-    -- Try using `uname` for Unix-like systems (Linux, macOS)
-    local handle = io.popen("uname -s 2>/dev/null")
-    if handle then
+    -- Try using `uname` for Unix-like systems (Linux, macOS), but only if popen is supported
+    local ok, handle = pcall(io.popen, "uname -s 2>/dev/null")
+    if ok and handle then
         local result = handle:read("*a")
         handle:close()
         if result and result:match("Linux") then
@@ -63,7 +63,7 @@ function axo.getOS()
         end
     end
 
-    -- If all else fails, return "Unknown OS"
+    -- If popen is not supported or OS is unknown, return "unknown"
     return "unknown"
 end
 

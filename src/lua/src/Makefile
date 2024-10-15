@@ -143,6 +143,10 @@ posix:
 SunOS solaris:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN -D_REENTRANT" SYSLIBS="-ldl"
 
+wasm:
+	emcc -O2 -s WASM=1 -s MODULARIZE=1 -s 'EXPORT_NAME="LuaModule"' -s EXPORTED_FUNCTIONS='["_luaL_newstate", "_luaL_openlibs", "_luaL_loadstring", "_lua_pcall", "_lua_tolstring", "_lua_close"]' \
+    lapi.c lauxlib.c lbaselib.c lcode.c ldblib.c ldebug.c ldo.c ldump.c lfunc.c lgc.c linit.c liolib.c llex.c lmathlib.c lmem.c loadlib.c lobject.c lopcodes.c loslib.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c lcorolib.c lstrlib.c lutf8lib.c ltablib.c -o lua.js
+
 # Targets that do not create files (not all makes understand .PHONY).
 .PHONY: all $(PLATS) help test clean default o a depend echo
 

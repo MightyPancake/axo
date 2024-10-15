@@ -1,0 +1,13 @@
+use std
+use io
+
+fn main([][]byte args) {
+    a = 'l'
+    s = ['H', 'e', 'l', 'l', 'o']
+    printf("%s world!\n", s.data@^)
+    printf("%c\n", s[1])
+    printf("%s\n", s.data@.(@@byte)^)
+    ret 0
+}
+
+

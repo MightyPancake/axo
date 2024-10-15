@@ -46,7 +46,20 @@ gh_build:
 
 wasm:
 	@make -s gen
-	emcc axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c -o playground.js -s WASM=1 --preload-file "modules" -gsource-map -s STACK_SIZE=20971520 -s INITIAL_MEMORY=33554432 -s EXPORTED_RUNTIME_METHODS='["cwrap", "stringToUTF8"]' -s EXPORTED_FUNCTIONS='["_axo_compile_to_c"]'
+	emcc axo_gram.tab.c src/axo.c src/utils/utils.c src/utils/hashmap/hashmap.c lex.yy.c \
+    ./src/lua/src/lapi.c ./src/lua/src/lauxlib.c ./src/lua/src/lbaselib.c ./src/lua/src/lcode.c ./src/lua/src/ldblib.c ./src/lua/src/ldebug.c ./src/lua/src/ldo.c ./src/lua/src/ldump.c \
+    ./src/lua/src/lfunc.c ./src/lua/src/lgc.c ./src/lua/src/linit.c ./src/lua/src/liolib.c ./src/lua/src/llex.c ./src/lua/src/lmathlib.c ./src/lua/src/lmem.c ./src/lua/src/loadlib.c \
+    ./src/lua/src/lobject.c ./src/lua/src/lopcodes.c ./src/lua/src/loslib.c ./src/lua/src/lparser.c ./src/lua/src/lstate.c ./src/lua/src/lstring.c ./src/lua/src/ltable.c \
+    ./src/lua/src/ltm.c ./src/lua/src/lundump.c ./src/lua/src/lvm.c ./src/lua/src/lzio.c ./src/lua/src/lcorolib.c ./src/lua/src/lstrlib.c ./src/lua/src/lutf8lib.c ./src/lua/src/ltablib.c ./src/lua/src/lctype.c \
+    -o playground.js \
+	-s MODULARIZE=1 \
+    -s WASM=1 --preload-file "modules" \
+	-g -gsource-map \
+    -s STACK_SIZE=20971520 -s INITIAL_MEMORY=33554432 \
+	-s EXPORT_ES6=1 \
+    -s EXPORTED_RUNTIME_METHODS='["cwrap", "stringToUTF8", "UTF8ToString"]' \
+    -s EXPORTED_FUNCTIONS='["_axo_compile_to_c", "_luaL_newstate", "_luaL_openlibs", "_luaL_loadstring", "_lua_tolstring", "_lua_close"]' \
+    -lm
 	@mv ./playground.js docs/playground/playground.js
 	@mv ./playground.wasm docs/playground/playground.wasm
 	@mv ./playground.wasm.map docs/playground/playground.wasm.map
@@ -99,6 +112,11 @@ dbgf:
 lua:
 	@echo [95mBuilding local lua...[0m
 	@cd src/lua/src && make $(LUA_TARGET)
+	@echo [95mLua built sucessfully![0m
+
+lua_wasm:
+	@echo [95mBuilding wasm lua...[0m
+	@cd src/lua/src && make wasm
 	@echo [95mLua built sucessfully![0m
 
 clean_lua:

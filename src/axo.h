@@ -325,6 +325,7 @@ typedef struct axo_source{
 #define axo_col(ST) (axo_get_source(ST)->col)
 #define axo_pos(ST) (axo_get_source(ST)->pos)
 #define axo_src_path(ST) (axo_get_source(ST)->path)
+#define axo_src_name(ST) (axo_get_source(ST)->name)
 #define axo_src_file(ST) (axo_get_source(ST)->file)
 #define axo_src_index(ST) (axo_get_source(ST)->index)
 
@@ -752,10 +753,11 @@ unsigned char axo_symbol(axo_symbol_kind s, bool e_ascii);
 //Lua
 void axo_test_lua(axo_state* st);
 char* axo_typ_to_lua(axo_typ t);
-const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok);
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok, const char* src_name);
 const char* axo_lua_dofile(axo_state* st, const char* lua_path, bool* ok);
 axo_expr axo_parse_string_for_expr(axo_state* st, const char* code);
 axo_decl axo_parse_string_for_decl(axo_state* st, const char* code);
+
 
 //Memory related
 void* axo_safe_malloc(size_t n);
@@ -772,6 +774,7 @@ axo_expr axo_parse_error_assignment(YYLTYPE* lval_loc, YYLTYPE* assign_loc, YYLT
 long long int* axo_encode_easter(char* input, int* out_len);
 char* axo_decode_easter(long long int* data);
 char* axo_err_msg(axo_err_code err_code);
+int axo_lua_dostring_with_source(lua_State *L, const char *code, const char *source_name);
 
 //Platform specific
 char* axo_resolve_path(char* filename);

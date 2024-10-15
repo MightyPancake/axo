@@ -435,12 +435,13 @@ declaration : struct_def { //Fix! Make this use realloc less
   | COMPTIME_LUA_BLOCK {
     const char* lua_code = alloc_str($1);
     bool ok;
-    const char* res = axo_lua_dostring(state, lua_code, &ok);
+    const char* res = axo_lua_dostring(state, lua_code, &ok, alloc_str("block"));
     if (!ok){
-      axo_yyerror(&@$, "Comptime error: %s\n", res);
+      axo_yyerror(&@$, res);
       YYERROR;
     }
     $$ = axo_parse_string_for_decl(state, res);
+    $$.val = alloc_str("");
   }
   ;
 
@@ -568,7 +569,7 @@ comptime_expr : COMPTIME_VAR {
     char* lua_input = fmtstr("return axo.get(%s)", &($1[1]));
     // printf("Running Lua: %s\n", lua_input);
     bool ok = false;
-    const char* res = axo_lua_dostring(state, lua_input, &ok);
+    const char* res = axo_lua_dostring(state, lua_input, &ok, &($1[1]));
     if (!ok){
       axo_yyerror(&@$, "Macro error: %s\n", res);
       YYERROR;
@@ -595,7 +596,7 @@ comptime_expr : COMPTIME_VAR {
     free(param);
     // printf("comptime lua code: %s\n", lua_code);
     bool ok;
-    const char* res = axo_lua_dostring(state, lua_code, &ok);
+    const char* res = axo_lua_dostring(state, lua_code, &ok, $1.name);
     if (!ok){
       yyerror(state->scanner, &@$, res);
       YYERROR;
@@ -2211,37 +2212,42 @@ int playground(){
   return 0;
 }
 
-void axo_yyerror(YYLTYPE* loc, const char * fmt, ...){
-  yyerror(state->scanner, loc, fmt);
-}
 
-void yyerror(yyscan_t scanner, YYLTYPE* loc, const char * fmt, ...){
+void vyyerror(yyscan_t scanner, YYLTYPE* loc, const char* fmt, va_list args){
   if (prog_return==0)
     axo_err_printf("Click an error to learn more.\n");
   prog_return = 1;
   axo_raise_error;
-  va_list args;
   if (loc==NULL){
     axo_err_printf(axo_red_fg "Error: ");
-    va_start(args, fmt);
     axo_err_vprintf(fmt, args);
-    va_end(args);
     printf(axo_reset_style"\n");
   }else{
-    va_start(args, fmt);
     char* msg = NULL;
     if (vasprintf(&msg, fmt, args) < 0)
       axo_err_printf("Couldn't use vsprintf at %s:%d", __FILE__, __LINE__);
     #ifdef __EMSCRIPTEN__
-      axo_err_printf("error %d:%d: %s\n", loc->first_line, loc->first_column, msg);
+      axo_err_printf("error: %s\n", msg);
       return;
     #endif
     char* err_msg = axo_error_with_loc(state, loc, msg);
-    va_end(args);
     axo_err_printf("%s\n", err_msg);
     free(err_msg);
   }
-  // exit(1);
+}
+
+void axo_yyerror(YYLTYPE* loc, const char * fmt, ...){
+  va_list args;
+  va_start(args, fmt);
+  vyyerror(state->scanner, loc, fmt, args);
+  va_end(args);
+}
+
+void yyerror(yyscan_t scanner, YYLTYPE* loc, const char * fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    vyyerror(scanner, loc, fmt, args);
+    va_end(args);
 }
 
 int compile(int argc, char** argv) {
@@ -2425,12 +2431,14 @@ int main(int argc, char** argv){
   #endif
 }
 
-char* axo_compile_to_c(int argc, char* input){
+char* axo_compile_to_c(char* input){
   char** argv = (char**)malloc(3*sizeof(char*));
   argv[0] = alloc_str(".");
   argv[1] = alloc_str("-i");
   argv[2] = alloc_str(input);
-  compile(argc, argv);
-  return axo_get_code(state);
+  compile(3, argv);
+  char* res = axo_get_code(state);
+  // printf("Code: %s\n", res);
+  return res;
 }
 

@@ -1865,7 +1865,7 @@ YY_RULE_SETUP
 #line 233 "scan.l"
 { 
     ret_null;
-    axo_yyerror(NULL, "Unexpected '%c' at %d:%d in input.", yytext[0], yylloc->first_line, yylloc->first_column);
+      axo_yyerror(NULL, "Unexpected '%c'(%d) at %s:%d:%d in input.", yytext[0], yytext[0], axo_src_name(state), yylloc->first_line, yylloc->first_column);
   }
 	YY_BREAK
 case 86:

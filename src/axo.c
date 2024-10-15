@@ -238,7 +238,7 @@ void axo_handle_args(axo_state* st, int argc, char** argv, int init_arg){
     int arg_num = init_arg;
     char* arg = argv[init_arg];
     while (arg != NULL){
-        // printf("Got arg #%d: %s\n", arg_num, arg);
+        // printf("Got arg #%d/%d: %s\n", arg_num, argc, arg);
         if (strcmp(arg, "-e")==0){ //Set entry point
             next_arg;
             if (st->entry_point == NULL)
@@ -941,9 +941,8 @@ void axo_free_index_access(axo_index_access ia){
 void axo_new_string_source(axo_state* st, char* code){
     resize_dyn_arr_if_needed(axo_source, st->sources, st->sources_len, axo_state_sources_cap);
     axo_source* src = &(st->sources[st->sources_len]);
-    // printf("Switching to: %s\n", code);
     src->name = alloc_str("string source");
-    src->path = alloc_str(axo_src_path(st));
+    src->path = alloc_str("input string");
     src->str = alloc_str(code);
     src->index = 0;
     src->pos = 0;
@@ -955,7 +954,6 @@ void axo_new_string_source(axo_state* st, char* code){
 }
 
 void axo_pop_source(axo_state* st){
-    // printf("Popping src: %s\n", axo_get_source(st)->name);
     st->sources_len--;
     axo_free_source(st->sources[st->sources_len]);
     if (st->sources_len>0){
@@ -2285,7 +2283,11 @@ char* axo_get_parent_dir(char* dest, char* path) {
 }
 
 void axo_err_vprintf(const char* fmt, va_list vargs){
-    vfprintf(stderr, fmt, vargs);
+    #ifdef __EMSCRIPTEN__
+        vprintf(fmt, vargs);
+    #else
+        vfprintf(stderr, fmt, vargs);
+    #endif
 }
 
 void axo_err_printf(const char* fmt, ...){
@@ -2325,10 +2327,19 @@ char* axo_typ_to_lua(axo_typ t){
     }
 }
 
-const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok){
+int axo_lua_dostring_with_source(lua_State *L, const char *code, const char *source_name) {
+    int load_status = luaL_loadbuffer(L, code, strlen(code), source_name);
+    if (load_status != LUA_OK) {
+        return load_status;
+    }
+    int call_status = lua_pcall(L, 0, LUA_MULTRET, 0);
+    return call_status;
+}
+
+const char* axo_lua_dostring(axo_state* st, const char* lua_code, bool* ok, const char* src_name){
     *ok = false;
     lua_State* L = st->lua_state;
-    if (luaL_dostring(L, lua_code)) {
+    if (axo_lua_dostring_with_source(L, lua_code, src_name)) {
         return lua_tostring(L, -1);
     }
     if (lua_isstring(L, -1)) {
@@ -2348,7 +2359,7 @@ axo_expr axo_parse_string_for_expr(axo_state* st, const char* code){
     yylex_init(&lexer);
     axo_new_string_source(st, parse_input);
     yyparse(lexer);
-    axo_pop_source(st);
+    // axo_pop_source(st);
     return ret_expr;
 }
 

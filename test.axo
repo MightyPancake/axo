@@ -1,9 +1,7 @@
 use std
 
-fn main([][]byte args){
-    name = "David"
-    age = 21
-    ~print("My name is ", name, " and I am ", age, " years old.")
-    ret 0
+fn main(){
+  e = "crazy"
+  ~print("hello world")
+  ret 0
 }
-
