@@ -17,18 +17,8 @@ fn main([][]byte args){
 }
 ```
 
-```terminal
-    >|info|axo main.axo
-    |success|Compiled!
-    >|./main Hello world !
-    |Argument #0: ./main
-    |Argument #1: Hello
-    |Argument #2: world
-    |Argument #3: !
-```
-
-
-Why don't you [try it out](https://axolang.com/playground/playground.html)?
+> [!TIP]
+> [Run code online!](https://axolang.com/playground/editor.html)?
 
 
 <div style="text-align: center;">
