@@ -10,15 +10,15 @@ use std
 
 //Main program entry point
 fn main([][]byte args){
-    //Write each argument
-    for each [i], arg in args
-        printf("Argument #%d: %s\n", i, arg.data)
+    //Write out each argument
+    for arg each [i] in args
+        ~print("Argument #", i, ": ", arg.data)
     ret 0
 }
 ```
 
 > [!TIP]
-> [Run code online!](https://axolang.com/playground/editor.html)?
+> [Run code online!](https://axolang.com/playground/editor.html)
 
 
 <div style="text-align: center;">
