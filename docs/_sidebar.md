@@ -16,9 +16,39 @@
 - Playground
   - [Hello world](https://axolang.com/playground/editor.html)
 - Thesis
-  - [About](thesis/about)
-  - [Introduction](thesis/intro)
-
+  - Chapter 0: Preambule
+    - [Title](thesis/0/title)
+    - [Abstract](thesis/0/abstract)
+    - [Table of Contents](thesis/0/table_of_contents)
+  - Chapter 1: Introduction
+    - [Motivation](thesis/1/motivation)
+    - [Objectives](thesis/1/objectives)
+    - [Scope](thesis/1/title)
+    - [About](thesis/1/about)
+    - [Introduction](thesis/1/intro)
+  - Chapter 2: Language Design
+    - [Similar languages](thesis/2/similar_languages)
+    - [Syntax](thesis/2/syntax)
+    - [Semantics](thesis/2/semantics)
+  - Chapter 3: Compiler Architecture
+    - [High-level design](thesis/3/high-level_design)
+    - [Lexer](thesis/3/lexer)
+    - [Parser](thesis/3/parser)
+    - [Semantic Analysis](thesis/3/semantic_analysis)
+    - [Intermediate Representation and optimization](thesis/3/ir_and_optimizations)
+    - [Error Handling](thesis/3/error_handling)
+  - Chapter 4: Implementation Details
+    - [Development Tools](thesis/4/dev_tools)
+    - [Challanges](thesis/4/challanges)
+    - [Compilation Walkthrough](thesis/4/compilation_walkthrough)
+  - Chapter 5: Testing and use cases
+    - [Testing System](thesis/5/testing_system)
+    - [Performance Analysis](thesis/5/performance_analysis)
+    - [Benchmarks?](thesis/5/benchmarks)
+  - Chapter 6: Conclusion and Future Work
+    - [Summary](thesis/6/summary)
+    - [Lessons Learned](thesis/6/lessons_learned)
+    - [Final Thoughts](thesis/6/final_thoughts)
 - Support
   - ~[Help](support/help)~
   - ~[Contributing](support/contributing)~
