@@ -23,7 +23,7 @@
   - Chapter 1: Introduction
     - [Motivation](thesis/1/motivation)
     - [Objectives](thesis/1/objectives)
-    - [Scope](thesis/1/title)
+    - [Scope](thesis/1/scope)
     - [About](thesis/1/about)
     - [Introduction](thesis/1/intro)
   - Chapter 2: Language Design
