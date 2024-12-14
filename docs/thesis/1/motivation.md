@@ -1,38 +1,35 @@
-##### Motivation
-Since my early days of programming one of the most liked characteristics of coding was having some imposed limitations and making things from scratch, which is most likely why I really enjoy low-level languages.
-I really like the philosophy of being really close to the final assembly, while staying human readible. I also like how it provides just basic concepts, but the rest is up to the user.
-Learning low-level languages can be beneficial to both efficiency and enjoyment. Not only does it allow for a deep understanding of the underlying problems, but overcoming them with more limited and traditional, low-level tools can be fun and generally feel rewarding.
-Besides, the potential speed gain can drastically matter.
+# Motivation
+Programming has always appealed to me because of its inherent challenges, particularly when working within imposed limitations and creating solutions from scratch. This is why low-level languages have been a personal favorite. Their philosophy of being close to assembly-level code while remaining human-readable, and offering only basic constructs while leaving the rest to the programmer, is both intriguing and rewarding.
 
-###### Good, but Old Standard
-For over 50 years, the C language has been the gold standard when it comes to low-level languages. Nowadays, many languages aim to become "the next C," but as it turns out, it's really difficult to beat C. Its age is both its biggest downside and its biggest strength. On one hand, the syntax and possibilities built into the language itself seem limited, but on the other hand, its toolset has been refined for half a century. The amount of reusable code is immense. It's no coincidence that most languages have bindings to C and not to other languages. It acts as a bridge and has become a unique staple of programming.
+Learning and using low-level languages provides significant benefits. They encourage a deep understanding of underlying systems and problems, and the process of solving these challenges with limited tools can be both enjoyable and fulfilling. Additionally, the potential performance gains often associated with low-level languages are invaluable in many applications.
 
-###### C's Double-Edged Sword
-Because of its simplicity, C is treated as a great language for beginners in low-level programming. No classes, no polymorphism, no interfaces; just pure logic.
-However, it's really hard to deliver a simple and clean language without underdelivering some essential features that make everyday programming easier.
-For starters, C doesn't have a module system nor does it have namespaces. Its standard library is also very minimalistic, which is somewhat understandable for the design because it's up to the user to define the data structures up to the task.
-And that's generally a good thing, that's exactly what C aims for; total control for the programmer, but there are a few things that can really grind the gears of some programmars of todays era.
+## Good, but Old Standard
+For over 50 years, the C language has been the gold standard in low-level programming. Many modern languages aspire to replace it as the foundational systems language, but this has proven to be an incredibly difficult task. C's age is both its greatest weakness and its greatest strength. Its syntax and feature set may seem limited by today’s standards, but its simplicity has enabled decades of refinement in tooling and libraries. The ecosystem built around C is unmatched, with an immense repository of reusable code and widespread support across platforms. It serves as a bridge language, with most modern languages providing bindings to C rather than any other language.
 
-###### Tooling and libraries
-Lacking a simple standard implementation for hashmaps or even dynamic tables or sets is one of the biggest caveats one has to tackle while working with C. Again, it works just fine if you aim for absolute control, but sometimes you just need something to work relatively soon in the development process and having to implement data structures from scratch can slow down developement by a lot.
-Having no package manager also doesn't help with this issue and that's the final nail in the coffin that is C tooling; having to search the web for simple data structure implementations manually can be really exhausting.
+## C's Double-Edged Sword
+C’s simplicity makes it an excellent choice for beginners exploring low-level programming. It strips away complexities such as classes, polymorphism, and interfaces, leaving the programmer with pure logic. However, delivering a simple and clean language often comes at the cost of omitting features that make programming more efficient or user-friendly.
+
+For example, C lacks a module system and namespaces, which are essential for organizing and scaling codebases. Its standard library is intentionally minimal, leaving the definition and implementation of many data structures to the user. While this aligns with C’s philosophy of offering total control, it can lead to inefficiencies, particularly for programmers accustomed to modern conveniences.
+
+## Tooling and libraries
+One of C’s most significant limitations is its lack of built-in support for common data structures like hashmaps, dynamic arrays, or sets. While this supports C’s goal of giving programmers complete control, it often slows down development, as creating these structures from scratch is time-consuming.
+
+Another critical shortcoming is the absence of a package manager. Developers are forced to manually search for and integrate external implementations, making the process of building and maintaining a project unnecessarily exhausting. These issues with tooling and libraries create friction that modern developers may find hard to justify.
 
 
-###### Defaults
-The extension of this problem can be generally brought to the lack of good defaults. While one could solve the issues related to tooling by just providing an extension of the standard library, but the lack of defaults is the problem of the design itself.
-One obvious example of this which can be seen very early on when working with C is the lack of default parameters in functions. Some functions take in pointers, but accept NULL, while other take flags. Because of that a large part of the code looks like this:
+## Defaults
+C’s minimalism extends to its lack of reasonable defaults, a design decision that often creates unnecessary complexity. For example, default parameters for functions are not supported. This limitation can lead to verbose and cumbersome code, as seen in the following example:
 
 ```c
 t result = some_func(&value, 2, NULL, NULL, some_lib_default_flag, 0);
 ```
 
-while in reality, it could look like this:
+With better default handling, the same function could be simplified to:
 
 ```c
 result = some_func(&value, 2)
 ```
+Such omissions make C less convenient for common use cases, even when it remains powerful for highly specialized tasks.
 
-
-##### Objects
-Objects are a touchy subject; some programmers hate them, others couldn't work without them. While I do like grouping functions by the type of structure they proccess, some mechanisms like polymorphism or inheritence has to be done correctly and frankly, that's rarely the case.
-Therefore, I didn't want any of that. What I wanted is the object method syntax (and syntax only), which would allow for method chaining. I'll disccuss this further while talking about syntax in the next chapter.
+## Objects
+The use of objects is a polarizing topic among programmers. While some prefer the organization they offer, others find them cumbersome. Although I appreciate grouping functions by the structures they process, features like polymorphism or inheritance are often implemented poorly or misused. For this reason, Axo avoids these concepts entirely. Instead, the language adopts an object method syntax (syntax only) to enable method chaining. This will be discussed further in the next chapter on syntax.

@@ -1,1 +1,1 @@
-# TODO
+# AXO - a programming language meant to modernize C

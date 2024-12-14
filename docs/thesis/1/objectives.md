@@ -1,8 +1,18 @@
 # Objectives
-The motivations discussed in the previous section resulted in setting the main objectives of the language itself, but first let's talk about the objectives of the whole project.
+The objectives of this thesis are as follows:
 
-## Design
-The first objective is obviously just the design phase; making sure what will be implemented actually has a blueprint which makes sense. This needs to be done carefully as making changes to the design mid-developement costs a lot of time and effort.
+## Develop a Blueprint for Axo
+Establish a clear design for the language, including its syntax, semantics, and core principles, to ensure its consistency and usability throughout development.
 
-## Compiler
-After the design is done the language needs an implementation. Therefore it needs either a compiler or an interpreter. I decided to go for the second option here, mainly because I have done my fair share of interpreters before and it also matches the goal of making a simpler to use C better.
+## Implement a Compiler
+Create a fully functional compiler for Axo, translating source code into executable machine code with a focus on simplicity, performance, and reliability.
+
+## Assess Language Performance
+Evaluate Axo in terms of runtime efficiency and compilation speed, benchmarking it against similar languages to identify strengths and areas for improvement.
+
+## Enhance Accessibility
+Build a comprehensive website for Axo, including detailed documentation and a web-based playground for hands-on experimentation.
+
+## Promote Testing and Debugging
+Include a built-in testing framework within Axo to improve the developer experience.
+
