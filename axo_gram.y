@@ -64,7 +64,6 @@
   #define axo_none_check(T) ((T).kind == axo_none_kind)
 %}
 
-%define parse.error verbose
 %locations
 %define api.pure full
 %lex-param { yyscan_t scanner }

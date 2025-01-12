@@ -24,7 +24,7 @@ fn hello(){
 }
 
 fn main([][]byte args){
-  batch = testing::new("Test #0")
+  batch = testing::new("Compiler tests")
   batch:add(test1, "test1")
   batch:add(test2, "test2")
   batch:add(test3, "test3")

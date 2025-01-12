@@ -15,9 +15,9 @@ struct tested_func (
 )
 
 struct test_batch (
-	@byte						name,
-	[]tested_func		tests,
-	u32							success_count
+	@byte			name,
+	[]tested_func	tests,
+	u32				success_count
 )
 
 fn testing::new(@byte name){
