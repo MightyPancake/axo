@@ -3,7 +3,7 @@ Programming has always appealed to me because of its inherent challenges, partic
 
 Learning and using low-level languages provides significant benefits. They encourage a deep understanding of underlying systems and problems, and the process of solving these challenges with limited tools can be both enjoyable and fulfilling. Additionally, the potential performance gains often associated with low-level languages are invaluable in many applications.
 
-## Good, but Old Standard
+## Good, but old standard
 For over 50 years, the C language has been the gold standard in low-level programming. Many modern languages aspire to replace it as the foundational systems language, but this has proven to be an incredibly difficult task. C's age is both its greatest weakness and its greatest strength. Its syntax and feature set may seem limited by today’s standards, but its simplicity has enabled decades of refinement in tooling and libraries. The ecosystem built around C is unmatched, with an immense repository of reusable code and widespread support across platforms. It serves as a bridge language, with most modern languages providing bindings to C rather than any other language.
 
 ## C's Double-Edged Sword

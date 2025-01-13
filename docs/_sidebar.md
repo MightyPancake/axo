@@ -17,19 +17,18 @@
   - [Hello world](https://axolang.com/playground/editor.html)
 - Thesis
   - Chapter 0: Preambule
-    - [Title](thesis/0/title)
-    - [Abstract](thesis/0/abstract)
-    - [Table of Contents](thesis/0/table_of_contents)
+    - [Title](thesis/0/0_title)
+    - [Abstract](thesis/0/1_abstract)
+    - [Table of Contents](thesis/0/2_table_of_contents)
   - Chapter 1: Introduction
-    - [Motivation](thesis/1/motivation)
-    - [Objectives](thesis/1/objectives)
-    - [Scope](thesis/1/scope)
-    - [About](thesis/1/about)
-    - [Introduction](thesis/1/intro)
+    - [Motivation](thesis/1/0_motivation)
+    - [Objectives](thesis/1/1_objectives)
+    - [Scope](thesis/1/2_scope)
+    - [About](thesis/1/3_about)
   - Chapter 2: Language Design
-    - [Similar languages](thesis/2/similar_languages)
-    - [Syntax](thesis/2/syntax)
-    - [Semantics](thesis/2/semantics)
+    - [Similar languages](thesis/2/0_similar_languages)
+    - [Syntax](thesis/2/1_syntax)
+    - [Semantics](thesis/2/2_semantics)
   - Chapter 3: Compiler Architecture
     - [High-level design](thesis/3/high-level_design)
     - [Lexer](thesis/3/lexer)
